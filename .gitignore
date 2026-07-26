@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 **/*.local*
+
+# Capacitor native projects (generated via `npx cap add ios|android`)
+/ios
+/android
