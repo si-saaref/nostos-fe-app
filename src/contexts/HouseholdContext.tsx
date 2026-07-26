@@ -14,9 +14,9 @@ export interface HouseholdContextValue {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const HouseholdContext = createContext<HouseholdContextValue | undefined>(
-  undefined,
-)
+export const HouseholdContext = createContext<
+  HouseholdContextValue | undefined
+>(undefined)
 
 export const HouseholdProvider = ({ children }: { children: ReactNode }) => {
   const { data: session, isLoading } = useSession()

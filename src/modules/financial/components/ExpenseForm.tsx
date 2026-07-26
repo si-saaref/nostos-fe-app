@@ -15,7 +15,11 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 export const ExpenseForm = ({ onSuccess }: Props) => {
   const { householdId, role, user } = useHousehold()
-  const { mutate: createExpense, isPending, error } = useCreateExpense(householdId)
+  const {
+    mutate: createExpense,
+    isPending,
+    error,
+  } = useCreateExpense(householdId)
   const { data: types } = useExpenseTypes(householdId)
   const { data: sources } = usePaymentSources(householdId)
 
@@ -36,7 +40,9 @@ export const ExpenseForm = ({ onSuccess }: Props) => {
   })
 
   if (!canManageExpenses(role)) {
-    return <p className="text-sm text-gray-500">Only admins can add expenses.</p>
+    return (
+      <p className="text-sm text-gray-500">Only admins can add expenses.</p>
+    )
   }
 
   const onSubmit = (data: CreateExpenseInput) => {

@@ -8,7 +8,11 @@ interface Props {
   fallback?: ReactNode
 }
 
-export const PermissionGuard = ({ requiredRole, children, fallback = null }: Props) => {
+export const PermissionGuard = ({
+  requiredRole,
+  children,
+  fallback = null,
+}: Props) => {
   const { role } = useHousehold()
   if (role !== requiredRole) {
     return <>{fallback}</>

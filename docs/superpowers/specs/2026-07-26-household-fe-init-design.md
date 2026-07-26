@@ -14,11 +14,13 @@ vertical slice (auth + expenses) running against MSW mocks, plus the full
 infrastructure (Tailwind, testing, Capacitor, CI, git hooks).
 
 Scope selected by the user: **Full setup** (skeleton + vertical slice + Tailwind
-+ Vitest/MSW + Capacitor + CI + Husky/lint-staged).
+
+- Vitest/MSW + Capacitor + CI + Husky/lint-staged).
 
 ## 2. Starting Point
 
 The repo already contains a default Vite template:
+
 - Vite 8, React 19.2, TypeScript 6, ESLint 10 (flat config) — installed.
 - Only `react` / `react-dom` as runtime deps.
 - `src/App.tsx`, `src/main.tsx`, demo assets/CSS.
@@ -29,15 +31,15 @@ are kept and extended.
 
 ## 3. Decisions (where the docs were ambiguous or outdated)
 
-| Topic | Decision | Reason |
-|-------|----------|--------|
-| React version | **19** (keep installed) | Doc says 18, but 19 is installed & current |
-| State mgmt | **TanStack Query + URL + Context + useState**, no Zustand, no `/stores` | REVISED doc supersedes original |
-| Routing | **React Router 7** (`react-router-dom`) | REVISED code samples use `useSearchParams`/guards; ignore stray `@tanstack/react-router` pin |
-| Styling | **Tailwind v4** via `@tailwindcss/vite` (CSS-first `@import`) | Current approach for Vite 8; no v3 `tailwind.config.js` needed |
-| Dep pinning | **Exact versions** for runtime deps | REVISED supply-chain section |
-| TypeScript | Enable `strict: true` (not currently set) | Doc requires strict mode |
-| Dev data | **MSW** for both browser (dev) and node (tests) | App runs standalone; handlers reused in tests |
+| Topic         | Decision                                                                | Reason                                                                                       |
+| ------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| React version | **19** (keep installed)                                                 | Doc says 18, but 19 is installed & current                                                   |
+| State mgmt    | **TanStack Query + URL + Context + useState**, no Zustand, no `/stores` | REVISED doc supersedes original                                                              |
+| Routing       | **React Router 7** (`react-router-dom`)                                 | REVISED code samples use `useSearchParams`/guards; ignore stray `@tanstack/react-router` pin |
+| Styling       | **Tailwind v4** via `@tailwindcss/vite` (CSS-first `@import`)           | Current approach for Vite 8; no v3 `tailwind.config.js` needed                               |
+| Dep pinning   | **Exact versions** for runtime deps                                     | REVISED supply-chain section                                                                 |
+| TypeScript    | Enable `strict: true` (not currently set)                               | Doc requires strict mode                                                                     |
+| Dev data      | **MSW** for both browser (dev) and node (tests)                         | App runs standalone; handlers reused in tests                                                |
 
 ## 4. Dependencies to Add
 
@@ -123,10 +125,10 @@ src/
   permission error.
 - **`HouseholdContext`**: fetches `GET /api/auth/session` with
   `staleTime: Infinity`; exposes `{ user, household, householdId, role,
-  isAuthenticated, isLoading }`. Writes `householdId` into the axios setter.
+isAuthenticated, isLoading }`. Writes `householdId` into the axios setter.
 - **`useExpenseFilters(householdId)`**: reads filters from `useSearchParams`,
   feeds them to `useExpenses`, returns `{ filters, data, isLoading, updateFilters,
-  clearFilters }`. Filters: `dateFrom/dateTo/type/source/page/limit/sortBy/order`.
+clearFilters }`. Filters: `dateFrom/dateTo/type/source/page/limit/sortBy/order`.
 - **`useCreateExpense(householdId)`**: optimistic insert into the list cache,
   rollback on error, invalidate on settle.
 - **Query keys**: `EXPENSE_KEYS` factory keyed by `householdId` + filters, so

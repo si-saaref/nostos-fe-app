@@ -1,7 +1,10 @@
 import type { Expense, ExpenseType, PaymentSource } from '@/types/expense'
 import type { Household, User } from '@/types/household'
 
-export const MOCK_HOUSEHOLD: Household = { id: 'household-001', name: 'The Smiths' }
+export const MOCK_HOUSEHOLD: Household = {
+  id: 'household-001',
+  name: 'The Smiths',
+}
 
 export const MOCK_USER: User = {
   id: 'user-001',

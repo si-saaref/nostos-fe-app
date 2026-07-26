@@ -29,7 +29,10 @@ export const useCreateExpense = (householdId: string) => {
             ? {
                 ...old,
                 items: [optimistic, ...old.items],
-                pagination: { ...old.pagination, total: old.pagination.total + 1 },
+                pagination: {
+                  ...old.pagination,
+                  total: old.pagination.total + 1,
+                },
               }
             : old,
       )

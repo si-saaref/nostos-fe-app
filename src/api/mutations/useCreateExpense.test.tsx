@@ -26,7 +26,10 @@ describe('useCreateExpense', () => {
       paidByUserId: 'user-001',
       householdId: HOUSEHOLD_ID,
     }
-    client.setQueryData(EXPENSE_KEYS.detail(HOUSEHOLD_ID, 'exp-001'), cachedDetail)
+    client.setQueryData(
+      EXPENSE_KEYS.detail(HOUSEHOLD_ID, 'exp-001'),
+      cachedDetail,
+    )
 
     // Seed a list cache entry so the optimistic update has something to prepend to.
     const emptyList: Paginated<Expense> = {

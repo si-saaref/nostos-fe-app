@@ -7,7 +7,9 @@ import { useExpenseFilters } from '@/modules/financial/hooks/useExpenseFilters'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={createTestQueryClient()}>
-    <MemoryRouter initialEntries={['/financial/expenses']}>{children}</MemoryRouter>
+    <MemoryRouter initialEntries={['/financial/expenses']}>
+      {children}
+    </MemoryRouter>
   </QueryClientProvider>
 )
 
@@ -39,7 +41,9 @@ describe('useExpenseFilters', () => {
       ),
     })
 
-    act(() => result.current.updateFilters({ typeId: 'type-groceries', page: 1 }))
+    act(() =>
+      result.current.updateFilters({ typeId: 'type-groceries', page: 1 }),
+    )
 
     expect(seen[seen.length - 1]).toContain('type=type-groceries')
   })

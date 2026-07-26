@@ -1,6 +1,7 @@
 # Frontend Architecture - Household App (Web + Mobile via Capacitor.js)
 
 ## Table of Contents
+
 1. [Background](#1-background)
 2. [High-Level Architecture](#2-high-level-architecture)
 3. [Project Structure](#3-project-structure)
@@ -20,7 +21,9 @@
 ## 1. Background
 
 ### Former Approach
+
 Early household app attempts struggled with:
+
 - ❌ Unclear tenant scoping in components
 - ❌ Permission checks scattered across code
 - ❌ No consistent data fetching pattern
@@ -30,6 +33,7 @@ Early household app attempts struggled with:
 ### Why This Architecture
 
 **This design prioritizes:**
+
 - ✅ **Tenant-Aware Components** — Every component knows its household_id
 - ✅ **Permission-First UI** — Role checks at component & hook level
 - ✅ **Server State Focus** — TanStack Query for API data, minimal local state
@@ -104,22 +108,22 @@ BROWSER                                  BACKEND
 
 ## 2.2 Core Technology Stack
 
-| Layer | Technology | Reason |
-|-------|-----------|--------|
-| **Framework** | React 18 + TypeScript | Component-driven, strict type safety |
-| **Build Tool** | Vite | Fast dev server, instant HMR, modern bundling |
-| **Routing** | React Router v7 | Declarative, code splitting, nested routes |
-| **Server State** | TanStack Query (React Query) | Caching, background refetch, deduplication, retry |
-| **Client State** | Zustand + Context API | Lightweight, predictable, minimal boilerplate |
-| **HTTP Client** | Axios | Interceptors for auth, tenant scoping, error handling |
-| **Forms** | React Hook Form | Performant, minimal re-renders, easy validation |
-| **Styling** | Tailwind CSS | Utility-first, consistent design system |
-| **UI Components** | Headless UI / Radix UI | Unstyled, accessible, composable |
-| **Testing** | Vitest + Testing Library + MSW | Fast, Jest-compatible, API mocking |
-| **Mobile** | Capacitor.js | Wrap React web app → iOS/Android native |
-| **Linting** | ESLint (Flat Config) | Unified code quality |
-| **Formatting** | Prettier | Code consistency |
-| **Git Hooks** | Husky + lint-staged | Pre-commit checks |
+| Layer             | Technology                     | Reason                                                |
+| ----------------- | ------------------------------ | ----------------------------------------------------- |
+| **Framework**     | React 18 + TypeScript          | Component-driven, strict type safety                  |
+| **Build Tool**    | Vite                           | Fast dev server, instant HMR, modern bundling         |
+| **Routing**       | React Router v7                | Declarative, code splitting, nested routes            |
+| **Server State**  | TanStack Query (React Query)   | Caching, background refetch, deduplication, retry     |
+| **Client State**  | Zustand + Context API          | Lightweight, predictable, minimal boilerplate         |
+| **HTTP Client**   | Axios                          | Interceptors for auth, tenant scoping, error handling |
+| **Forms**         | React Hook Form                | Performant, minimal re-renders, easy validation       |
+| **Styling**       | Tailwind CSS                   | Utility-first, consistent design system               |
+| **UI Components** | Headless UI / Radix UI         | Unstyled, accessible, composable                      |
+| **Testing**       | Vitest + Testing Library + MSW | Fast, Jest-compatible, API mocking                    |
+| **Mobile**        | Capacitor.js                   | Wrap React web app → iOS/Android native               |
+| **Linting**       | ESLint (Flat Config)           | Unified code quality                                  |
+| **Formatting**    | Prettier                       | Code consistency                                      |
+| **Git Hooks**     | Husky + lint-staged            | Pre-commit checks                                     |
 
 ---
 
@@ -282,6 +286,7 @@ household-app-web/
 ### File Names
 
 **React Components:** PascalCase, one per file
+
 ```
 components/ExpenseForm.tsx
 components/DeleteConfirmModal.tsx
@@ -289,6 +294,7 @@ modules/financial/components/ExpenseTable.tsx
 ```
 
 **Hooks:** camelCase, starts with `use`
+
 ```
 hooks/useExpense.ts
 hooks/usePermission.ts
@@ -297,6 +303,7 @@ api/queries/useExpenses.ts
 ```
 
 **Utils/Helpers:** camelCase, named by responsibility
+
 ```
 utils/formatCurrency.ts
 utils/validateForm.ts
@@ -305,6 +312,7 @@ api/client.ts
 ```
 
 **Types/Interfaces:** PascalCase, suffix with `Type` or `Props`
+
 ```
 types/ExpenseType.ts
 types/ExpenseFormPropsType.ts
@@ -312,6 +320,7 @@ types/ApiErrorType.ts
 ```
 
 **Stores (Zustand):** camelCase, ends with `Store`
+
 ```
 stores/notificationStore.ts
 stores/uiStore.ts
@@ -319,6 +328,7 @@ modules/financial/stores/expenseStore.ts
 ```
 
 **Directories:** kebab-case
+
 ```
 modules/household-settings/
 components/permission-guard/
@@ -328,6 +338,7 @@ api/queries/
 ### Boolean Naming
 
 Prefix with `is`, `has`, `can`, or `should`:
+
 ```
 isAdmin
 hasPermission
@@ -344,6 +355,7 @@ isLoading
 ### 4.1 TanStack Query (React Query)
 
 **Why NOT Redux/RTK Query:**
+
 - This app is **API-heavy**, not global-state-heavy
 - TanStack Query excels at:
   - Server state management
@@ -354,6 +366,7 @@ isLoading
   - Request deduplication (same query called twice = one HTTP call)
 
 **Data Flow:**
+
 ```
 Component A                Component B
   ↓                              ↓
@@ -386,13 +399,13 @@ const EXPENSE_KEYS = {
   details: () => [...EXPENSE_KEYS.all, 'detail'] as const,
   detail: (id: string, householdId: string) =>
     [...EXPENSE_KEYS.details(), id, householdId] as const,
-};
+}
 
 // Usage
 useQuery({
   queryKey: EXPENSE_KEYS.list(householdId, filters),
   queryFn: () => getExpenses(householdId, filters),
-});
+})
 
 // TanStack automatically:
 // - Caches by query key
@@ -410,13 +423,13 @@ useQuery({
   queryKey: ['expenses', householdId, filters],
   queryFn: () => apiClient.get('/expenses', { params: { ...filters } }),
   // Note: householdId sent in header by axios interceptor
-});
+})
 
 // ❌ WRONG: Missing householdId
 useQuery({
-  queryKey: ['expenses', filters],  // No tenant scoping!
+  queryKey: ['expenses', filters], // No tenant scoping!
   queryFn: () => apiClient.get('/expenses'),
-});
+})
 ```
 
 ### 4.4 Mutations with Optimistic Updates
@@ -424,32 +437,31 @@ useQuery({
 ```typescript
 // Create expense (optimistic update)
 const { mutate: createExpense } = useMutation({
-  mutationFn: (data: CreateExpenseDTO) =>
-    apiClient.post('/expenses', data),
+  mutationFn: (data: CreateExpenseDTO) => apiClient.post('/expenses', data),
   onMutate: async (newExpense) => {
     // Cancel in-flight queries
-    await queryClient.cancelQueries({ queryKey: ['expenses', householdId] });
+    await queryClient.cancelQueries({ queryKey: ['expenses', householdId] })
 
     // Snapshot previous state
-    const previous = queryClient.getQueryData(['expenses', householdId]);
+    const previous = queryClient.getQueryData(['expenses', householdId])
 
     // Optimistically update cache
     queryClient.setQueryData(
       ['expenses', householdId],
-      (old: ExpenseType[]) => [newExpense, ...old]
-    );
+      (old: ExpenseType[]) => [newExpense, ...old],
+    )
 
-    return { previous };
+    return { previous }
   },
   onSuccess: () => {
     // Refetch to sync with server
-    queryClient.invalidateQueries({ queryKey: ['expenses', householdId] });
+    queryClient.invalidateQueries({ queryKey: ['expenses', householdId] })
   },
   onError: (error, _, context) => {
     // Rollback on error
-    queryClient.setQueryData(['expenses', householdId], context?.previous);
+    queryClient.setQueryData(['expenses', householdId], context?.previous)
   },
-});
+})
 ```
 
 ---
@@ -507,35 +519,39 @@ export const ExpenseForm = () => {
 
 ```typescript
 // src/stores/notificationStore.ts
-type NotificationType = 'success' | 'error' | 'warning' | 'info';
+type NotificationType = 'success' | 'error' | 'warning' | 'info'
 
 interface NotificationStoreType {
-  notifications: { id: string; message: string; type: NotificationType }[];
-  add: (message: string, type: NotificationType) => void;
-  remove: (id: string) => void;
+  notifications: { id: string; message: string; type: NotificationType }[]
+  add: (message: string, type: NotificationType) => void
+  remove: (id: string) => void
 }
 
 export const useNotificationStore = create<NotificationStoreType>((set) => ({
   notifications: [],
   add: (message, type) => {
-    const id = Date.now().toString();
+    const id = Date.now().toString()
     set((state) => ({
       notifications: [...state.notifications, { id, message, type }],
-    }));
+    }))
     // Auto-remove after 3s
-    setTimeout(() => set((state) => ({
-      notifications: state.notifications.filter(n => n.id !== id)
-    })), 3000);
+    setTimeout(
+      () =>
+        set((state) => ({
+          notifications: state.notifications.filter((n) => n.id !== id),
+        })),
+      3000,
+    )
   },
   remove: (id) =>
     set((state) => ({
-      notifications: state.notifications.filter(n => n.id !== id),
+      notifications: state.notifications.filter((n) => n.id !== id),
     })),
-}));
+}))
 
 // Usage
-const { add } = useNotificationStore();
-add('Expense created!', 'success');
+const { add } = useNotificationStore()
+add('Expense created!', 'success')
 ```
 
 ### 5.3 State Architecture
@@ -593,21 +609,21 @@ Component State (useState)
 
 ```typescript
 // src/api/client.ts
-import axios from 'axios';
+import axios from 'axios'
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
-  withCredentials: true,  // ← Send cookies
-});
+  withCredentials: true, // ← Send cookies
+})
 
 // Interceptor: Add household_id from context
 apiClient.interceptors.request.use((config) => {
-  const { householdId } = useHousehold?.();  // ← Access context
+  const { householdId } = useHousehold?.() // ← Access context
   if (householdId) {
-    config.headers['X-Household-ID'] = householdId;
+    config.headers['X-Household-ID'] = householdId
   }
-  return config;
-});
+  return config
+})
 
 // Interceptor: Handle 401 (logout) & 403 (permission)
 apiClient.interceptors.response.use(
@@ -615,17 +631,16 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Logout
-      window.location.href = '/auth/login';
+      window.location.href = '/auth/login'
     } else if (error.response?.status === 403) {
       // Permission denied
-      useNotificationStore.getState().add(
-        'You do not have permission to perform this action',
-        'error'
-      );
+      useNotificationStore
+        .getState()
+        .add('You do not have permission to perform this action', 'error')
     }
-    return Promise.reject(error);
-  }
-);
+    return Promise.reject(error)
+  },
+)
 ```
 
 ---
@@ -640,7 +655,7 @@ apiClient.interceptors.response.use(
 // ✅ CORRECT: Check tenant context, use householdId in queries
 export const ExpenseList = () => {
   const { householdId } = useHousehold();
-  
+
   const { data: expenses } = useQuery({
     queryKey: ['expenses', householdId],  // ← Tenant-scoped key
     queryFn: () => getExpenses(householdId),
@@ -679,11 +694,11 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 **PermissionRoute — Role guard:**
 
 ```typescript
-export const PermissionRoute = ({ 
-  children, 
-  requiredRole 
-}: { 
-  children: ReactNode; 
+export const PermissionRoute = ({
+  children,
+  requiredRole
+}: {
+  children: ReactNode;
   requiredRole: 'admin' | 'member';
 }) => {
   const { role } = useHousehold();
@@ -736,12 +751,14 @@ export const PermissionRoute = ({
 ### 8.3 Mocking Strategy
 
 **What NOT to mock:**
+
 - ❌ React components under test
 - ❌ Custom hooks (business logic)
 - ❌ TanStack Query hooks
 - ❌ Internal state transitions
 
 **What TO mock:**
+
 - ✅ API layer (via MSW)
 - ✅ External libraries (charts, maps, etc.)
 - ✅ Browser APIs (localStorage, IntersectionObserver)
@@ -753,41 +770,41 @@ export const PermissionRoute = ({
 
 ```typescript
 // modules/financial/hooks/__tests__/useExpense.test.ts
-import { renderHookWithProviders } from '@/__tests__/utils';
-import { server } from '@/__tests__/mocks/server';
-import { rest } from 'msw';
-import { useExpense } from '../useExpense';
+import { renderHookWithProviders } from '@/__tests__/utils'
+import { server } from '@/__tests__/mocks/server'
+import { rest } from 'msw'
+import { useExpense } from '../useExpense'
 
 describe('useExpense', () => {
   it('should fetch expense by id within household', async () => {
-    const { result, waitFor } = renderHookWithProviders(
-      () => useExpense({ id: '123', householdId: '001' })
-    );
+    const { result, waitFor } = renderHookWithProviders(() =>
+      useExpense({ id: '123', householdId: '001' }),
+    )
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.data).toEqual({
       id: '123',
       name: 'Groceries',
       value: 150000,
-    });
-  });
+    })
+  })
 
   it('should return error if expense not found', async () => {
     server.use(
       rest.get('/api/expenses/:id', (_, res, ctx) =>
-        res(ctx.status(404), ctx.json({ error: 'Not found' }))
-      )
-    );
+        res(ctx.status(404), ctx.json({ error: 'Not found' })),
+      ),
+    )
 
-    const { result, waitFor } = renderHookWithProviders(
-      () => useExpense({ id: '999', householdId: '001' })
-    );
+    const { result, waitFor } = renderHookWithProviders(() =>
+      useExpense({ id: '999', householdId: '001' }),
+    )
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error).toBe('Not found');
-  });
-});
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error).toBe('Not found')
+  })
+})
 ```
 
 **Component Test: `ExpenseForm`**
@@ -836,26 +853,28 @@ describe('ExpenseForm', () => {
 
 ```typescript
 // src/__tests__/mocks/handlers.ts
-import { rest } from 'msw';
+import { rest } from 'msw'
 
 export const handlers = [
   rest.get('/api/expenses', (req, res, ctx) => {
-    const householdId = req.headers.get('X-Household-ID');
-    return res(ctx.json(mockExpenses.filter(e => e.household_id === householdId)));
+    const householdId = req.headers.get('X-Household-ID')
+    return res(
+      ctx.json(mockExpenses.filter((e) => e.household_id === householdId)),
+    )
   }),
 
   rest.post('/api/expenses', (req, res, ctx) => {
-    return res(ctx.status(201), ctx.json({ id: '123', ...req.body }));
+    return res(ctx.status(201), ctx.json({ id: '123', ...req.body }))
   }),
 
   rest.put('/api/expenses/:id', (req, res, ctx) => {
-    return res(ctx.json({ id: req.params.id, ...req.body }));
+    return res(ctx.json({ id: req.params.id, ...req.body }))
   }),
 
   rest.delete('/api/expenses/:id', (req, res, ctx) => {
-    return res(ctx.status(204));
+    return res(ctx.status(204))
   }),
-];
+]
 ```
 
 ---
@@ -888,7 +907,7 @@ export const routes = [
 import { heroImage } from '@/assets/images/hero.webp?url';
 
 // Or use Cloudinary/Imgix for dynamic resizing
-<img 
+<img
   src={`https://images.imgix.net/image.jpg?w=500&h=300`}
   alt="Hero"
 />
@@ -901,10 +920,10 @@ import { heroImage } from '@/assets/images/hero.webp?url';
 useQuery({
   queryKey: ['expenses', householdId],
   queryFn: getExpenses,
-  staleTime: 5 * 60 * 1000,  // 5 min
-  gcTime: 10 * 60 * 1000,     // Keep in cache 10 min after unused
-  refetchOnWindowFocus: false,  // Don't refetch on tab focus (if not needed)
-});
+  staleTime: 5 * 60 * 1000, // 5 min
+  gcTime: 10 * 60 * 1000, // Keep in cache 10 min after unused
+  refetchOnWindowFocus: false, // Don't refetch on tab focus (if not needed)
+})
 ```
 
 ### 9.4 Memoization
@@ -961,10 +980,12 @@ jobs:
 ### 10.2 Deployment Strategy
 
 **Dev Environment (Vercel):**
+
 - Auto-deploy on `main` branch push
 - Environment: `https://household-app-dev.vercel.app`
 
 **Staging/Prod (Vercel + Manual):**
+
 - Tag-based deployment: `git tag v1.0.0`
 - Manual approval for staging/prod
 - Rollback via previous tag
@@ -999,12 +1020,17 @@ return <div dangerouslySetInnerHTML={{ __html: name }} />;
 // Frontend attaches to POST/PUT/DELETE requests
 
 apiClient.interceptors.request.use((config) => {
-  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  if (csrfToken && ['POST', 'PUT', 'DELETE'].includes(config.method?.toUpperCase())) {
-    config.headers['X-CSRF-Token'] = csrfToken;
+  const csrfToken = document
+    .querySelector('meta[name="csrf-token"]')
+    ?.getAttribute('content')
+  if (
+    csrfToken &&
+    ['POST', 'PUT', 'DELETE'].includes(config.method?.toUpperCase())
+  ) {
+    config.headers['X-CSRF-Token'] = csrfToken
   }
-  return config;
-});
+  return config
+})
 ```
 
 ### 11.3 Session Security
@@ -1014,10 +1040,10 @@ apiClient.interceptors.request.use((config) => {
 // Frontend NEVER stores tokens in localStorage
 
 // ✅ CORRECT: Session cookie (automatic)
-apiClient.defaults.withCredentials = true;
+apiClient.defaults.withCredentials = true
 
 // ❌ WRONG: Storing token in localStorage
-localStorage.setItem('token', jwtToken);  // Vulnerable to XSS!
+localStorage.setItem('token', jwtToken) // Vulnerable to XSS!
 ```
 
 ### 11.4 Environment Variables
@@ -1046,7 +1072,7 @@ React Web App (Household App)
    │ iOS App         │
    │ Android App     │
    └─────────────────┘
-   
+
 Same React code → Web + Mobile
 ```
 
@@ -1054,8 +1080,8 @@ Same React code → Web + Mobile
 
 ```typescript
 // src/utils/capacitor.ts
-import { Camera } from '@capacitor/camera';
-import { Geolocation } from '@capacitor/geolocation';
+import { Camera } from '@capacitor/camera'
+import { Geolocation } from '@capacitor/geolocation'
 
 export const takeCameraPhoto = async () => {
   try {
@@ -1063,20 +1089,20 @@ export const takeCameraPhoto = async () => {
       quality: 90,
       allowEditing: false,
       resultType: CameraResultType.Uri,
-    });
-    return image.webPath;
+    })
+    return image.webPath
   } catch (error) {
-    console.error(error);
+    console.error(error)
   }
-};
+}
 
 export const getUserLocation = async () => {
-  const coordinates = await Geolocation.getCurrentPosition();
+  const coordinates = await Geolocation.getCurrentPosition()
   return {
     lat: coordinates.coords.latitude,
     lng: coordinates.coords.longitude,
-  };
-};
+  }
+}
 ```
 
 ### 12.3 Platform-Specific Conditionals
@@ -1173,6 +1199,7 @@ modules/financial/
 ## Summary
 
 **This FE Architecture ensures:**
+
 - ✅ **Tenant-aware** — householdId in every query/component
 - ✅ **Type-safe** — TypeScript strict mode
 - ✅ **Testable** — Clear mocking boundaries, MSW for APIs

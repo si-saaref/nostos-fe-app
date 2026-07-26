@@ -6,7 +6,9 @@ import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
 describe('ExpenseForm', () => {
   it('blocks members from adding expenses', () => {
     renderWithProviders(<ExpenseForm />, { household: { role: 'member' } })
-    expect(screen.getByText(/only admins can add expenses/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/only admins can add expenses/i),
+    ).toBeInTheDocument()
   })
 
   it('submits a valid expense and calls onSuccess', async () => {
@@ -18,8 +20,14 @@ describe('ExpenseForm', () => {
 
     await userEvent.type(screen.getByLabelText(/name/i), 'Coffee')
     await userEvent.type(screen.getByLabelText(/amount/i), '25000')
-    await userEvent.selectOptions(screen.getByLabelText(/type/i), 'type-groceries')
-    await userEvent.selectOptions(screen.getByLabelText(/source/i), 'source-cash')
+    await userEvent.selectOptions(
+      screen.getByLabelText(/type/i),
+      'type-groceries',
+    )
+    await userEvent.selectOptions(
+      screen.getByLabelText(/source/i),
+      'source-cash',
+    )
     await userEvent.click(screen.getByRole('button', { name: /add expense/i }))
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))

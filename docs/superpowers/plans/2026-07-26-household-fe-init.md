@@ -26,30 +26,74 @@
 ```ts
 // @/types/household.ts
 export type Role = 'admin' | 'member'
-export interface User { id: string; name: string; email: string; role: Role; householdId: string }
-export interface Household { id: string; name: string }
-export interface Session { user: User; household: Household }
+export interface User {
+  id: string
+  name: string
+  email: string
+  role: Role
+  householdId: string
+}
+export interface Household {
+  id: string
+  name: string
+}
+export interface Session {
+  user: User
+  household: Household
+}
 
 // @/types/expense.ts
-export interface ExpenseType { id: string; name: string }
-export interface PaymentSource { id: string; name: string }
+export interface ExpenseType {
+  id: string
+  name: string
+}
+export interface PaymentSource {
+  id: string
+  name: string
+}
 export interface Expense {
-  id: string; name: string; value: number; typeId: string
-  sourceId: string; datePaid: string; paidByUserId: string; householdId: string
+  id: string
+  name: string
+  value: number
+  typeId: string
+  sourceId: string
+  datePaid: string
+  paidByUserId: string
+  householdId: string
 }
 export interface CreateExpenseInput {
-  name: string; value: number; typeId: string
-  sourceId: string; datePaid: string; paidByUserId: string
+  name: string
+  value: number
+  typeId: string
+  sourceId: string
+  datePaid: string
+  paidByUserId: string
 }
 export interface ExpenseFilters {
-  dateFrom?: string; dateTo?: string; typeId?: string; sourceId?: string
-  page: number; limit: number; sortBy: string; sortOrder: 'asc' | 'desc'
+  dateFrom?: string
+  dateTo?: string
+  typeId?: string
+  sourceId?: string
+  page: number
+  limit: number
+  sortBy: string
+  sortOrder: 'asc' | 'desc'
 }
-export interface Pagination { total: number; page: number; pages: number }
-export interface Paginated<T> { items: T[]; pagination: Pagination }
+export interface Pagination {
+  total: number
+  page: number
+  pages: number
+}
+export interface Paginated<T> {
+  items: T[]
+  pagination: Pagination
+}
 
 // @/types/api.ts
-export interface ApiErrorBody { message: string; statusCode?: number }
+export interface ApiErrorBody {
+  message: string
+  statusCode?: number
+}
 ```
 
 ---
@@ -57,6 +101,7 @@ export interface ApiErrorBody { message: string; statusCode?: number }
 ## Task 1: Tooling & Config Foundation
 
 **Files:**
+
 - Modify: `package.json` (deps + scripts)
 - Modify: `vite.config.ts`
 - Modify: `tsconfig.app.json` (strict + paths)
@@ -68,11 +113,13 @@ export interface ApiErrorBody { message: string; statusCode?: number }
 - Create: `src/smoke.test.ts` (temporary — deleted at end of task)
 
 **Interfaces:**
+
 - Produces: `@/*` path alias; Vitest configured (`globals: true`, jsdom); Tailwind v4 active; `src/styles/globals.css`; npm scripts `type-check`, `test`, `test:watch`, `test:coverage`.
 
 - [ ] **Step 1: Install runtime deps (exact-pinned)**
 
 Run:
+
 ```bash
 npm install --save-exact @tanstack/react-query react-router-dom react-hook-form axios @capacitor/core
 ```
@@ -80,6 +127,7 @@ npm install --save-exact @tanstack/react-query react-router-dom react-hook-form 
 - [ ] **Step 2: Install dev deps**
 
 Run:
+
 ```bash
 npm install -D @tanstack/react-query-devtools tailwindcss @tailwindcss/vite vitest jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event @vitest/coverage-v8 msw @capacitor/cli @capacitor/ios @capacitor/android prettier prettier-plugin-tailwindcss husky lint-staged
 ```
@@ -113,12 +161,14 @@ export default defineConfig({
 - [ ] **Step 4: Update `tsconfig.app.json`** — add `strict`, `baseUrl`, `paths`, and vitest globals to `types`.
 
 In `compilerOptions`, add these keys (keep the existing keys):
+
 ```jsonc
 "strict": true,
 "baseUrl": ".",
 "paths": { "@/*": ["src/*"] },
 "types": ["vite/client", "vitest/globals"]
 ```
+
 (The existing `"types": ["vite/client"]` line is replaced by the one above.)
 
 - [ ] **Step 5: Create `src/styles/globals.css`**
@@ -132,13 +182,19 @@ In `compilerOptions`, add these keys (keep the existing keys):
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
 }
 ```
 
 - [ ] **Step 6: Delete demo files**
 
 Run:
+
 ```bash
 rm -f src/App.css src/index.css src/assets/react.svg src/assets/vite.svg
 ```
@@ -233,11 +289,13 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 2: Shared Types & Utils
 
 **Files:**
+
 - Create: `src/types/household.ts`, `src/types/expense.ts`, `src/types/api.ts`, `src/types/index.ts`
 - Create: `src/utils/formatters.ts`, `src/utils/permissions.ts`, `src/utils/validators.ts`, `src/utils/errors.ts`
 - Test: `src/utils/formatters.test.ts`, `src/utils/permissions.test.ts`
 
 **Interfaces:**
+
 - Produces: all Canonical Types (see top of plan); `formatCurrency(value, currency?, locale?)`, `formatDate(iso)`, `canManageExpenses(role)`, `hasRole(role, required)`, `isNonEmpty(v)`, `isPositiveNumber(v)`, `getErrorMessage(error): string`.
 
 - [ ] **Step 1: Create `src/types/household.ts`**
@@ -424,7 +482,8 @@ import type { Role } from '@/types/household'
 
 export const canManageExpenses = (role: Role): boolean => role === 'admin'
 
-export const hasRole = (role: Role, required: Role): boolean => role === required
+export const hasRole = (role: Role, required: Role): boolean =>
+  role === required
 ```
 
 - [ ] **Step 12: Implement `src/utils/validators.ts`**
@@ -458,6 +517,7 @@ export const getErrorMessage = (error: unknown): string => {
 
 Run: `npm run test && npm run type-check`
 Expected: PASS.
+
 ```bash
 git add -A
 git commit -m "feat: add shared types and utility helpers
@@ -470,10 +530,12 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 3: API Client & Query Client
 
 **Files:**
+
 - Create: `src/api/client.ts`, `src/api/queryClient.ts`, `src/api/types.ts`
 - Test: `src/api/client.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing from prior tasks (pure axios setup).
 - Produces: `apiClient` (AxiosInstance), `setHouseholdId(id: string): void`, `queryClient` (QueryClient). `src/api/types.ts` re-exports `Paginated`, `ApiErrorBody` for the API layer.
 
@@ -491,7 +553,9 @@ describe('apiClient', () => {
     setHouseholdId('household-999')
     // Run the request interceptor manually against a minimal config.
     const handlers = apiClient.interceptors.request as unknown as {
-      handlers: { fulfilled: (c: { headers: Headers }) => { headers: Headers } }[]
+      handlers: {
+        fulfilled: (c: { headers: Headers }) => { headers: Headers }
+      }[]
     }
     const fulfilled = handlers.handlers[0].fulfilled
     const config = { headers: new Headers() }
@@ -586,6 +650,7 @@ export type { ApiErrorBody } from '@/types/api'
 
 Run: `npm run test && npm run type-check`
 Expected: PASS.
+
 ```bash
 git add -A
 git commit -m "feat: add axios client with tenant interceptor and query client
@@ -598,12 +663,14 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 4: MSW Mocks & Test Harness
 
 **Files:**
+
 - Create: `src/mocks/data.ts`, `src/mocks/handlers.ts`, `src/mocks/browser.ts`, `src/mocks/server.ts`
 - Create: `src/test/setup.ts`, `src/test/test-utils.tsx`
 - Create: `public/mockServiceWorker.js` (generated by `msw init`)
 - Test: `src/mocks/handlers.test.ts`
 
 **Interfaces:**
+
 - Consumes: `apiClient` (Task 3), canonical types (Task 2).
 - Produces: `handlers` (MSW array), `worker` (`@/mocks/browser`), `server` (`@/mocks/server`), `resetMockState()`, seed exports (`MOCK_USER`, `MOCK_HOUSEHOLD`, `MOCK_TYPES`, `MOCK_SOURCES`), and test helpers `createWrapper()` and `renderWithProviders(ui, options?)` with `TEST_HOUSEHOLD_VALUE`.
 
@@ -618,7 +685,10 @@ Expected: creates `public/mockServiceWorker.js` and records the worker directory
 import type { Expense, ExpenseType, PaymentSource } from '@/types/expense'
 import type { Household, User } from '@/types/household'
 
-export const MOCK_HOUSEHOLD: Household = { id: 'household-001', name: 'The Smiths' }
+export const MOCK_HOUSEHOLD: Household = {
+  id: 'household-001',
+  name: 'The Smiths',
+}
 
 export const MOCK_USER: User = {
   id: 'user-001',
@@ -952,11 +1022,13 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 5: Session Query & Household Context
 
 **Files:**
+
 - Create: `src/api/queries/session.ts`
 - Create: `src/contexts/HouseholdContext.tsx`, `src/contexts/useHousehold.ts`
 - Test: `src/contexts/HouseholdContext.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `apiClient` (T3), `setHouseholdId` (T3), `Session`/`User`/`Household`/`Role` (T2), MSW auth handlers (T4).
 - Produces: `SESSION_KEY` (`readonly ['auth','session']`), `useSession()`; `HouseholdContext` (React context), `HouseholdContextValue` (interface), `HouseholdProvider` component; `useHousehold(): HouseholdContextValue`.
 
@@ -999,9 +1071,9 @@ export interface HouseholdContextValue {
   isLoading: boolean
 }
 
-export const HouseholdContext = createContext<HouseholdContextValue | undefined>(
-  undefined,
-)
+export const HouseholdContext = createContext<
+  HouseholdContextValue | undefined
+>(undefined)
 
 export const HouseholdProvider = ({ children }: { children: ReactNode }) => {
   const { data: session, isLoading } = useSession()
@@ -1109,6 +1181,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 6: Shared UI, Routing Skeleton, Guards & App Composition
 
 **Files:**
+
 - Create: `src/components/Loading.tsx`, `src/components/ErrorBoundary.tsx`, `src/components/PermissionGuard.tsx`, `src/components/Navbar.tsx`
 - Create: `src/components/Layout/AuthLayout.tsx`, `src/components/Layout/DashboardLayout.tsx`
 - Create: `src/pages/DashboardPage.tsx`, `src/pages/NotFoundPage.tsx`, `src/pages/ErrorPage.tsx`
@@ -1119,6 +1192,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Test: `src/routes/ProtectedRoute.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useHousehold` (T5), `HouseholdProvider` (T5), `queryClient` (T3).
 - Produces: `Loading`, `ErrorBoundary`, `PermissionGuard`, `Navbar`, `AuthLayout`, `DashboardLayout`, `DashboardPage`, `NotFoundPage`, `ErrorPage`, `ProtectedRoute`, `PermissionRoute`, `router`, default `App`. Named exports `LoginPage` and `ExpensesPage` (placeholders that Tasks 7/9 replace with the same names).
 
@@ -1190,7 +1264,11 @@ interface Props {
   fallback?: ReactNode
 }
 
-export const PermissionGuard = ({ requiredRole, children, fallback = null }: Props) => {
+export const PermissionGuard = ({
+  requiredRole,
+  children,
+  fallback = null,
+}: Props) => {
   const { role } = useHousehold()
   if (role !== requiredRole) {
     return <>{fallback}</>
@@ -1215,7 +1293,9 @@ export const Navbar = () => {
   return (
     <header className="border-b border-gray-200 bg-white">
       <nav className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-3">
-        <span className="mr-4 font-semibold">{household?.name ?? 'Household'}</span>
+        <span className="mr-4 font-semibold">
+          {household?.name ?? 'Household'}
+        </span>
         <NavLink to="/dashboard" className={linkClass}>
           Dashboard
         </NavLink>
@@ -1268,6 +1348,7 @@ export const AuthLayout = () => {
 - [ ] **Step 7: Create `src/pages/DashboardPage.tsx`, `NotFoundPage.tsx`, `ErrorPage.tsx`**
 
 `src/pages/DashboardPage.tsx`:
+
 ```tsx
 import { useHousehold } from '@/contexts/useHousehold'
 
@@ -1276,13 +1357,16 @@ export const DashboardPage = () => {
   return (
     <section>
       <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="mt-2 text-gray-600">Welcome back, {user?.name ?? 'there'}.</p>
+      <p className="mt-2 text-gray-600">
+        Welcome back, {user?.name ?? 'there'}.
+      </p>
     </section>
   )
 }
 ```
 
 `src/pages/NotFoundPage.tsx`:
+
 ```tsx
 import { Link } from 'react-router-dom'
 
@@ -1298,6 +1382,7 @@ export const NotFoundPage = () => (
 ```
 
 `src/pages/ErrorPage.tsx`:
+
 ```tsx
 import { useRouteError } from 'react-router-dom'
 import { getErrorMessage } from '@/utils/errors'
@@ -1354,13 +1439,17 @@ export const PermissionRoute = ({ requiredRole, children }: Props) => {
 - [ ] **Step 10: Create temporary placeholder pages**
 
 `src/modules/auth/pages/LoginPage.tsx`:
+
 ```tsx
 export const LoginPage = () => <h1 className="text-xl font-bold">Login</h1>
 ```
 
 `src/modules/financial/pages/ExpensesPage.tsx`:
+
 ```tsx
-export const ExpensesPage = () => <h1 className="text-xl font-bold">Expenses</h1>
+export const ExpensesPage = () => (
+  <h1 className="text-xl font-bold">Expenses</h1>
+)
 ```
 
 - [ ] **Step 11: Create `src/routes/index.tsx`**
@@ -1499,6 +1588,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 7: Auth Vertical Slice
 
 **Files:**
+
 - Create: `src/modules/auth/types/auth.ts`
 - Create: `src/modules/auth/api/useLogin.ts`, `src/modules/auth/api/useLogout.ts`
 - Create: `src/modules/auth/components/LoginForm.tsx`
@@ -1506,6 +1596,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Test: `src/modules/auth/components/LoginForm.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `apiClient` (T3), `SESSION_KEY` (T5), `useHousehold` (T5), MSW auth handlers (T4), `renderWithProviders` (T4).
 - Produces: `LoginInput` (`{ email: string; password: string }`), `useLogin()`, `useLogout()`, `LoginForm` (props `{ onSuccess?: () => void }`), `LoginPage` (named export — same name the router imports).
 
@@ -1645,7 +1736,9 @@ import { LoginForm } from '@/modules/auth/components/LoginForm'
 
 export const LoginPage = () => {
   const navigate = useNavigate()
-  return <LoginForm onSuccess={() => navigate('/dashboard', { replace: true })} />
+  return (
+    <LoginForm onSuccess={() => navigate('/dashboard', { replace: true })} />
+  )
 }
 ```
 
@@ -1690,6 +1783,7 @@ Expected: PASS (both). (Steps 1-5 provide the implementation; if TDD-ordering st
 
 Run: `npm run type-check && npm run lint`
 Expected: PASS.
+
 ```bash
 git add -A
 git commit -m "feat: add auth vertical slice (login form + mutations)
@@ -1702,11 +1796,13 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 8: Expenses Data Hooks (Queries & Mutations)
 
 **Files:**
+
 - Create: `src/api/queries/expenses.ts`, `src/api/queries/expenseTypes.ts`, `src/api/queries/paymentSources.ts`, `src/api/queries/users.ts`
 - Create: `src/api/mutations/useCreateExpense.ts`, `src/api/mutations/useUpdateExpense.ts`, `src/api/mutations/useDeleteExpense.ts`
 - Test: `src/api/queries/expenses.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `apiClient` (T3), canonical expense types (T2), MSW expense handlers (T4), `createWrapper` (T4).
 - Produces:
   - `EXPENSE_KEYS` with `.all`, `.byHousehold(householdId)`, `.list(householdId, filters?)`, `.detail(householdId, id)`.
@@ -1857,7 +1953,10 @@ export const useCreateExpense = (householdId: string) => {
             ? {
                 ...old,
                 items: [optimistic, ...old.items],
-                pagination: { ...old.pagination, total: old.pagination.total + 1 },
+                pagination: {
+                  ...old.pagination,
+                  total: old.pagination.total + 1,
+                },
               }
             : old,
       )
@@ -1940,7 +2039,13 @@ import { useExpenses } from '@/api/queries/expenses'
 describe('useExpenses', () => {
   it('fetches the seeded expenses for a household', async () => {
     const { result } = renderHook(
-      () => useExpenses('household-001', { page: 1, limit: 25, sortBy: 'datePaid', sortOrder: 'desc' }),
+      () =>
+        useExpenses('household-001', {
+          page: 1,
+          limit: 25,
+          sortBy: 'datePaid',
+          sortOrder: 'desc',
+        }),
       { wrapper: createWrapper() },
     )
 
@@ -1989,12 +2094,14 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 9: Expenses UI & URL Filters
 
 **Files:**
+
 - Create: `src/modules/financial/hooks/useExpenseFilters.ts`
 - Create: `src/modules/financial/components/ExpenseTable.tsx`, `ExpenseFilter.tsx`, `ExpenseForm.tsx`
 - Replace: `src/modules/financial/pages/ExpensesPage.tsx` (was placeholder in Task 6)
 - Test: `src/modules/financial/hooks/useExpenseFilters.test.tsx`, `src/modules/financial/components/ExpenseForm.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useExpenses` (T8), `useCreateExpense` (T8), `useExpenseTypes`/`usePaymentSources`/`useUsers` (T8), `useHousehold` (T5), `formatCurrency`/`formatDate` (T2), `renderWithProviders` (T4).
 - Produces: `useExpenseFilters(householdId)` → `{ filters, updateFilters, clearFilters, data, isLoading, isError, ... }`; `ExpenseTable`, `ExpenseFilter`, `ExpenseForm` (props `{ onSuccess?: () => void }`), `ExpensesPage`.
 
@@ -2104,7 +2211,12 @@ interface Props {
   onClear: () => void
 }
 
-export const ExpenseFilter = ({ householdId, filters, onChange, onClear }: Props) => {
+export const ExpenseFilter = ({
+  householdId,
+  filters,
+  onChange,
+  onClear,
+}: Props) => {
   const { data: types } = useExpenseTypes(householdId)
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -2157,7 +2269,11 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 export const ExpenseForm = ({ onSuccess }: Props) => {
   const { householdId, role, user } = useHousehold()
-  const { mutate: createExpense, isPending, error } = useCreateExpense(householdId)
+  const {
+    mutate: createExpense,
+    isPending,
+    error,
+  } = useCreateExpense(householdId)
   const { data: types } = useExpenseTypes(householdId)
   const { data: sources } = usePaymentSources(householdId)
 
@@ -2178,7 +2294,9 @@ export const ExpenseForm = ({ onSuccess }: Props) => {
   })
 
   if (!canManageExpenses(role)) {
-    return <p className="text-sm text-gray-500">Only admins can add expenses.</p>
+    return (
+      <p className="text-sm text-gray-500">Only admins can add expenses.</p>
+    )
   }
 
   const onSubmit = (data: CreateExpenseInput) => {
@@ -2353,7 +2471,9 @@ import { useExpenseFilters } from '@/modules/financial/hooks/useExpenseFilters'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={createTestQueryClient()}>
-    <MemoryRouter initialEntries={['/financial/expenses']}>{children}</MemoryRouter>
+    <MemoryRouter initialEntries={['/financial/expenses']}>
+      {children}
+    </MemoryRouter>
   </QueryClientProvider>
 )
 
@@ -2385,7 +2505,9 @@ describe('useExpenseFilters', () => {
       ),
     })
 
-    act(() => result.current.updateFilters({ typeId: 'type-groceries', page: 1 }))
+    act(() =>
+      result.current.updateFilters({ typeId: 'type-groceries', page: 1 }),
+    )
 
     expect(seen[seen.length - 1]).toContain('type=type-groceries')
   })
@@ -2408,7 +2530,9 @@ import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
 describe('ExpenseForm', () => {
   it('blocks members from adding expenses', () => {
     renderWithProviders(<ExpenseForm />, { household: { role: 'member' } })
-    expect(screen.getByText(/only admins can add expenses/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/only admins can add expenses/i),
+    ).toBeInTheDocument()
   })
 
   it('submits a valid expense and calls onSuccess', async () => {
@@ -2420,8 +2544,14 @@ describe('ExpenseForm', () => {
 
     await userEvent.type(screen.getByLabelText(/name/i), 'Coffee')
     await userEvent.type(screen.getByLabelText(/amount/i), '25000')
-    await userEvent.selectOptions(screen.getByLabelText(/type/i), 'type-groceries')
-    await userEvent.selectOptions(screen.getByLabelText(/source/i), 'source-cash')
+    await userEvent.selectOptions(
+      screen.getByLabelText(/type/i),
+      'type-groceries',
+    )
+    await userEvent.selectOptions(
+      screen.getByLabelText(/source/i),
+      'source-cash',
+    )
     await userEvent.click(screen.getByRole('button', { name: /add expense/i }))
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
@@ -2452,11 +2582,13 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 10: Capacitor Configuration
 
 **Files:**
+
 - Create: `capacitor.config.ts`
 - Modify: `package.json` (cap scripts)
 - Modify: `.gitignore` (ignore generated native projects)
 
 **Interfaces:**
+
 - Consumes: `@capacitor/core` (T1 runtime dep), `@capacitor/cli`/`ios`/`android` (T1 dev deps).
 - Produces: valid `capacitor.config.ts` pointing at `dist`; `cap:sync`, `cap:ios`, `cap:android` scripts.
 
@@ -2513,9 +2645,11 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 11: CI Workflows
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`, `.github/workflows/security.yml`
 
 **Interfaces:**
+
 - Consumes: npm scripts `lint`, `type-check`, `test`, `build` (T1).
 - Produces: two GitHub Actions workflows.
 
@@ -2600,12 +2734,14 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 12: Formatting, Git Hooks, Docs & Final Verification
 
 **Files:**
+
 - Create: `prettier.config.js`, `.prettierignore`
 - Create: `.husky/pre-commit`
 - Modify: `package.json` (add `prepare`, `format` scripts + `lint-staged` config)
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Consumes: everything.
 - Produces: Prettier config, a working pre-commit hook running `lint-staged`, updated docs, and a fully green verification run.
 
@@ -2636,13 +2772,16 @@ android
 - [ ] **Step 3: Add scripts + lint-staged config to `package.json`**
 
 Add to `"scripts"`:
+
 ```json
 {
   "format": "prettier --write .",
   "prepare": "husky"
 }
 ```
+
 Add a top-level `"lint-staged"` key:
+
 ```json
 {
   "lint-staged": {
@@ -2656,6 +2795,7 @@ Add a top-level `"lint-staged"` key:
 
 Run: `npx husky init`
 Then overwrite `.husky/pre-commit` with:
+
 ```sh
 npx lint-staged
 ```
@@ -2667,7 +2807,7 @@ Expected: Prettier rewrites files to the configured style. Re-run `npm run lint`
 
 - [ ] **Step 6: Rewrite `README.md`**
 
-```markdown
+````markdown
 # Household App — Frontend
 
 Tenant-aware React app for managing a household's finances. Built per
@@ -2693,22 +2833,23 @@ No Zustand, no global store.
 npm install
 npm run dev        # runs with the MSW mock backend (VITE_ENABLE_MOCKS=true)
 ```
+````
 
 Copy `.env.example` to `.env.local` and set `VITE_API_URL` to point at a real
 backend; set `VITE_ENABLE_MOCKS=false` to disable mocks.
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `npm run dev` | Dev server (MSW mocks in dev) |
-| `npm run build` | Type-check + production build |
-| `npm run test` | Run Vitest suite |
-| `npm run test:watch` | Vitest watch mode |
-| `npm run test:coverage` | Coverage report |
-| `npm run lint` | ESLint |
-| `npm run type-check` | `tsc` no-emit |
-| `npm run format` | Prettier write |
+| Script                  | Purpose                       |
+| ----------------------- | ----------------------------- |
+| `npm run dev`           | Dev server (MSW mocks in dev) |
+| `npm run build`         | Type-check + production build |
+| `npm run test`          | Run Vitest suite              |
+| `npm run test:watch`    | Vitest watch mode             |
+| `npm run test:coverage` | Coverage report               |
+| `npm run lint`          | ESLint                        |
+| `npm run type-check`    | `tsc` no-emit                 |
+| `npm run format`        | Prettier write                |
 
 ## Mobile (Capacitor)
 
@@ -2726,6 +2867,7 @@ npm run cap:ios        # opens Xcode
 ## Project structure
 
 See `docs/superpowers/specs/2026-07-26-household-fe-init-design.md` §5.
+
 ```
 
 - [ ] **Step 7: FINAL VERIFICATION — run the full gate**
@@ -2750,3 +2892,4 @@ Expected: `lint-staged` runs on staged files before the commit is created; commi
 - [ ] Adding a type filter updates the URL (`?type=...`) and refetches.
 - [ ] Creating an expense updates the list optimistically.
 - [ ] Runtime deps are exact-pinned in `package.json` (no `^`/`~`).
+```

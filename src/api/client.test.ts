@@ -9,7 +9,9 @@ describe('apiClient', () => {
     setHouseholdId('household-999')
     // Run the request interceptor manually against a minimal config.
     const handlers = apiClient.interceptors.request as unknown as {
-      handlers: { fulfilled: (c: { headers: Headers }) => { headers: Headers } }[]
+      handlers: {
+        fulfilled: (c: { headers: Headers }) => { headers: Headers }
+      }[]
     }
     const fulfilled = handlers.handlers[0].fulfilled
     const config = { headers: new Headers() }

@@ -7,7 +7,13 @@ import { useExpenses } from '@/api/queries/expenses'
 describe('useExpenses', () => {
   it('fetches the seeded expenses for a household', async () => {
     const { result } = renderHook(
-      () => useExpenses('household-001', { page: 1, limit: 25, sortBy: 'datePaid', sortOrder: 'desc' }),
+      () =>
+        useExpenses('household-001', {
+          page: 1,
+          limit: 25,
+          sortBy: 'datePaid',
+          sortOrder: 'desc',
+        }),
       { wrapper: createWrapper() },
     )
 

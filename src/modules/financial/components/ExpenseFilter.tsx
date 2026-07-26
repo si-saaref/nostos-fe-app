@@ -8,7 +8,12 @@ interface Props {
   onClear: () => void
 }
 
-export const ExpenseFilter = ({ householdId, filters, onChange, onClear }: Props) => {
+export const ExpenseFilter = ({
+  householdId,
+  filters,
+  onChange,
+  onClear,
+}: Props) => {
   const { data: types } = useExpenseTypes(householdId)
   return (
     <div className="flex flex-wrap items-end gap-3">

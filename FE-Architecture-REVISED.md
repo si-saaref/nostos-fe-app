@@ -1,4 +1,5 @@
 # Frontend Architecture - Household App (Revised)
+
 ## React + Vite + TanStack Query ONLY (No Zustand)
 
 **Last Updated:** July 25, 2026  
@@ -8,6 +9,7 @@
 ---
 
 ## Table of Contents
+
 1. [Executive Summary](#1-executive-summary)
 2. [The State Management Problem (Solved)](#2-the-state-management-problem-solved)
 3. [High-Level Architecture](#3-high-level-architecture)
@@ -95,6 +97,7 @@ Total State Distribution:
 ```
 
 **Why Zustand is unnecessary:**
+
 - 70% is handled by TanStack Query (automatic)
 - 15% is better in URL (bookmarkable)
 - 10% is fine in Context (rarely updates)
@@ -269,6 +272,7 @@ src/
 ```
 
 **Notice what's NOT here:**
+
 - ❌ No `/stores/` folder
 - ❌ No Redux, Zustand, Recoil
 - ❌ No context for every concern
@@ -290,7 +294,7 @@ import { apiClient } from '../client';
 // Query Keys (for cache invalidation)
 export const EXPENSE_KEYS = {
   all: ['expenses'] as const,
-  byHousehold: (householdId: string) => 
+  byHousehold: (householdId: string) =>
     [...EXPENSE_KEYS.all, 'household', householdId] as const,
   list: (householdId: string, filters?: FilterType) =>
     [...EXPENSE_KEYS.byHousehold(householdId), 'list', filters] as const,
@@ -320,7 +324,7 @@ export const useCreateExpense = (householdId: string) => {
   return useMutation({
     mutationFn: (data: CreateExpenseDto) =>
       apiClient.post('/expenses', data),
-    
+
     // Optimistic update (update UI before server confirms)
     onMutate: async (newExpense) => {
       // Cancel pending queries
@@ -377,16 +381,16 @@ function CreateExpenseForm() {
 
 ### Why This Beats Zustand for Server State
 
-| Aspect | Zustand | TanStack Query |
-|--------|---------|---|
-| **Caching** | Manual | Automatic (smart TTL) |
-| **Background refetch** | Manual | Automatic (configurable) |
-| **Deduplication** | Manual | Automatic (same query = 1 request) |
-| **Retry logic** | Manual | Automatic (exponential backoff) |
-| **Invalidation** | Manual | Declarative (by queryKey) |
-| **Optimistic updates** | Manual | Built-in (onMutate) |
-| **Dev tools** | Yes | Better (TanStack Query DevTools) |
-| **Boilerplate** | Less | Slightly more, but worth it |
+| Aspect                 | Zustand | TanStack Query                     |
+| ---------------------- | ------- | ---------------------------------- |
+| **Caching**            | Manual  | Automatic (smart TTL)              |
+| **Background refetch** | Manual  | Automatic (configurable)           |
+| **Deduplication**      | Manual  | Automatic (same query = 1 request) |
+| **Retry logic**        | Manual  | Automatic (exponential backoff)    |
+| **Invalidation**       | Manual  | Declarative (by queryKey)          |
+| **Optimistic updates** | Manual  | Built-in (onMutate)                |
+| **Dev tools**          | Yes     | Better (TanStack Query DevTools)   |
+| **Boilerplate**        | Less    | Slightly more, but worth it        |
 
 ---
 
@@ -439,7 +443,7 @@ export const useExpenseFilters = (householdId: string) => {
   // Update URL when filters change
   const updateFilters = (newFilters: Partial<typeof filters>) => {
     const params = new URLSearchParams();
-    
+
     Object.entries(newFilters).forEach(([key, value]) => {
       if (value) params.set(key, String(value));
     });
@@ -474,8 +478,8 @@ function ExpenseListPage() {
       />
 
       {/* Table */}
-      <ExpenseTable 
-        expenses={data?.items || []} 
+      <ExpenseTable
+        expenses={data?.items || []}
         pagination={data?.pagination}
       />
     </>
@@ -490,6 +494,7 @@ function ExpenseListPage() {
 ### Why Context is Enough for Session
 
 Session data:
+
 - Changes rarely (only on login/logout)
 - Shared across entire app
 - Small shape (user, household, role)
@@ -639,6 +644,7 @@ export const ExpenseForm = ({ onSuccess }: { onSuccess: () => void }) => {
 ```
 
 **RHF advantages:**
+
 - No useState bloat
 - Built-in validation
 - Automatic re-render optimization (only re-renders changed field)
@@ -695,12 +701,12 @@ export const ExpenseTable = ({ expenses }: { expenses: ExpenseType[] }) => {
             E2E Tests (5-10)
            ↙           ↘
     API Mocking    Real Backend
-   
+
          Integration Tests (20-30)
         ↙                      ↘
    TanStack Query         Components
     + Mutations         + User Interactions
-   
+
          Unit Tests (30-50)
         ↙               ↘
     Hooks            Utils
@@ -789,21 +795,23 @@ describe('ExpenseForm', () => {
 
 ```typescript
 // __tests__/mocks/handlers.ts
-import { rest } from 'msw';
+import { rest } from 'msw'
 
 export const handlers = [
   rest.get('/api/expenses', (req, res, ctx) => {
-    const householdId = req.headers.get('X-Household-ID');
-    return res(ctx.json({
-      items: mockExpenses.filter(e => e.householdId === householdId),
-      pagination: { total: 10, page: 1, pages: 1 },
-    }));
+    const householdId = req.headers.get('X-Household-ID')
+    return res(
+      ctx.json({
+        items: mockExpenses.filter((e) => e.householdId === householdId),
+        pagination: { total: 10, page: 1, pages: 1 },
+      }),
+    )
   }),
 
   rest.post('/api/expenses', (req, res, ctx) => {
-    return res(ctx.status(201), ctx.json({ id: 'new-id', ...req.body }));
+    return res(ctx.status(201), ctx.json({ id: 'new-id', ...req.body }))
   }),
-];
+]
 ```
 
 ---
@@ -863,14 +871,14 @@ Given the <cite index="4-1">May 2026 TanStack supply chain attack that compromis
   "scripts": {
     // 1. Audit on install
     "postinstall": "npm audit --audit-level=moderate",
-    
+
     // 2. Lock verification
     "lock-check": "npm ci --audit",
-    
+
     // 3. Dependency scanning
     "scan": "npm audit --audit-level=moderate && snyk test"
   },
-  
+
   "dependencies": {
     // Pin EXACT versions, never ~
     "@tanstack/react-query": "5.100.10",
@@ -895,15 +903,15 @@ jobs:
     steps:
       # 1. npm audit
       - run: npm audit --audit-level=moderate
-      
+
       # 2. Snyk scanning (catches 0-days)
       - uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      
+
       # 3. License check (GPL, etc.)
       - run: npm install -g license-checker && license-checker
-      
+
       # 4. Lockfile validation
       - run: npm ci --audit
 ```
@@ -913,11 +921,11 @@ jobs:
 ```
 Every Week:
   - npm audit check
-  
+
 Every Month:
   - Full `npm outdated` review
   - Security advisory scan
-  
+
 Every Quarter:
   - Dependency update sprint
   - Major version checks
@@ -986,17 +994,21 @@ npx cap open android
 ### What to Do When App Gets Complex
 
 **Stage 1 (Now):** TanStack Query + URL state + useState
+
 - Handles 95% of household app use cases
 
 **Stage 2 (Year 2):** Add Zustand IF needed
+
 - Only if you need complex shared state (not server data, not filters)
 - Backward compatible: just add it alongside TanStack Query
 
 **Stage 3 (Future):** Consider Jotai/Valtio
+
 - Only for ultra-fine-grained reactivity
 - Unlikely for household app
 
 **Stage 4:** Monorepo + Code splitting
+
 - Multiple teams
 - Shared component library
 - Independent modules (financial, tasks, notes, etc.)
@@ -1037,6 +1049,7 @@ For a solo dev building an API-heavy app: this is it.
 ## Next: Extract 3 Role-Specific PRDs
 
 Ready to create:
+
 1. PRD-Expenditure-PM.md (Product Manager + QA)
 2. PRD-Expenditure-BE.md (Backend Engineer)
 3. PRD-Expenditure-FE.md (Frontend Engineer)

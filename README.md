@@ -1,75 +1,58 @@
-# React + TypeScript + Vite
+# Household App — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Tenant-aware React app for managing a household's finances. Built per
+`FE-Architecture-REVISED.md`.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+React 19 · Vite 8 · TypeScript (strict) · React Router 7 · TanStack Query 5 ·
+React Hook Form · Tailwind v4 · Vitest + Testing Library + MSW · Capacitor.
 
-## React Compiler
+## State ownership
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Server state** → TanStack Query (tenant-scoped query keys)
+- **Filters** → URL params (`useSearchParams`)
+- **Session** → `HouseholdContext`
+- **Local UI** → `useState`
 
-## Expanding the ESLint configuration
+No Zustand, no global store.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev        # runs with the MSW mock backend (VITE_ENABLE_MOCKS=true)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Copy `.env.example` to `.env.local` and set `VITE_API_URL` to point at a real
+backend; set `VITE_ENABLE_MOCKS=false` to disable mocks.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Script                  | Purpose                       |
+| ----------------------- | ----------------------------- |
+| `npm run dev`           | Dev server (MSW mocks in dev) |
+| `npm run build`         | Type-check + production build |
+| `npm run test`          | Run Vitest suite              |
+| `npm run test:watch`    | Vitest watch mode             |
+| `npm run test:coverage` | Coverage report               |
+| `npm run lint`          | ESLint                        |
+| `npm run type-check`    | `tsc` no-emit                 |
+| `npm run format`        | Prettier write                |
 
+## Mobile (Capacitor)
+
+Config lives in `capacitor.config.ts` (`webDir: dist`). Generating native
+projects needs local toolchains (Xcode + CocoaPods for iOS, Android Studio +
+SDK for Android):
+
+```bash
+npm run build
+npx cap add ios        # or: npx cap add android
+npm run cap:sync
+npm run cap:ios        # opens Xcode
 ```
+
+## Project structure
+
+See `docs/superpowers/specs/2026-07-26-household-fe-init-design.md` §5.

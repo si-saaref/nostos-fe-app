@@ -11,7 +11,9 @@ export const Navbar = () => {
   return (
     <header className="border-b border-gray-200 bg-white">
       <nav className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-3">
-        <span className="mr-4 font-semibold">{household?.name ?? 'Household'}</span>
+        <span className="mr-4 font-semibold">
+          {household?.name ?? 'Household'}
+        </span>
         <NavLink to="/dashboard" className={linkClass}>
           Dashboard
         </NavLink>
