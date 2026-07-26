@@ -12,10 +12,10 @@ export const useCreateExpense = (householdId: string) => {
     },
     onMutate: async (input) => {
       await queryClient.cancelQueries({
-        queryKey: EXPENSE_KEYS.byHousehold(householdId),
+        queryKey: EXPENSE_KEYS.lists(householdId),
       })
       const previous = queryClient.getQueriesData<Paginated<Expense>>({
-        queryKey: EXPENSE_KEYS.byHousehold(householdId),
+        queryKey: EXPENSE_KEYS.lists(householdId),
       })
       const optimistic: Expense = {
         id: `optimistic-${input.name}-${input.datePaid}`,
@@ -23,7 +23,7 @@ export const useCreateExpense = (householdId: string) => {
         ...input,
       }
       queryClient.setQueriesData<Paginated<Expense>>(
-        { queryKey: EXPENSE_KEYS.byHousehold(householdId) },
+        { queryKey: EXPENSE_KEYS.lists(householdId) },
         (old) =>
           old
             ? {

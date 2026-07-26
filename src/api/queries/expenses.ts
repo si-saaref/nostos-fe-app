@@ -6,6 +6,8 @@ export const EXPENSE_KEYS = {
   all: ['expenses'] as const,
   byHousehold: (householdId: string) =>
     [...EXPENSE_KEYS.all, householdId] as const,
+  lists: (householdId: string) =>
+    [...EXPENSE_KEYS.byHousehold(householdId), 'list'] as const,
   list: (householdId: string, filters?: ExpenseFilters) =>
     [...EXPENSE_KEYS.byHousehold(householdId), 'list', filters ?? {}] as const,
   detail: (householdId: string, id: string) =>
