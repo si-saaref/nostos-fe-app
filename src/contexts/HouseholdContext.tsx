@@ -1,4 +1,4 @@
-import { createContext, useEffect } from 'react'
+import { createContext } from 'react'
 import type { ReactNode } from 'react'
 import { useSession } from '@/api/queries/session'
 import { setHouseholdId } from '@/api/client'
@@ -22,9 +22,10 @@ export const HouseholdProvider = ({ children }: { children: ReactNode }) => {
   const { data: session, isLoading } = useSession()
   const householdId = session?.household?.id ?? ''
 
-  useEffect(() => {
-    setHouseholdId(householdId)
-  }, [householdId])
+  // Set synchronously during render (not in an effect) so the axios request
+  // interceptor has the header value before any descendant's effect fires
+  // its first request — e.g. a deep-link straight to /financial/expenses.
+  setHouseholdId(householdId)
 
   const value: HouseholdContextValue = {
     user: session?.user ?? null,

@@ -30,10 +30,15 @@ apiClient.interceptors.response.use(
       typeof error === 'object' && error !== null && 'response' in error
         ? (error as { response?: { status?: number } }).response?.status
         : undefined
+    const requestUrl =
+      typeof error === 'object' && error !== null && 'config' in error
+        ? (error as { config?: { url?: string } }).config?.url
+        : undefined
     if (
       status === 401 &&
       typeof window !== 'undefined' &&
-      !window.location.pathname.startsWith('/auth')
+      !window.location.pathname.startsWith('/auth') &&
+      !requestUrl?.includes('/auth/session')
     ) {
       window.location.assign('/auth/login')
     }
