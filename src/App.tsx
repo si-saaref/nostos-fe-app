@@ -1,3 +1,20 @@
+import { QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { RouterProvider } from 'react-router-dom'
+import { queryClient } from '@/api/queryClient'
+import { HouseholdProvider } from '@/contexts/HouseholdContext'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { router } from '@/routes'
+
 export default function App() {
-  return <h1 className="p-8 text-2xl font-bold">Household</h1>
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <HouseholdProvider>
+          <RouterProvider router={router} />
+        </HouseholdProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </ErrorBoundary>
+  )
 }
