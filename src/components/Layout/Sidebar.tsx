@@ -1,15 +1,16 @@
+import { m } from '@/paraglide/messages.js'
 import { NavLink } from 'react-router-dom'
 import { Logo } from '@/components/Logo'
 import { useHousehold } from '@/contexts/useHousehold'
 import { useSettings } from '@/contexts/useSettings'
-import { LANGS } from '@/i18n/strings'
-import type { Lang, StringKey } from '@/i18n/strings'
+import { LANGS } from '@/i18n/locales'
+import type { Lang } from '@/i18n/locales'
 import { THEMES } from '@/theme/themes'
 import type { ThemeId } from '@/theme/themes'
 
 interface Item {
   to: string
-  key: StringKey
+  label: () => string
   icon: string
 }
 
@@ -17,12 +18,12 @@ interface Item {
 const LIVE: Item[] = [
   {
     to: '/dashboard',
-    key: 'nav.dashboard',
+    label: m.nav_dashboard,
     icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   },
   {
     to: '/financial/expenses',
-    key: 'nav.expenses',
+    label: m.nav_expenses,
     icon: 'M4 6h16v12H4zM4 10h16M8 14h5',
   },
 ]
@@ -31,19 +32,19 @@ const LIVE: Item[] = [
  * Planned modules, shown so the shape of the product is legible — and marked
  * unavailable rather than presented as working links.
  */
-const PLANNED: Array<{ key: StringKey; icon: string }> = [
-  { key: 'nav.income', icon: 'M12 20V4M5 11l7-7 7 7' },
-  { key: 'nav.savings', icon: 'M4 19V9m5 10V5m5 14v-7m5 7V8' },
+const PLANNED: Array<{ label: () => string; icon: string }> = [
+  { label: m.nav_income, icon: 'M12 20V4M5 11l7-7 7 7' },
+  { label: m.nav_savings, icon: 'M4 19V9m5 10V5m5 14v-7m5 7V8' },
   {
-    key: 'nav.plan',
+    label: m.nav_plan,
     icon: 'M7 3v3m10-3v3M4 8h16M5 6h14a1 1 0 0 1 1 1v13H4V7a1 1 0 0 1 1-1z',
   },
   {
-    key: 'nav.members',
+    label: m.nav_members,
     icon: 'M16 20v-1a4 4 0 0 0-8 0v1M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
   },
   {
-    key: 'nav.settings',
+    label: m.nav_settings,
     icon: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 12h2m13 0h2M12 3.5v2m0 13v2',
   },
 ]
@@ -71,7 +72,7 @@ const Glyph = ({ path }: { path: string }) => (
  * ledger wants.
  */
 export const Sidebar = () => {
-  const { t, theme, setTheme, lang, setLang } = useSettings()
+  const { theme, setTheme, lang, setLang } = useSettings()
   const { household, user } = useHousehold()
 
   return (
@@ -80,7 +81,7 @@ export const Sidebar = () => {
         <Logo />
       </div>
 
-      <nav aria-label={t('nav.menu')} className="flex-1 overflow-y-auto px-2.5">
+      <nav aria-label={m.nav_menu()} className="flex-1 overflow-y-auto px-2.5">
         <ul className="flex flex-col gap-0.5">
           {LIVE.map((item) => (
             <li key={item.to}>
@@ -95,25 +96,25 @@ export const Sidebar = () => {
                 }
               >
                 <Glyph path={item.icon} />
-                {t(item.key)}
+                {item.label()}
               </NavLink>
             </li>
           ))}
         </ul>
 
         <p className="text-muted mt-5 mb-1.5 px-2.5 text-[9px] font-bold tracking-[0.13em] uppercase">
-          {t('nav.soon')}
+          {m.nav_soon()}
         </p>
         <ul className="flex flex-col gap-0.5">
           {PLANNED.map((item) => (
-            <li key={item.key}>
+            <li key={item.label()}>
               <span
                 aria-disabled="true"
-                title={t('nav.soonHint')}
+                title={m.nav_soon_hint()}
                 className="text-muted/60 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium"
               >
                 <Glyph path={item.icon} />
-                {t(item.key)}
+                {item.label()}
               </span>
             </li>
           ))}
@@ -123,7 +124,7 @@ export const Sidebar = () => {
       <div className="border-hair flex flex-col gap-2 border-t px-2.5 py-3">
         <div className="flex gap-2">
           <label className="sr-only" htmlFor="theme-select">
-            {t('theme.label')}
+            {m.theme_label()}
           </label>
           <select
             id="theme-select"
@@ -139,7 +140,7 @@ export const Sidebar = () => {
           </select>
 
           <label className="sr-only" htmlFor="lang-select">
-            {t('lang.label')}
+            {m.lang_label()}
           </label>
           <select
             id="lang-select"
@@ -178,10 +179,9 @@ export const Sidebar = () => {
 
 /** Mobile: the same destinations as a thumb-reachable tab bar. */
 export const BottomBar = () => {
-  const { t } = useSettings()
   return (
     <nav
-      aria-label={t('nav.menu')}
+      aria-label={m.nav_menu()}
       className="bg-card fixed inset-x-0 bottom-0 z-20 flex shadow-[0_-1px_0_var(--hair)] lg:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
@@ -196,7 +196,7 @@ export const BottomBar = () => {
           }
         >
           <Glyph path={item.icon} />
-          {t(item.key)}
+          {item.label()}
         </NavLink>
       ))}
     </nav>

@@ -1,3 +1,4 @@
+import { useMessages } from '@/i18n/useMessages'
 import { useId } from 'react'
 import { useSettings } from '@/contexts/useSettings'
 import { formatCurrency } from '@/utils/formatters'
@@ -61,13 +62,14 @@ export const ExpensePlate = ({
   onEdit,
   onDelete,
 }: Props) => {
-  const { t, locale } = useSettings()
+  const m = useMessages()
+  const { locale } = useSettings()
   const panelId = useId()
 
   const marker =
     verdict.kind === 'high'
       ? {
-          text: t('baseline.higher', {
+          text: m.baseline_higher({
             factor: (Math.round(verdict.factor * 10) / 10).toLocaleString(
               locale,
             ),
@@ -76,7 +78,7 @@ export const ExpensePlate = ({
         }
       : verdict.kind === 'low'
         ? {
-            text: t('baseline.lower', {
+            text: m.baseline_lower({
               factor: (
                 Math.round((1 / verdict.factor) * 10) / 10
               ).toLocaleString(locale),
@@ -84,10 +86,10 @@ export const ExpensePlate = ({
             className: 'text-rim-1',
           }
         : verdict.kind === 'cheapest'
-          ? { text: t('baseline.cheapest'), className: 'text-rim-1' }
+          ? { text: m.baseline_cheapest(), className: 'text-rim-1' }
           : verdict.kind === 'bigForCategory'
             ? {
-                text: t('baseline.bigForCategory', { category: typeName }),
+                text: m.baseline_big_for_category({ category: typeName }),
                 className: 'text-rim-4',
               }
             : null
@@ -148,11 +150,11 @@ export const ExpensePlate = ({
         {isOpen && (
           <div id={panelId} className="border-hair border-t px-3 pt-3 pb-3">
             <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Field label={t('plate.category')} value={typeName} />
-              <Field label={t('plate.method')} value={sourceName} />
-              <Field label={t('plate.paidBy')} value={payerName} />
+              <Field label={m.plate_category()} value={typeName} />
+              <Field label={m.plate_method()} value={sourceName} />
+              <Field label={m.plate_paid_by()} value={payerName} />
               <Field
-                label={t('plate.recordedBy')}
+                label={m.plate_recorded_by()}
                 value={
                   expense.createdAt
                     ? `${recorderName} · ${new Intl.DateTimeFormat(locale, {
@@ -168,14 +170,14 @@ export const ExpensePlate = ({
 
             <div className="border-hair mt-3 border-t pt-3">
               <p className="text-muted text-[8.5px] font-bold tracking-[0.11em] uppercase">
-                {t('baseline.title')}
+                {m.baseline_title()}
               </p>
 
               {!baseline ? (
                 <p className="text-muted mt-1.5 text-[11px]">
                   {verdict.kind === 'bigForCategory'
-                    ? `${t('baseline.noHistory')} ${t('baseline.bigForCategory', { category: typeName })} — ${t('baseline.enoughToAsk')}.`
-                    : t('baseline.notEnough')}
+                    ? `${m.baseline_no_history()} ${m.baseline_big_for_category({ category: typeName })} — ${m.baseline_enough_to_ask()}.`
+                    : m.baseline_not_enough()}
                 </p>
               ) : (
                 <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end">
@@ -211,12 +213,12 @@ export const ExpensePlate = ({
                   </ul>
 
                   <p className="text-muted flex-1 text-[11px] leading-relaxed">
-                    {t('baseline.usual', {
+                    {m.baseline_usual({
                       range: `${formatCurrency(Math.round(baseline.low), 'IDR', locale)} – ${formatCurrency(Math.round(baseline.high), 'IDR', locale)}`,
                     })}{' '}
                     {marker && (
                       <span className="text-ink font-semibold">
-                        {marker.text} — {t('baseline.enoughToAsk')}.
+                        {marker.text} — {m.baseline_enough_to_ask()}.
                       </span>
                     )}
                   </p>
@@ -233,29 +235,29 @@ export const ExpensePlate = ({
                       hour: '2-digit',
                       minute: '2-digit',
                     }).format(new Date(expense.updatedAt))
-                  : t('plate.neverEdited')}
+                  : m.plate_never_edited()}
                 <br />
-                {t('plate.historyKept')}
+                {m.plate_history_kept()}
               </p>
 
               {canManage && (
                 <div className="flex items-center gap-2">
                   <span className="text-muted text-[8px] font-bold tracking-[0.08em] uppercase">
-                    {t('plate.adminOnly')}
+                    {m.plate_admin_only()}
                   </span>
                   <button
                     type="button"
                     onClick={() => onEdit?.(expense)}
                     className="border-hair bg-card rounded-lg border px-3 py-1.5 text-[10.5px] font-semibold"
                   >
-                    {t('plate.edit')}
+                    {m.plate_edit()}
                   </button>
                   <button
                     type="button"
                     onClick={() => onDelete?.(expense)}
                     className="border-danger-line bg-danger-bg text-danger rounded-lg border px-3 py-1.5 text-[10.5px] font-semibold"
                   >
-                    {t('plate.delete')}
+                    {m.plate_delete()}
                   </button>
                 </div>
               )}

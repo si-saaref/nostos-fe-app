@@ -1,10 +1,10 @@
+import { useMessages } from '@/i18n/useMessages'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDeleteExpense } from '@/api/mutations/useDeleteExpense'
 import { useExpenseTypes } from '@/api/queries/expenseTypes'
 import { usePaymentSources } from '@/api/queries/paymentSources'
 import { useUsers } from '@/api/queries/users'
 import { useHousehold } from '@/contexts/useHousehold'
-import { useSettings } from '@/contexts/useSettings'
 import { CountStrip } from '@/modules/financial/components/CountStrip'
 import { ExpenseFilter } from '@/modules/financial/components/ExpenseFilter'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
@@ -20,8 +20,8 @@ import type { Expense } from '@/types/expense'
 const RIMS = [1, 2, 3, 4] as const
 
 export const ExpensesPage = () => {
+  const m = useMessages()
   const { householdId, role, user } = useHousehold()
-  const { t } = useSettings()
   const {
     filters,
     updateFilters,
@@ -179,7 +179,7 @@ export const ExpensesPage = () => {
             onClick={() => setShowForm((open) => !open)}
             className="bg-accent text-accent-ink hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
           >
-            + {t('action.recordLong')}
+            + {m.action_record_long()}
           </button>
         </div>
 
@@ -212,19 +212,19 @@ export const ExpensesPage = () => {
               aria-live="polite"
               className="text-muted py-8 text-sm"
             >
-              {t('tape.loading')}
+              {m.tape_loading()}
             </p>
           )}
 
           {isError && (
             <div role="alert" className="bg-card plate-shadow rounded-xl p-6">
-              <p className="text-sm font-semibold">{t('tape.error')}</p>
+              <p className="text-sm font-semibold">{m.tape_error()}</p>
               <button
                 type="button"
                 onClick={() => refetch()}
                 className="bg-accent text-accent-ink mt-3 rounded-lg px-3 py-2 text-[12px] font-semibold"
               >
-                {t('tape.retry')}
+                {m.tape_retry()}
               </button>
             </div>
           )}
@@ -232,11 +232,11 @@ export const ExpensesPage = () => {
           {!isLoading && !isError && groups.length === 0 && (
             <div className="bg-card plate-shadow rounded-xl p-8 text-center">
               <h2 className="font-display text-base font-bold">
-                {isNarrowed ? t('tape.empty.filtered') : t('tape.empty.title')}
+                {isNarrowed ? m.tape_empty_filtered() : m.tape_empty_title()}
               </h2>
               {!isNarrowed && (
                 <p className="text-muted mx-auto mt-2 max-w-sm text-[12px] leading-relaxed">
-                  {t('tape.empty.body')}
+                  {m.tape_empty_body()}
                 </p>
               )}
             </div>
@@ -284,7 +284,7 @@ export const ExpensesPage = () => {
         <span aria-hidden="true" className="text-lg leading-none">
           +
         </span>
-        {t('action.record')}
+        {m.action_record()}
       </button>
     </section>
   )

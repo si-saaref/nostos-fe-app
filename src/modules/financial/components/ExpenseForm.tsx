@@ -1,10 +1,10 @@
+import { useMessages } from '@/i18n/useMessages'
 import { useForm } from 'react-hook-form'
 import { useCreateExpense } from '@/api/mutations/useCreateExpense'
 import { useExpenseTypes } from '@/api/queries/expenseTypes'
 import { usePaymentSources } from '@/api/queries/paymentSources'
 import { useUsers } from '@/api/queries/users'
 import { useHousehold } from '@/contexts/useHousehold'
-import { useSettings } from '@/contexts/useSettings'
 import { getErrorMessage } from '@/utils/errors'
 import { isoDay } from '@/utils/dates'
 import type { CreateExpenseInput } from '@/types/expense'
@@ -20,8 +20,8 @@ interface Props {
  * has to be faster than remembering.
  */
 export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
+  const m = useMessages()
   const { householdId, user } = useHousehold()
-  const { t } = useSettings()
   const {
     mutate: createExpense,
     isPending,
@@ -66,44 +66,44 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
       onSubmit={handleSubmit(onSubmit)}
       className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
     >
-      <Field label={t('form.name')} error={errors.name?.message}>
+      <Field label={m.form_name()} error={errors.name?.message}>
         <input
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('name', { required: t('form.err.name') })}
+          {...register('name', { required: m.form_err_name() })}
         />
       </Field>
 
-      <Field label={t('form.amount')} error={errors.value?.message}>
+      <Field label={m.form_amount()} error={errors.value?.message}>
         <input
           type="number"
           inputMode="numeric"
           className="well-shadow bg-chip tnum w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('value', {
-            required: t('form.err.amount'),
+            required: m.form_err_amount(),
             valueAsNumber: true,
-            min: { value: 1, message: t('form.err.positive') },
+            min: { value: 1, message: m.form_err_positive() },
           })}
         />
       </Field>
 
-      <Field label={t('form.date')} error={errors.datePaid?.message}>
+      <Field label={m.form_date()} error={errors.datePaid?.message}>
         <input
           type="date"
           max={today}
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('datePaid', {
-            required: t('form.err.date'),
-            validate: (value) => value <= today || t('form.err.future'),
+            required: m.form_err_date(),
+            validate: (value) => value <= today || m.form_err_future(),
           })}
         />
       </Field>
 
-      <Field label={t('form.category')} error={errors.typeId?.message}>
+      <Field label={m.form_category()} error={errors.typeId?.message}>
         <select
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('typeId', { required: t('form.err.category') })}
+          {...register('typeId', { required: m.form_err_category() })}
         >
-          <option value="">{t('form.choose')}</option>
+          <option value="">{m.form_choose()}</option>
           {types?.map((type) => (
             <option key={type.id} value={type.id}>
               {type.name}
@@ -112,12 +112,12 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
         </select>
       </Field>
 
-      <Field label={t('form.method')} error={errors.sourceId?.message}>
+      <Field label={m.form_method()} error={errors.sourceId?.message}>
         <select
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('sourceId', { required: t('form.err.method') })}
+          {...register('sourceId', { required: m.form_err_method() })}
         >
-          <option value="">{t('form.choose')}</option>
+          <option value="">{m.form_choose()}</option>
           {sources?.map((source) => (
             <option key={source.id} value={source.id}>
               {source.name}
@@ -126,7 +126,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
         </select>
       </Field>
 
-      <Field label={t('form.paidBy')} error={errors.paidByUserId?.message}>
+      <Field label={m.form_paid_by()} error={errors.paidByUserId?.message}>
         <select
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('paidByUserId', { required: true })}
@@ -154,7 +154,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
           disabled={isPending}
           className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
         >
-          {isPending ? t('form.saving') : t('form.submit')}
+          {isPending ? m.form_saving() : m.form_submit()}
         </button>
         {onCancel && (
           <button
@@ -162,7 +162,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
             onClick={onCancel}
             className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
           >
-            {t('form.cancel')}
+            {m.form_cancel()}
           </button>
         )}
       </div>

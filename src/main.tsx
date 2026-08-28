@@ -3,11 +3,11 @@ import { createRoot } from 'react-dom/client'
 import App from '@/App'
 import '@/styles/globals.css'
 import { readStoredTheme } from '@/theme/themes'
-import { readStoredLang } from '@/i18n/strings'
+import { getLocale } from '@/paraglide/runtime.js'
 
 // Applied before React mounts so the document never paints in the wrong theme.
 document.documentElement.dataset.theme = readStoredTheme()
-document.documentElement.lang = readStoredLang()
+document.documentElement.lang = getLocale()
 
 async function enableMocking() {
   if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_MOCKS === 'false') {

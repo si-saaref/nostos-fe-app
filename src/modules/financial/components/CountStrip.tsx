@@ -1,3 +1,4 @@
+import { useMessages } from '@/i18n/useMessages'
 import { useExpenses } from '@/api/queries/expenses'
 import { useSettings } from '@/contexts/useSettings'
 import { formatCurrency } from '@/utils/formatters'
@@ -32,7 +33,8 @@ export const CountStrip = ({
   categoryLabel,
   memberLabel,
 }: Props) => {
-  const { t, locale } = useSettings()
+  const m = useMessages()
+  const { locale } = useSettings()
   const previous = previousMonthRange(fromIsoDay(filters.dateFrom ?? ''))
 
   const previousQuery = useExpenses(householdId, {
@@ -66,45 +68,45 @@ export const CountStrip = ({
 
   const figures = [
     {
-      key: t('count.total'),
+      key: m.count_total(),
       value: formatCurrency(sum, 'IDR', locale),
       note:
         deltaPct === null
           ? null
-          : t('count.vsPrevious', {
+          : m.count_vs_previous({
               pct: `${deltaPct > 0 ? '▲' : '▼'} ${Math.abs(deltaPct).toLocaleString(locale)}%`,
               month: monthLabel(previous.from, locale),
             }),
       tone: deltaPct !== null && deltaPct > 0 ? 'delta' : 'muted',
     },
     {
-      key: t('count.previous'),
+      key: m.count_previous(),
       value: previousQuery.isLoading
         ? '—'
         : formatCurrency(previousSum, 'IDR', locale),
       note: previousTotals
-        ? t('tape.entriesShort', { n: previousTotals.count })
+        ? m.tape_entries_short({ n: previousTotals.count })
         : null,
       tone: 'muted',
     },
     {
-      key: t('count.entries'),
+      key: m.count_entries(),
       value: String(count),
-      note: t('count.avg', { amount: formatCurrency(average, 'IDR', locale) }),
+      note: m.count_avg({ amount: formatCurrency(average, 'IDR', locale) }),
       tone: 'muted',
-      sub: t('count.perDay', { n: perDay.toLocaleString(locale) }),
+      sub: m.count_per_day({ n: perDay.toLocaleString(locale) }),
     },
     {
-      key: t('count.yours'),
+      key: m.count_yours(),
       value: formatCurrency(yourShare, 'IDR', locale),
-      note: t('count.shareOfTotal', { pct: `${sharePct}%` }),
+      note: m.count_share_of_total({ pct: `${sharePct}%` }),
       tone: 'muted',
     },
   ]
 
   return (
     <section
-      aria-label={t('count.title')}
+      aria-label={m.count_title()}
       className="strip-shadow rounded-2xl p-4 sm:p-5"
       style={{
         background:
@@ -113,15 +115,14 @@ export const CountStrip = ({
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="font-display text-strip-key text-[10px] font-bold tracking-[0.15em] uppercase">
-          {t('count.title')}
+          {m.count_title()}
         </h2>
         <ScopePill>{monthLabel(filters.dateFrom ?? '', locale)}</ScopePill>
         <ScopePill>
-          {categoryLabel ??
-            t('count.scopeAll', { what: t('count.categories') })}
+          {categoryLabel ?? m.count_scope_all({ what: m.count_categories() })}
         </ScopePill>
         <ScopePill>
-          {memberLabel ?? t('count.scopeAll', { what: t('count.members') })}
+          {memberLabel ?? m.count_scope_all({ what: m.count_members() })}
         </ScopePill>
       </div>
 

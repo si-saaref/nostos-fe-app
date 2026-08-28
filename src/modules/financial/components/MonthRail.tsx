@@ -1,3 +1,4 @@
+import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay } from '@/utils/dates'
@@ -34,7 +35,8 @@ export const MonthRail = ({
   monthTotal,
   variant = 'rail',
 }: Props) => {
-  const { t, locale } = useSettings()
+  const m = useMessages()
+  const { locale } = useSettings()
   const peak = days.reduce((max, day) => Math.max(max, day.total), 0) || 1
   const pct = monthTotal > 0 ? Math.round((cumulative / monthTotal) * 100) : 0
 
@@ -45,7 +47,7 @@ export const MonthRail = ({
     )
     return (
       <nav
-        aria-label={t('rail.month')}
+        aria-label={m.rail_month()}
         className="bg-card/95 flex w-6 flex-col items-center justify-between rounded-xl py-1.5 shadow-sm"
       >
         {marks.map((day) => {
@@ -55,7 +57,7 @@ export const MonthRail = ({
               key={day.date}
               type="button"
               onClick={() => onJump(day.date)}
-              aria-label={t('rail.jumpTo', {
+              aria-label={m.rail_jump_to({
                 date: new Intl.DateTimeFormat(locale, {
                   day: 'numeric',
                   month: 'short',
@@ -78,11 +80,11 @@ export const MonthRail = ({
 
   return (
     <nav
-      aria-label={t('rail.month')}
+      aria-label={m.rail_month()}
       className="well-shadow bg-chip hidden h-full w-[92px] shrink-0 flex-col rounded-xl p-2.5 lg:flex"
     >
       <p className="text-muted shrink-0 text-center text-[8px] font-bold tracking-[0.1em] uppercase">
-        {t('rail.month')}
+        {m.rail_month()}
       </p>
 
       <ol className="relative mt-2.5 flex min-h-0 flex-1 flex-col justify-between gap-[2px] overflow-hidden">
@@ -96,7 +98,7 @@ export const MonthRail = ({
                 type="button"
                 onClick={() => onJump(day.date)}
                 aria-current={isActive ? 'true' : undefined}
-                aria-label={`${t('rail.jumpTo', {
+                aria-label={`${m.rail_jump_to({
                   date: new Intl.DateTimeFormat(locale, {
                     day: 'numeric',
                     month: 'long',
@@ -130,7 +132,7 @@ export const MonthRail = ({
 
       <div className="border-hair mt-3 shrink-0 border-t pt-2 text-center">
         <p className="text-muted text-[7.5px] font-bold tracking-[0.09em] uppercase">
-          {t('rail.upTo', {
+          {m.rail_up_to({
             date: activeDate
               ? new Intl.DateTimeFormat(locale, {
                   day: 'numeric',

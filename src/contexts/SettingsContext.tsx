@@ -1,24 +1,16 @@
-import { useCallback, useMemo, useState } from 'react'
+import { createContext, useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import {
-  DEFAULT_LANG,
-  LANG_STORAGE_KEY,
-  readStoredLang,
-  translate,
-} from '@/i18n/strings'
-import type { Lang } from '@/i18n/strings'
+import { getLocale, setLocale } from '@/paraglide/runtime.js'
+import type { Lang } from '@/i18n/locales'
 import { DEFAULT_THEME, applyTheme, readStoredTheme } from '@/theme/themes'
 import type { ThemeId } from '@/theme/themes'
-import { createContext } from 'react'
-import type { StringKey } from '@/i18n/strings'
 
 export interface SettingsValue {
   theme: ThemeId
   setTheme: (theme: ThemeId) => void
   lang: Lang
   setLang: (lang: Lang) => void
-  t: (key: StringKey, vars?: Record<string, string | number>) => string
-  /** Locale tag for Intl formatting, derived from the chosen language. */
+  /** Locale tag for Intl formatting (currency, dates), derived from the language. */
   locale: string
 }
 
@@ -31,18 +23,26 @@ export const SettingsContext = createContext<SettingsValue | undefined>(
 
 const isBrowser = typeof window !== 'undefined'
 
+const INTL_LOCALE: Record<string, string> = {
+  id: 'id-ID',
+  en: 'en-US',
+}
+
 /**
- * Theme and language. The theme is applied to <html> before React mounts (see
- * main.tsx), so the document never paints a frame in the wrong palette; this
- * provider only handles changes after that.
+ * Theme and language.
+ *
+ * Paraglide owns the locale: it persists it, resolves it from the device on
+ * first visit, and compiles each message into its own module. This provider
+ * only mirrors the current locale into React state so a switch re-renders the
+ * tree — `setLocale` is called with `reload: false` because a full reload
+ * would throw away in-flight queries and scroll position for a preference
+ * change.
  */
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setThemeState] = useState<ThemeId>(() =>
     isBrowser ? readStoredTheme() : DEFAULT_THEME,
   )
-  const [lang, setLangState] = useState<Lang>(() =>
-    isBrowser ? readStoredLang() : DEFAULT_LANG,
-  )
+  const [lang, setLangState] = useState<Lang>(() => getLocale())
 
   const setTheme = useCallback((next: ThemeId) => {
     setThemeState(next)
@@ -50,13 +50,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const setLang = useCallback((next: Lang) => {
-    setLangState(next)
+    setLocale(next, { reload: false })
     document.documentElement.lang = next
-    try {
-      window.localStorage.setItem(LANG_STORAGE_KEY, next)
-    } catch {
-      // Storage unavailable; the choice still applies for this session.
-    }
+    setLangState(next)
   }, [])
 
   const value = useMemo<SettingsValue>(
@@ -65,8 +61,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       setTheme,
       lang,
       setLang,
-      t: (key, vars) => translate(lang, key, vars),
-      locale: lang === 'id' ? 'id-ID' : 'en-US',
+      locale: INTL_LOCALE[lang] ?? lang,
     }),
     [theme, setTheme, lang, setLang],
   )

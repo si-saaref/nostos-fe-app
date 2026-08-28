@@ -1,3 +1,4 @@
+import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { ExpensePlate } from '@/modules/financial/components/ExpensePlate'
 import { formatCurrency } from '@/utils/formatters'
@@ -52,7 +53,8 @@ export const ExpenseTape = ({
   onDelete,
   registerDay,
 }: Props) => {
-  const { t, locale } = useSettings()
+  const m = useMessages()
+  const { locale } = useSettings()
 
   return (
     <div className="flex flex-col">
@@ -81,7 +83,7 @@ export const ExpenseTape = ({
             />
             <span className="tnum text-[10.5px] font-semibold whitespace-nowrap">
               {formatCurrency(group.total, 'IDR', locale)} ·{' '}
-              {t('tape.entriesShort', { n: group.expenses.length })}
+              {m.tape_entries_short({ n: group.expenses.length })}
             </span>
           </header>
 

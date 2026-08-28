@@ -1,7 +1,7 @@
+import { useMessages } from '@/i18n/useMessages'
 import { useExpenseTypes } from '@/api/queries/expenseTypes'
 import { usePaymentSources } from '@/api/queries/paymentSources'
 import { useUsers } from '@/api/queries/users'
-import { useSettings } from '@/contexts/useSettings'
 import type { ExpenseFilters } from '@/types/expense'
 
 interface Props {
@@ -23,7 +23,7 @@ export const ExpenseFilter = ({
   onClear,
   isNarrowed,
 }: Props) => {
-  const { t } = useSettings()
+  const m = useMessages()
   const { data: types } = useExpenseTypes(householdId)
   const { data: sources } = usePaymentSources(householdId)
   const { data: users } = useUsers(householdId)
@@ -31,11 +31,11 @@ export const ExpenseFilter = ({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <label className="well-shadow bg-chip flex min-w-[180px] flex-1 items-center rounded-lg px-3 py-2">
-        <span className="sr-only">{t('filter.search')}</span>
+        <span className="sr-only">{m.filter_search()}</span>
         <input
           type="search"
           value={filters.search ?? ''}
-          placeholder={t('filter.search')}
+          placeholder={m.filter_search()}
           onChange={(event) =>
             onChange({ search: event.target.value || undefined, page: 1 })
           }
@@ -44,13 +44,13 @@ export const ExpenseFilter = ({
       </label>
 
       <Select
-        label={t('filter.category')}
+        label={m.filter_category()}
         value={filters.typeId ?? ''}
         onChange={(value) => onChange({ typeId: value || undefined, page: 1 })}
         options={types?.map((type) => ({ id: type.id, name: type.name })) ?? []}
       />
       <Select
-        label={t('filter.method')}
+        label={m.filter_method()}
         value={filters.sourceId ?? ''}
         onChange={(value) =>
           onChange({ sourceId: value || undefined, page: 1 })
@@ -60,7 +60,7 @@ export const ExpenseFilter = ({
         }
       />
       <Select
-        label={t('filter.paidBy')}
+        label={m.filter_paid_by()}
         value={filters.paidByUserId ?? ''}
         onChange={(value) =>
           onChange({ paidByUserId: value || undefined, page: 1 })
@@ -74,7 +74,7 @@ export const ExpenseFilter = ({
           onClick={onClear}
           className="border-hair text-muted rounded-lg border px-3 py-2 text-[11px] font-semibold"
         >
-          {t('filter.clear')}
+          {m.filter_clear()}
         </button>
       )}
     </div>
