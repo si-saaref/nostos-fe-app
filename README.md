@@ -1,7 +1,14 @@
 # Household App — Frontend
 
-Tenant-aware React app for managing a household's finances. Built per
-`FE-Architecture-REVISED.md`.
+Tenant-aware React app for managing a household's finances — the family-facing
+NOSTOS app (the Operator Console is a separate repo).
+
+**[`docs/FRONTEND.md`](docs/FRONTEND.md) is the authoritative technical record**
+for this repo: what is built, how it is wired, where it currently disagrees with
+its specs, and what is open. Read this file to get running; read that one to
+understand the code.
+
+Product and architecture truth lives in the Nostos vault, symlinked at `notes/`.
 
 ## Stack
 
@@ -55,16 +62,10 @@ npm run cap:ios        # opens Xcode
 
 ## Project structure
 
-See `docs/superpowers/specs/2026-07-26-household-fe-init-design.md` §5.
+See [`docs/FRONTEND.md`](docs/FRONTEND.md) §6.
 
 ## Security notes
 
-`npm audit` in CI (`.github/workflows/security.yml`) is **informational**
-(`continue-on-error: true`) — it reports advisories in the logs but does not
-fail the build.
-
-**Accepted advisory:** `react-router-dom@7.18.1` — GHSA-qwww-vcr4-c8h2 (HIGH,
-"RSC-mode CSRF bypass"). This project is a **client-only SPA** and does not use
-React Router's React Server Components mode, so the advisory does not apply. The
-dependency is exact-pinned; revisit and bump if/when a patched release is
-available.
+`npm audit` in CI is **informational**, and one advisory
+(`react-router-dom` GHSA-qwww-vcr4-c8h2) is knowingly accepted. The rationale is
+in [`docs/FRONTEND.md`](docs/FRONTEND.md) §13.

@@ -1,4 +1,7 @@
 import { useExpenseTypes } from '@/api/queries/expenseTypes'
+import { usePaymentSources } from '@/api/queries/paymentSources'
+import { useUsers } from '@/api/queries/users'
+import { useSettings } from '@/contexts/useSettings'
 import type { ExpenseFilters } from '@/types/expense'
 
 interface Props {
@@ -6,41 +9,104 @@ interface Props {
   filters: ExpenseFilters
   onChange: (next: Partial<ExpenseFilters>) => void
   onClear: () => void
+  isNarrowed: boolean
 }
 
+/**
+ * Filter fields are the one place a pressed-in shadow is semantically honest:
+ * a well you type into. Everything else in the app lifts; these sink.
+ */
 export const ExpenseFilter = ({
   householdId,
   filters,
   onChange,
   onClear,
+  isNarrowed,
 }: Props) => {
+  const { t } = useSettings()
   const { data: types } = useExpenseTypes(householdId)
+  const { data: sources } = usePaymentSources(householdId)
+  const { data: users } = useUsers(householdId)
+
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1 text-sm">
-        Type
-        <select
-          className="rounded border border-gray-300 px-2 py-1"
-          value={filters.typeId ?? ''}
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="well-shadow bg-chip flex min-w-[180px] flex-1 items-center rounded-lg px-3 py-2">
+        <span className="sr-only">{t('filter.search')}</span>
+        <input
+          type="search"
+          value={filters.search ?? ''}
+          placeholder={t('filter.search')}
           onChange={(event) =>
-            onChange({ typeId: event.target.value || undefined, page: 1 })
+            onChange({ search: event.target.value || undefined, page: 1 })
           }
-        >
-          <option value="">All types</option>
-          {types?.map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.name}
-            </option>
-          ))}
-        </select>
+          className="text-ink placeholder:text-muted w-full bg-transparent text-[11.5px] font-medium outline-none"
+        />
       </label>
-      <button
-        type="button"
-        onClick={onClear}
-        className="rounded border border-gray-300 px-3 py-1 text-sm"
-      >
-        Clear
-      </button>
+
+      <Select
+        label={t('filter.category')}
+        value={filters.typeId ?? ''}
+        onChange={(value) => onChange({ typeId: value || undefined, page: 1 })}
+        options={types?.map((type) => ({ id: type.id, name: type.name })) ?? []}
+      />
+      <Select
+        label={t('filter.method')}
+        value={filters.sourceId ?? ''}
+        onChange={(value) =>
+          onChange({ sourceId: value || undefined, page: 1 })
+        }
+        options={
+          sources?.map((source) => ({ id: source.id, name: source.name })) ?? []
+        }
+      />
+      <Select
+        label={t('filter.paidBy')}
+        value={filters.paidByUserId ?? ''}
+        onChange={(value) =>
+          onChange({ paidByUserId: value || undefined, page: 1 })
+        }
+        options={users?.map((user) => ({ id: user.id, name: user.name })) ?? []}
+      />
+
+      {isNarrowed && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="border-hair text-muted rounded-lg border px-3 py-2 text-[11px] font-semibold"
+        >
+          {t('filter.clear')}
+        </button>
+      )}
     </div>
   )
 }
+
+const Select = ({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: Array<{ id: string; name: string }>
+}) => (
+  <label className="well-shadow bg-chip flex items-center rounded-lg px-3 py-2">
+    <span className="sr-only">{label}</span>
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className={`bg-transparent text-[11.5px] font-medium outline-none ${
+        value ? 'text-ink' : 'text-muted'
+      }`}
+    >
+      <option value="">{label}</option>
+      {options.map((option) => (
+        <option key={option.id} value={option.id}>
+          {option.name}
+        </option>
+      ))}
+    </select>
+  </label>
+)

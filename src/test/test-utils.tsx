@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { HouseholdContext } from '@/contexts/HouseholdContext'
 import type { HouseholdContextValue } from '@/contexts/HouseholdContext'
+import { SettingsProvider } from '@/contexts/SettingsContext'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/data'
 
 export const createTestQueryClient = (): QueryClient =>
@@ -16,7 +17,9 @@ export const createWrapper = () => {
   const client = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
-      <MemoryRouter>{children}</MemoryRouter>
+      <SettingsProvider>
+        <MemoryRouter>{children}</MemoryRouter>
+      </SettingsProvider>
     </QueryClientProvider>
   )
 }
@@ -47,11 +50,13 @@ export const renderWithProviders = (
   }
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={options.initialEntries ?? ['/']}>
-        <HouseholdContext.Provider value={householdValue}>
-          {ui}
-        </HouseholdContext.Provider>
-      </MemoryRouter>
+      <SettingsProvider>
+        <MemoryRouter initialEntries={options.initialEntries ?? ['/']}>
+          <HouseholdContext.Provider value={householdValue}>
+            {ui}
+          </HouseholdContext.Provider>
+        </MemoryRouter>
+      </SettingsProvider>
     </QueryClientProvider>,
   )
 }

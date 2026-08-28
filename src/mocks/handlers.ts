@@ -5,6 +5,7 @@ import {
   MOCK_SOURCES,
   MOCK_TYPES,
   MOCK_USER,
+  MOCK_USERS,
   authState,
   db,
   nextExpenseId,
@@ -12,12 +13,19 @@ import {
 
 const paginate = (items: Expense[], page: number, limit: number) => {
   const start = (page - 1) * limit
+  const sum = items.reduce((acc, expense) => acc + expense.value, 0)
   return {
     items: items.slice(start, start + limit),
     pagination: {
       total: items.length,
       page,
       pages: Math.max(1, Math.ceil(items.length / limit)),
+    },
+    // Filter-scoped, not page-scoped: these describe the whole filtered set.
+    totals: {
+      sum,
+      count: items.length,
+      average: items.length ? Math.round(sum / items.length) : 0,
     },
   }
 }
@@ -42,14 +50,34 @@ export const handlers = [
 
   http.get('/api/expenses', ({ request }) => {
     const url = new URL(request.url)
-    const typeId = url.searchParams.get('typeId')
-    const page = Number(url.searchParams.get('page') ?? '1')
-    const limit = Number(url.searchParams.get('limit') ?? '25')
+    const params = url.searchParams
+    const page = Number(params.get('page') ?? '1')
+    const limit = Number(params.get('limit') ?? '25')
+    const search = (params.get('search') ?? '').trim().toLowerCase()
 
-    let items = [...db.expenses]
-    if (typeId) {
-      items = items.filter((expense) => expense.typeId === typeId)
+    const matches = (expense: Expense) => {
+      const typeId = params.get('typeId')
+      const sourceId = params.get('sourceId')
+      const paidBy = params.get('paidByUserId')
+      const from = params.get('dateFrom')
+      const to = params.get('dateTo')
+      if (typeId && expense.typeId !== typeId) return false
+      if (sourceId && expense.sourceId !== sourceId) return false
+      if (paidBy && expense.paidByUserId !== paidBy) return false
+      if (from && expense.datePaid < from) return false
+      if (to && expense.datePaid > to) return false
+      if (search && !expense.name.toLowerCase().includes(search)) return false
+      return true
     }
+
+    const items = db.expenses
+      .filter(matches)
+      .sort((a, b) =>
+        params.get('order') === 'asc'
+          ? a.datePaid.localeCompare(b.datePaid)
+          : b.datePaid.localeCompare(a.datePaid),
+      )
+
     return HttpResponse.json(paginate(items, page, limit))
   }),
 
@@ -83,5 +111,5 @@ export const handlers = [
 
   http.get('/api/payment-sources', () => HttpResponse.json(MOCK_SOURCES)),
 
-  http.get('/api/users', () => HttpResponse.json([MOCK_USER])),
+  http.get('/api/users', () => HttpResponse.json(MOCK_USERS)),
 ]
