@@ -1,0 +1,30 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: npm audit
+        # Informational: surfaces advisories in the logs without failing the
+        # job. See the "Security notes" section of README.md for the currently
+        # accepted advisory and rationale.
+        continue-on-error: true
+        run: npm audit --audit-level=moderate
+      # - name: Snyk scan (requires SNYK_TOKEN secret)
+      #   uses: snyk/actions/node@master
+      #   env:
+      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
