@@ -4,6 +4,7 @@ import { AuthLayout } from '@/components/Layout/AuthLayout'
 import { DashboardLayout } from '@/components/Layout/DashboardLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
+import { SigninPage } from '@/modules/auth/pages/SigninPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ErrorPage } from '@/pages/ErrorPage'
@@ -24,6 +25,13 @@ const SettingsPage = lazy(() =>
 )
 
 export const router = createBrowserRouter([
+  // Slicing pass: the magic-link screen lives alongside the password login so
+  // dev sign-in keeps working. Making it the default is an integration task.
+  {
+    path: '/auth/signin',
+    element: <SigninPage />,
+    errorElement: <ErrorPage />,
+  },
   {
     element: <AuthLayout />,
     errorElement: <ErrorPage />,
