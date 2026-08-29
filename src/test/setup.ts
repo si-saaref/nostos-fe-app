@@ -16,3 +16,11 @@ afterEach(() => {
   resetMockState()
 })
 afterAll(() => server.close())
+
+// Radix's popup primitives use Pointer Events APIs that jsdom does not
+// implement. Without these shims a Select never opens in tests, which looks
+// like a component bug and is not one.
+window.HTMLElement.prototype.hasPointerCapture = () => false
+window.HTMLElement.prototype.setPointerCapture = () => {}
+window.HTMLElement.prototype.releasePointerCapture = () => {}
+window.HTMLElement.prototype.scrollIntoView = () => {}

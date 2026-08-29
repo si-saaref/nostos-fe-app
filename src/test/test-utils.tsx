@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
-import { render } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { HouseholdContext } from '@/contexts/HouseholdContext'
@@ -58,5 +59,21 @@ export const renderWithProviders = (
         </MemoryRouter>
       </SettingsProvider>
     </QueryClientProvider>,
+  )
+}
+
+/**
+ * Drive a designed Select the way a person does: open it, then pick. Radix
+ * renders its listbox only while open, so there is no option to query until
+ * the trigger has been activated.
+ */
+export const chooseOption = async (
+  triggerName: RegExp | string,
+  optionName: RegExp | string,
+) => {
+  await userEvent.click(screen.getByRole('combobox', { name: triggerName }))
+  const listbox = await screen.findByRole('listbox')
+  await userEvent.click(
+    within(listbox).getByRole('option', { name: optionName }),
   )
 }

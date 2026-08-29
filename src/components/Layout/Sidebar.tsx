@@ -1,12 +1,9 @@
 import { m } from '@/paraglide/messages.js'
-import { NavLink } from 'react-router-dom'
+import { useMessages } from '@/i18n/useMessages'
+import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
+import { Link, NavLink } from 'react-router-dom'
 import { Logo } from '@/components/Logo'
 import { useHousehold } from '@/contexts/useHousehold'
-import { useSettings } from '@/contexts/useSettings'
-import { LANGS } from '@/i18n/locales'
-import type { Lang } from '@/i18n/locales'
-import { THEMES } from '@/theme/themes'
-import type { ThemeId } from '@/theme/themes'
 
 interface Item {
   to: string
@@ -69,7 +66,7 @@ const Glyph = ({ path }: { path: string }) => (
  * ledger wants.
  */
 export const Sidebar = () => {
-  const { theme, setTheme, lang, setLang } = useSettings()
+  const m = useMessages()
   const { household, user } = useHousehold()
 
   return (
@@ -118,64 +115,32 @@ export const Sidebar = () => {
         </ul>
       </nav>
 
-      <div className="border-hair flex flex-col gap-2 border-t px-2.5 py-3">
-        <div className="flex gap-2">
-          <label className="sr-only" htmlFor="theme-select">
-            {m.theme_label()}
-          </label>
-          <select
-            id="theme-select"
-            value={theme}
-            onChange={(event) => setTheme(event.target.value as ThemeId)}
-            className="well-shadow bg-chip text-muted min-w-0 flex-1 rounded-lg px-2 py-1.5 text-[11px] font-medium outline-none"
-          >
-            {THEMES.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          <label className="sr-only" htmlFor="lang-select">
-            {m.lang_label()}
-          </label>
-          <select
-            id="lang-select"
-            value={lang}
-            onChange={(event) => setLang(event.target.value as Lang)}
-            className="well-shadow bg-chip text-muted rounded-lg px-2 py-1.5 text-[11px] font-medium outline-none"
-          >
-            {LANGS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.id.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2 px-0.5 pt-1">
-          <span
-            aria-hidden="true"
-            className="bg-accent text-accent-ink grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[9.5px] font-bold"
-          >
-            {(user?.name ?? 'NN').slice(0, 2).toUpperCase()}
+      <Link
+        to={settingsHref(SETTINGS_ANCHORS.household)}
+        className="border-hair hover:bg-chip mt-2 flex items-center gap-2.5 border-t px-3 py-3"
+      >
+        <span
+          aria-hidden="true"
+          className="bg-accent text-accent-ink grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[10px] font-bold"
+        >
+          {(user?.name ?? 'NN').slice(0, 2).toUpperCase()}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[12px] font-semibold">
+            {user?.name}
           </span>
-          <span className="min-w-0">
-            <span className="block truncate text-[11.5px] font-semibold">
-              {user?.name}
-            </span>
-            <span className="text-muted block truncate text-[10px]">
-              {household?.name}
-            </span>
+          <span className="text-muted block truncate text-[10.5px]">
+            {household?.name}
           </span>
-        </div>
-      </div>
+        </span>
+      </Link>
     </aside>
   )
 }
 
 /** Mobile: the same destinations as a thumb-reachable tab bar. */
 export const BottomBar = () => {
+  const m = useMessages()
   return (
     <nav
       aria-label={m.nav_menu()}

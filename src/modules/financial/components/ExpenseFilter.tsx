@@ -1,9 +1,9 @@
 import { useMessages } from '@/i18n/useMessages'
-import { Link } from 'react-router-dom'
+import { Select } from '@/components/Select'
 import { useExpenseTypes } from '@/api/queries/expenseTypes'
 import { usePaymentSources } from '@/api/queries/paymentSources'
 import { useUsers } from '@/api/queries/users'
-import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
+import { rimFor } from '@/types/settings'
 import type { ExpenseFilters } from '@/types/expense'
 
 interface Props {
@@ -12,8 +12,6 @@ interface Props {
   onChange: (next: Partial<ExpenseFilters>) => void
   onClear: () => void
   isNarrowed: boolean
-  /** Managing the vocabulary is an admin action, so members are not offered it. */
-  canManage?: boolean
 }
 
 /**
@@ -26,7 +24,6 @@ export const ExpenseFilter = ({
   onChange,
   onClear,
   isNarrowed,
-  canManage = false,
 }: Props) => {
   const m = useMessages()
   const { data: types } = useExpenseTypes(householdId)
@@ -34,7 +31,7 @@ export const ExpenseFilter = ({
   const { data: users } = useUsers(householdId)
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-end gap-2">
       <label className="well-shadow bg-chip flex min-w-[180px] flex-1 items-center rounded-lg px-3 py-2">
         <span className="sr-only">{m.filter_search()}</span>
         <input
@@ -49,43 +46,49 @@ export const ExpenseFilter = ({
       </label>
 
       <Select
+        hideLabel
         label={m.filter_category()}
+        placeholder={m.filter_category()}
         value={filters.typeId ?? ''}
         onChange={(value) => onChange({ typeId: value || undefined, page: 1 })}
-        options={types?.map((type) => ({ id: type.id, name: type.name })) ?? []}
+        // The rim carries category on every ledger row, so the picker wears it too.
+        options={
+          types?.map((type, index) => ({
+            value: type.id,
+            label: type.name,
+            rim: rimFor(index),
+          })) ?? []
+        }
       />
-      {canManage && (
-        <ManageLink
-          to={settingsHref(SETTINGS_ANCHORS.expenseCategories)}
-          label={m.filter_manage_categories()}
-        />
-      )}
 
       <Select
+        hideLabel
         label={m.filter_method()}
+        placeholder={m.filter_method()}
         value={filters.sourceId ?? ''}
         onChange={(value) =>
           onChange({ sourceId: value || undefined, page: 1 })
         }
         options={
-          sources?.map((source) => ({ id: source.id, name: source.name })) ?? []
+          sources?.map((source) => ({
+            value: source.id,
+            label: source.name,
+          })) ?? []
         }
       />
+
       <Select
+        hideLabel
         label={m.filter_paid_by()}
+        placeholder={m.filter_paid_by()}
         value={filters.paidByUserId ?? ''}
         onChange={(value) =>
           onChange({ paidByUserId: value || undefined, page: 1 })
         }
-        options={users?.map((user) => ({ id: user.id, name: user.name })) ?? []}
+        options={
+          users?.map((user) => ({ value: user.id, label: user.name })) ?? []
+        }
       />
-
-      {canManage && (
-        <ManageLink
-          to={settingsHref(SETTINGS_ANCHORS.accounts)}
-          label={m.filter_manage_accounts()}
-        />
-      )}
 
       {isNarrowed && (
         <button
@@ -97,48 +100,5 @@ export const ExpenseFilter = ({
         </button>
       )}
     </div>
-  )
-}
-
-const Select = ({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: Array<{ id: string; name: string }>
-}) => (
-  <label className="well-shadow bg-chip flex items-center rounded-lg px-3 py-2">
-    <span className="sr-only">{label}</span>
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className={`bg-transparent text-[11.5px] font-medium outline-none ${
-        value ? 'text-ink' : 'text-muted'
-      }`}
-    >
-      <option value="">{label}</option>
-      {options.map((option) => (
-        <option key={option.id} value={option.id}>
-          {option.name}
-        </option>
-      ))}
-    </select>
-  </label>
-)
-
-const ManageLink = ({ to, label }: { to: string; label: string }) => {
-  const m = useMessages()
-  return (
-    <Link
-      to={to}
-      aria-label={label}
-      className="text-muted hover:text-ink shrink-0 text-[10.5px] font-semibold underline underline-offset-2"
-    >
-      {m.filter_manage()}
-    </Link>
   )
 }

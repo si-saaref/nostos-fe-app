@@ -1,5 +1,5 @@
 import { useMessages } from '@/i18n/useMessages'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { useCreateExpense } from '@/api/mutations/useCreateExpense'
 import { useExpenseTypes } from '@/api/queries/expenseTypes'
 import { usePaymentSources } from '@/api/queries/paymentSources'
@@ -7,6 +7,8 @@ import { useUsers } from '@/api/queries/users'
 import { useHousehold } from '@/contexts/useHousehold'
 import { getErrorMessage } from '@/utils/errors'
 import { isoDay } from '@/utils/dates'
+import { Select } from '@/components/Select'
+import { rimFor } from '@/types/settings'
 import type { CreateExpenseInput } from '@/types/expense'
 
 interface Props {
@@ -35,6 +37,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -99,46 +102,65 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
         />
       </Field>
 
-      <Field label={m.form_category()} error={errors.typeId?.message}>
-        <select
-          className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('typeId', { required: m.form_err_category() })}
-        >
-          <option value="">{m.form_choose()}</option>
-          {types?.map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <Controller
+        control={control}
+        name="typeId"
+        rules={{ required: m.form_err_category() }}
+        render={({ field }) => (
+          <Select
+            label={m.form_category()}
+            placeholder={m.form_choose()}
+            value={field.value}
+            onChange={field.onChange}
+            options={
+              types?.map((type, index) => ({
+                value: type.id,
+                label: type.name,
+                rim: rimFor(index),
+              })) ?? []
+            }
+          />
+        )}
+      />
 
-      <Field label={m.form_method()} error={errors.sourceId?.message}>
-        <select
-          className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('sourceId', { required: m.form_err_method() })}
-        >
-          <option value="">{m.form_choose()}</option>
-          {sources?.map((source) => (
-            <option key={source.id} value={source.id}>
-              {source.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <Controller
+        control={control}
+        name="sourceId"
+        rules={{ required: m.form_err_method() }}
+        render={({ field }) => (
+          <Select
+            label={m.form_method()}
+            placeholder={m.form_choose()}
+            value={field.value}
+            onChange={field.onChange}
+            options={
+              sources?.map((source) => ({
+                value: source.id,
+                label: source.name,
+              })) ?? []
+            }
+          />
+        )}
+      />
 
-      <Field label={m.form_paid_by()} error={errors.paidByUserId?.message}>
-        <select
-          className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('paidByUserId', { required: true })}
-        >
-          {users?.map((member) => (
-            <option key={member.id} value={member.id}>
-              {member.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <Controller
+        control={control}
+        name="paidByUserId"
+        rules={{ required: true }}
+        render={({ field }) => (
+          <Select
+            label={m.form_paid_by()}
+            value={field.value}
+            onChange={field.onChange}
+            options={
+              users?.map((member) => ({
+                value: member.id,
+                label: member.name,
+              })) ?? []
+            }
+          />
+        )}
+      />
 
       {error && (
         <p
