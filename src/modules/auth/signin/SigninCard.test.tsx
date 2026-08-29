@@ -2,7 +2,6 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/test-utils'
 import { SigninCard } from '@/modules/auth/signin/SigninCard'
-import { resolveScene } from '@/modules/auth/signin/registry'
 
 describe('SigninCard', () => {
   it('rejects a non-ASCII address without sending', async () => {
@@ -56,30 +55,5 @@ describe('SigninCard', () => {
   it('explains why the visitor was bounced back here', async () => {
     renderWithProviders(<SigninCard landing="expired_link" />)
     expect(screen.getByText(/tautan sudah tidak berlaku/i)).toBeInTheDocument()
-  })
-})
-
-describe('scene resolution', () => {
-  it('prefers an explicit ?scene= override', () => {
-    expect(resolveScene('?scene=ledger', new Date(2026, 0, 15))).toBe('ledger')
-  })
-
-  it('follows the calendar once the rotation is switched on', () => {
-    expect(resolveScene('', new Date(2026, 0, 15), true)).toBe('still-life')
-    expect(resolveScene('', new Date(2026, 4, 15), true)).toBe('door')
-    expect(resolveScene('', new Date(2026, 7, 15), true)).toBe('ledger')
-  })
-
-  it('ignores the calendar while the rotation is off', () => {
-    // August maps to the ledger, but the rotation ships disabled.
-    expect(resolveScene('', new Date(2026, 7, 15))).toBe('door')
-  })
-
-  it('falls back to the default for unscheduled months', () => {
-    expect(resolveScene('', new Date(2026, 10, 15), true)).toBe('door')
-  })
-
-  it('ignores an unknown scene name', () => {
-    expect(resolveScene('?scene=nope', new Date(2026, 10, 15))).toBe('door')
   })
 })

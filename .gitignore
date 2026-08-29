@@ -31,3 +31,5 @@ dist-ssr
 # Paraglide compiles messages into this directory
 src/paraglide
 .inlang
+
+/coverage
