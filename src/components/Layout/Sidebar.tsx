@@ -26,6 +26,11 @@ const LIVE: Item[] = [
     label: m.nav_expenses,
     icon: 'M4 6h16v12H4zM4 10h16M8 14h5',
   },
+  {
+    to: '/settings',
+    label: m.nav_settings,
+    icon: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 12h2m13 0h2M12 3.5v2m0 13v2',
+  },
 ]
 
 /**
@@ -38,14 +43,6 @@ const PLANNED: Array<{ label: () => string; icon: string }> = [
   {
     label: m.nav_plan,
     icon: 'M7 3v3m10-3v3M4 8h16M5 6h14a1 1 0 0 1 1 1v13H4V7a1 1 0 0 1 1-1z',
-  },
-  {
-    label: m.nav_members,
-    icon: 'M16 20v-1a4 4 0 0 0-8 0v1M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
-  },
-  {
-    label: m.nav_settings,
-    icon: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 12h2m13 0h2M12 3.5v2m0 13v2',
   },
 ]
 

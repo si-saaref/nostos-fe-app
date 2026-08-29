@@ -1,4 +1,10 @@
 import type { Expense, ExpenseType, PaymentSource } from '@/types/expense'
+import type {
+  Account,
+  Category,
+  HouseholdPrefs,
+  Member,
+} from '@/types/settings'
 import type { Household, User } from '@/types/household'
 
 export const MOCK_HOUSEHOLD: Household = {
@@ -266,8 +272,132 @@ const seedExpenses = (): Expense[] => {
   return rows.sort((a, b) => b.datePaid.localeCompare(a.datePaid))
 }
 
-/** Mutable in-memory database for the mock backend. Mutate `db.expenses`. */
-export const db: { expenses: Expense[] } = { expenses: seedExpenses() }
+const seedCategories = (): Category[] =>
+  MOCK_TYPES.map((type, index) => ({
+    id: type.id,
+    name: type.name,
+    order: index,
+    archivedAt: null,
+    householdId: MOCK_HOUSEHOLD.id,
+  }))
+
+const seedAccounts = (): Account[] => [
+  {
+    id: 'source-tunai',
+    name: 'Tunai — kotak dapur',
+    kind: 'cash',
+    openingBalance: 1500000,
+    asOf: '2026-05-01',
+    order: 0,
+    archivedAt: null,
+    householdId: MOCK_HOUSEHOLD.id,
+  },
+  {
+    id: 'source-qris',
+    name: 'QRIS',
+    kind: 'ewallet',
+    openingBalance: 750000,
+    asOf: '2026-05-01',
+    order: 1,
+    archivedAt: null,
+    householdId: MOCK_HOUSEHOLD.id,
+  },
+  {
+    id: 'source-debit',
+    name: 'Kartu debit BCA',
+    kind: 'bank',
+    openingBalance: 12400000,
+    asOf: '2026-05-01',
+    order: 2,
+    archivedAt: null,
+    householdId: MOCK_HOUSEHOLD.id,
+  },
+  {
+    id: 'source-ewallet',
+    name: 'e-Wallet',
+    kind: 'ewallet',
+    openingBalance: 320000,
+    asOf: '2026-05-01',
+    order: 3,
+    archivedAt: null,
+    householdId: MOCK_HOUSEHOLD.id,
+  },
+]
+
+const seedMembers = (): Member[] => [
+  {
+    id: 'user-001',
+    name: 'Budi',
+    email: 'budi@example.com',
+    role: 'admin',
+    householdId: MOCK_HOUSEHOLD.id,
+    deletedAt: null,
+    deletionReason: null,
+    invitePending: false,
+    resendCount: 0,
+  },
+  {
+    id: 'user-002',
+    name: 'Sari',
+    email: 'sari@example.com',
+    role: 'member',
+    householdId: MOCK_HOUSEHOLD.id,
+    deletedAt: null,
+    deletionReason: null,
+    invitePending: false,
+    resendCount: 0,
+  },
+  {
+    id: 'user-003',
+    name: 'Rina',
+    email: 'rina@example.com',
+    role: 'member',
+    householdId: MOCK_HOUSEHOLD.id,
+    deletedAt: null,
+    deletionReason: null,
+    invitePending: false,
+    resendCount: 0,
+  },
+  {
+    id: 'user-004',
+    name: 'Asep',
+    email: 'asep@example.com',
+    role: 'member',
+    householdId: MOCK_HOUSEHOLD.id,
+    deletedAt: null,
+    deletionReason: null,
+    invitePending: true,
+    resendCount: 1,
+  },
+  {
+    id: 'user-005',
+    name: 'Dewi',
+    email: 'dewi@example.com',
+    role: 'member',
+    householdId: MOCK_HOUSEHOLD.id,
+    deletedAt: '2026-07-02',
+    deletionReason: 'LEFT',
+    invitePending: false,
+    resendCount: 0,
+  },
+]
+
+const seedPrefs = (): HouseholdPrefs => ({ currency: 'IDR', monthStartDay: 1 })
+
+/** Mutable in-memory database for the mock backend. */
+export const db: {
+  expenses: Expense[]
+  categories: Category[]
+  accounts: Account[]
+  members: Member[]
+  prefs: HouseholdPrefs
+} = {
+  expenses: seedExpenses(),
+  categories: seedCategories(),
+  accounts: seedAccounts(),
+  members: seedMembers(),
+  prefs: seedPrefs(),
+}
 
 /** Auth flag toggled by the login/logout handlers. */
 export const authState = { authenticated: false }
@@ -278,6 +408,10 @@ export const nextExpenseId = (): string => `exp-${++idSeq}`
 /** Reset all mutable mock state — call between tests. */
 export const resetMockState = (): void => {
   db.expenses = seedExpenses()
+  db.categories = seedCategories()
+  db.accounts = seedAccounts()
+  db.members = seedMembers()
+  db.prefs = seedPrefs()
   idSeq = 9000
   authState.authenticated = false
 }

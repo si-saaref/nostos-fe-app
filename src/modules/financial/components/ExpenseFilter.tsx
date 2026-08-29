@@ -1,7 +1,9 @@
 import { useMessages } from '@/i18n/useMessages'
+import { Link } from 'react-router-dom'
 import { useExpenseTypes } from '@/api/queries/expenseTypes'
 import { usePaymentSources } from '@/api/queries/paymentSources'
 import { useUsers } from '@/api/queries/users'
+import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import type { ExpenseFilters } from '@/types/expense'
 
 interface Props {
@@ -10,6 +12,8 @@ interface Props {
   onChange: (next: Partial<ExpenseFilters>) => void
   onClear: () => void
   isNarrowed: boolean
+  /** Managing the vocabulary is an admin action, so members are not offered it. */
+  canManage?: boolean
 }
 
 /**
@@ -22,6 +26,7 @@ export const ExpenseFilter = ({
   onChange,
   onClear,
   isNarrowed,
+  canManage = false,
 }: Props) => {
   const m = useMessages()
   const { data: types } = useExpenseTypes(householdId)
@@ -49,6 +54,13 @@ export const ExpenseFilter = ({
         onChange={(value) => onChange({ typeId: value || undefined, page: 1 })}
         options={types?.map((type) => ({ id: type.id, name: type.name })) ?? []}
       />
+      {canManage && (
+        <ManageLink
+          to={settingsHref(SETTINGS_ANCHORS.expenseCategories)}
+          label={m.filter_manage_categories()}
+        />
+      )}
+
       <Select
         label={m.filter_method()}
         value={filters.sourceId ?? ''}
@@ -67,6 +79,13 @@ export const ExpenseFilter = ({
         }
         options={users?.map((user) => ({ id: user.id, name: user.name })) ?? []}
       />
+
+      {canManage && (
+        <ManageLink
+          to={settingsHref(SETTINGS_ANCHORS.accounts)}
+          label={m.filter_manage_accounts()}
+        />
+      )}
 
       {isNarrowed && (
         <button
@@ -110,3 +129,16 @@ const Select = ({
     </select>
   </label>
 )
+
+const ManageLink = ({ to, label }: { to: string; label: string }) => {
+  const m = useMessages()
+  return (
+    <Link
+      to={to}
+      aria-label={label}
+      className="text-muted hover:text-ink shrink-0 text-[10.5px] font-semibold underline underline-offset-2"
+    >
+      {m.filter_manage()}
+    </Link>
+  )
+}

@@ -16,6 +16,13 @@ const ExpensesPage = lazy(() =>
   })),
 )
 
+// eslint-disable-next-line react-refresh/only-export-components -- lazy-loaded component is local to this router file, not exported
+const SettingsPage = lazy(() =>
+  import('@/modules/settings/pages/SettingsPage').then((module) => ({
+    default: module.SettingsPage,
+  })),
+)
+
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
@@ -37,6 +44,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<Loading />}>
             <ExpensesPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/settings',
+        element: (
+          <Suspense fallback={<Loading />}>
+            <SettingsPage />
           </Suspense>
         ),
       },

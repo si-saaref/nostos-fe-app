@@ -1,9 +1,17 @@
 import { http, HttpResponse } from 'msw'
 import type { CreateExpenseInput, Expense } from '@/types/expense'
+import type {
+  Account,
+  AccountInput,
+  Category,
+  CategoryInput,
+  HouseholdPrefs,
+  InviteInput,
+  Member,
+} from '@/types/settings'
+import { MAX_RESENDS, isAsciiEmail } from '@/types/settings'
 import {
   MOCK_HOUSEHOLD,
-  MOCK_SOURCES,
-  MOCK_TYPES,
   MOCK_USER,
   MOCK_USERS,
   authState,
@@ -107,9 +115,142 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get('/api/expense-types', () => HttpResponse.json(MOCK_TYPES)),
+  /* ------------------------------------------------------------ settings */
 
-  http.get('/api/payment-sources', () => HttpResponse.json(MOCK_SOURCES)),
+  http.get('/api/expense-types', () =>
+    HttpResponse.json(db.categories.filter((c) => !c.archivedAt)),
+  ),
+
+  http.post('/api/expense-types', async ({ request }) => {
+    const input = (await request.json()) as CategoryInput
+    const created: Category = {
+      id: `type-${Date.now()}`,
+      name: input.name,
+      order: db.categories.length,
+      archivedAt: null,
+      householdId: MOCK_HOUSEHOLD.id,
+    }
+    db.categories.push(created)
+    return HttpResponse.json(created, { status: 201 })
+  }),
+
+  http.put('/api/expense-types/:id', async ({ params, request }) => {
+    const patch = (await request.json()) as Partial<Category>
+    const index = db.categories.findIndex((c) => c.id === params.id)
+    if (index === -1) return new HttpResponse(null, { status: 404 })
+    db.categories[index] = { ...db.categories[index], ...patch }
+    return HttpResponse.json(db.categories[index])
+  }),
+
+  http.get('/api/payment-sources', () =>
+    HttpResponse.json(db.accounts.filter((a) => !a.archivedAt)),
+  ),
+
+  http.post('/api/payment-sources', async ({ request }) => {
+    const input = (await request.json()) as AccountInput
+    const created: Account = {
+      id: `source-${Date.now()}`,
+      ...input,
+      order: db.accounts.length,
+      archivedAt: null,
+      householdId: MOCK_HOUSEHOLD.id,
+    }
+    db.accounts.push(created)
+    return HttpResponse.json(created, { status: 201 })
+  }),
+
+  http.put('/api/payment-sources/:id', async ({ params, request }) => {
+    const patch = (await request.json()) as Partial<Account>
+    const index = db.accounts.findIndex((a) => a.id === params.id)
+    if (index === -1) return new HttpResponse(null, { status: 404 })
+    db.accounts[index] = { ...db.accounts[index], ...patch }
+    return HttpResponse.json(db.accounts[index])
+  }),
+
+  http.get('/api/households/:id/members', () => HttpResponse.json(db.members)),
+
+  http.post('/api/households/:id/members', async ({ request }) => {
+    const input = (await request.json()) as InviteInput
+    if (!isAsciiEmail(input.email)) {
+      return HttpResponse.json(
+        {
+          success: false,
+          status_code: 400,
+          error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' },
+        },
+        { status: 400 },
+      )
+    }
+    if (db.members.some((m) => m.email === input.email && !m.deletedAt)) {
+      // The 409 wording differs per case on purpose — it is the whole feature.
+      return HttpResponse.json(
+        {
+          success: false,
+          status_code: 409,
+          error: {
+            code: 'CONFLICT',
+            message:
+              'Already in a household. Ask them to leave it first, then invite again.',
+          },
+        },
+        { status: 409 },
+      )
+    }
+    const created: Member = {
+      id: `user-${Date.now()}`,
+      name: input.name,
+      email: input.email,
+      role: 'member',
+      householdId: MOCK_HOUSEHOLD.id,
+      deletedAt: null,
+      deletionReason: null,
+      invitePending: true,
+      resendCount: 0,
+    }
+    db.members.push(created)
+    return HttpResponse.json(created, { status: 201 })
+  }),
+
+  http.post(
+    '/api/households/:id/members/:memberId/resend-invite',
+    ({ params }) => {
+      const member = db.members.find((m) => m.id === params.memberId)
+      if (!member) return new HttpResponse(null, { status: 404 })
+      if (member.resendCount >= MAX_RESENDS) {
+        return HttpResponse.json(
+          {
+            success: false,
+            status_code: 409,
+            error: {
+              code: 'CONFLICT',
+              message: 'Max resends reached. Remove and re-invite.',
+            },
+          },
+          { status: 409 },
+        )
+      }
+      member.resendCount += 1
+      return HttpResponse.json(member)
+    },
+  ),
+
+  http.delete('/api/households/:id/members/:memberId', ({ params }) => {
+    const member = db.members.find((m) => m.id === params.memberId)
+    if (!member) return new HttpResponse(null, { status: 404 })
+    // Tombstoned, never destroyed: expense attribution has to survive.
+    member.deletedAt = new Date().toISOString().slice(0, 10)
+    member.deletionReason = 'REMOVED'
+    member.invitePending = false
+    return HttpResponse.json(member)
+  }),
+
+  http.get('/api/households/:id/prefs', () => HttpResponse.json(db.prefs)),
+
+  http.put('/api/households/:id/prefs', async ({ request }) => {
+    const patch = (await request.json()) as Partial<HouseholdPrefs>
+    db.prefs = { ...db.prefs, ...patch }
+    return HttpResponse.json(db.prefs)
+  }),
 
   http.get('/api/users', () => HttpResponse.json(MOCK_USERS)),
 ]

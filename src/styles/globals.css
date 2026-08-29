@@ -35,6 +35,10 @@
   --rim-2: #3a4e8c;
   --rim-3: #5f6570;
   --rim-4: #b07d22;
+  --rim-5: #6d4a7c;
+  --rim-6: #4a7a46;
+  --rim-7: #8a5230;
+  --rim-8: #2f6b8a;
   --accent: #a8386a;
   --accent-ink: #ffffff;
   --danger: #a62d22;
@@ -64,6 +68,10 @@
   --rim-2: #2e7d8f;
   --rim-3: #5a6572;
   --rim-4: #a87a34;
+  --rim-5: #6b4f8f;
+  --rim-6: #3f7a4a;
+  --rim-7: #8a5230;
+  --rim-8: #4a6b7a;
   --accent: #1e4e8c;
   --accent-ink: #ffffff;
   --danger: #a33b2c;
@@ -93,6 +101,10 @@
   --rim-2: #45607f;
   --rim-3: #3e7c79;
   --rim-4: #a8842b;
+  --rim-5: #7a4f6b;
+  --rim-6: #8a5230;
+  --rim-7: #5f5a7a;
+  --rim-8: #7a6a3a;
   --accent: #313e40;
   --accent-ink: #ffffff;
   --danger: #9b3327;
@@ -120,6 +132,10 @@
   --color-rim-2: var(--rim-2);
   --color-rim-3: var(--rim-3);
   --color-rim-4: var(--rim-4);
+  --color-rim-5: var(--rim-5);
+  --color-rim-6: var(--rim-6);
+  --color-rim-7: var(--rim-7);
+  --color-rim-8: var(--rim-8);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);

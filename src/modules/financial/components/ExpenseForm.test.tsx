@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/test-utils'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
@@ -40,5 +40,35 @@ describe('ExpenseForm', () => {
     const alerts = await screen.findAllByRole('alert')
     expect(alerts.length).toBeGreaterThan(0)
     expect(alerts.map((alert) => alert.textContent).join(' ')).toMatch(/wajib/i)
+  })
+
+  it('rejects a future date', async () => {
+    renderWithProviders(<ExpenseForm />)
+    await screen.findByRole('option', { name: 'Belanja' })
+
+    const future = new Date()
+    future.setDate(future.getDate() + 3)
+    const iso = future.toISOString().slice(0, 10)
+
+    await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Kopi')
+    await userEvent.type(screen.getByLabelText(/jumlah/i), '25000')
+    await userEvent.selectOptions(
+      screen.getByLabelText(/kategori/i),
+      'type-belanja',
+    )
+    await userEvent.selectOptions(
+      screen.getByLabelText(/metode pembayaran/i),
+      'source-tunai',
+    )
+    // Native validation would silently swallow this submit without noValidate,
+    // so this test also guards that the form owns its own rules.
+    fireEvent.change(screen.getByLabelText(/tanggal bayar/i), {
+      target: { value: iso },
+    })
+    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+
+    expect(
+      await screen.findByText(/tidak boleh tanggal yang akan datang/i),
+    ).toBeInTheDocument()
   })
 })

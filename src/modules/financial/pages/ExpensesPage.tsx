@@ -172,6 +172,7 @@ export const ExpensesPage = () => {
               onChange={updateFilters}
               onClear={clearFilters}
               isNarrowed={isNarrowed}
+              canManage={canManage}
             />
           </div>
           <button

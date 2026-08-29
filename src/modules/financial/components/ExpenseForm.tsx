@@ -64,6 +64,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
+      noValidate
       className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
     >
       <Field label={m.form_name()} error={errors.name?.message}>
