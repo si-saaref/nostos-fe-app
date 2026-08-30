@@ -1,20 +1,29 @@
-import { useForm } from 'react-hook-form'
+import { useMessages } from '@/i18n/useMessages'
+import { Controller, useForm } from 'react-hook-form'
 import { useCreateExpense } from '@/api/mutations/useCreateExpense'
 import { useExpenseTypes } from '@/api/queries/expenseTypes'
 import { usePaymentSources } from '@/api/queries/paymentSources'
+import { useUsers } from '@/api/queries/users'
 import { useHousehold } from '@/contexts/useHousehold'
-import { canManageExpenses } from '@/utils/permissions'
 import { getErrorMessage } from '@/utils/errors'
+import { isoDay } from '@/utils/dates'
+import { Select } from '@/components/Select'
+import { rimFor } from '@/types/settings'
 import type { CreateExpenseInput } from '@/types/expense'
 
 interface Props {
   onSuccess?: () => void
+  onCancel?: () => void
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
-
-export const ExpenseForm = ({ onSuccess }: Props) => {
-  const { householdId, role, user } = useHousehold()
+/**
+ * Create is open to every member — the permission matrix gates update and
+ * delete, not recording what you just paid for. Six fields, because capture
+ * has to be faster than remembering.
+ */
+export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
+  const m = useMessages()
+  const { householdId, user } = useHousehold()
   const {
     mutate: createExpense,
     isPending,
@@ -22,9 +31,13 @@ export const ExpenseForm = ({ onSuccess }: Props) => {
   } = useCreateExpense(householdId)
   const { data: types } = useExpenseTypes(householdId)
   const { data: sources } = usePaymentSources(householdId)
+  const { data: users } = useUsers(householdId)
+
+  const today = isoDay(new Date())
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -34,16 +47,10 @@ export const ExpenseForm = ({ onSuccess }: Props) => {
       value: 0,
       typeId: '',
       sourceId: '',
-      datePaid: today(),
+      datePaid: today,
       paidByUserId: user?.id ?? '',
     },
   })
-
-  if (!canManageExpenses(role)) {
-    return (
-      <p className="text-sm text-gray-500">Only admins can add expenses.</p>
-    )
-  }
 
   const onSubmit = (data: CreateExpenseInput) => {
     createExpense(
@@ -58,100 +65,152 @@ export const ExpenseForm = ({ onSuccess }: Props) => {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm">
-        Name
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      <Field label={m.form_name()} error={errors.name?.message}>
         <input
-          className="rounded border border-gray-300 px-3 py-2"
-          {...register('name', { required: 'Name is required' })}
+          className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
+          {...register('name', { required: m.form_err_name() })}
         />
-        {errors.name && (
-          <span role="alert" className="text-xs text-red-600">
-            {errors.name.message}
-          </span>
-        )}
-      </label>
+      </Field>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Amount
+      <Field label={m.form_amount()} error={errors.value?.message}>
         <input
           type="number"
-          className="rounded border border-gray-300 px-3 py-2"
+          inputMode="numeric"
+          className="well-shadow bg-chip tnum w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('value', {
-            required: 'Amount is required',
+            required: m.form_err_amount(),
             valueAsNumber: true,
-            min: { value: 1, message: 'Must be positive' },
+            min: { value: 1, message: m.form_err_positive() },
           })}
         />
-        {errors.value && (
-          <span role="alert" className="text-xs text-red-600">
-            {errors.value.message}
-          </span>
-        )}
-      </label>
+      </Field>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Type
-        <select
-          className="rounded border border-gray-300 px-3 py-2"
-          {...register('typeId', { required: 'Type is required' })}
-        >
-          <option value="">Select type</option>
-          {types?.map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.name}
-            </option>
-          ))}
-        </select>
-        {errors.typeId && (
-          <span role="alert" className="text-xs text-red-600">
-            {errors.typeId.message}
-          </span>
-        )}
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        Source
-        <select
-          className="rounded border border-gray-300 px-3 py-2"
-          {...register('sourceId', { required: 'Source is required' })}
-        >
-          <option value="">Select source</option>
-          {sources?.map((source) => (
-            <option key={source.id} value={source.id}>
-              {source.name}
-            </option>
-          ))}
-        </select>
-        {errors.sourceId && (
-          <span role="alert" className="text-xs text-red-600">
-            {errors.sourceId.message}
-          </span>
-        )}
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        Date paid
+      <Field label={m.form_date()} error={errors.datePaid?.message}>
         <input
           type="date"
-          className="rounded border border-gray-300 px-3 py-2"
-          {...register('datePaid', { required: 'Date is required' })}
+          max={today}
+          className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
+          {...register('datePaid', {
+            required: m.form_err_date(),
+            validate: (value) => value <= today || m.form_err_future(),
+          })}
         />
-      </label>
+      </Field>
+
+      <Controller
+        control={control}
+        name="typeId"
+        rules={{ required: m.form_err_category() }}
+        render={({ field }) => (
+          <Select
+            label={m.form_category()}
+            placeholder={m.form_choose()}
+            value={field.value}
+            onChange={field.onChange}
+            options={
+              types?.map((type, index) => ({
+                value: type.id,
+                label: type.name,
+                rim: rimFor(index),
+              })) ?? []
+            }
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="sourceId"
+        rules={{ required: m.form_err_method() }}
+        render={({ field }) => (
+          <Select
+            label={m.form_method()}
+            placeholder={m.form_choose()}
+            value={field.value}
+            onChange={field.onChange}
+            options={
+              sources?.map((source) => ({
+                value: source.id,
+                label: source.name,
+              })) ?? []
+            }
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="paidByUserId"
+        rules={{ required: true }}
+        render={({ field }) => (
+          <Select
+            label={m.form_paid_by()}
+            value={field.value}
+            onChange={field.onChange}
+            options={
+              users?.map((member) => ({
+                value: member.id,
+                label: member.name,
+              })) ?? []
+            }
+          />
+        )}
+      />
 
       {error && (
-        <p role="alert" className="text-xs text-red-600">
+        <p
+          role="alert"
+          className="text-danger text-[11px] sm:col-span-2 lg:col-span-3"
+        >
           {getErrorMessage(error)}
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-50"
-      >
-        {isPending ? 'Saving…' : 'Add expense'}
-      </button>
+      <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-3">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+        >
+          {isPending ? m.form_saving() : m.form_submit()}
+        </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
+          >
+            {m.form_cancel()}
+          </button>
+        )}
+      </div>
     </form>
   )
 }
+
+const Field = ({
+  label,
+  error,
+  children,
+}: {
+  label: string
+  error?: string
+  children: React.ReactNode
+}) => (
+  <label className="flex flex-col gap-1">
+    <span className="text-muted text-[9px] font-bold tracking-[0.11em] uppercase">
+      {label}
+    </span>
+    {children}
+    {error && (
+      <span role="alert" className="text-danger text-[10.5px]">
+        {error}
+      </span>
+    )}
+  </label>
+)

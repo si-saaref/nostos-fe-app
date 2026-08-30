@@ -28,3 +28,8 @@ dist-ssr
 # Capacitor native projects (generated via `npx cap add ios|android`)
 /ios
 /android
+# Paraglide compiles messages into this directory
+# src/paraglide
+# .inlang
+
+/coverage

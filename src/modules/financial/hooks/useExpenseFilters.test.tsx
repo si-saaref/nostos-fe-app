@@ -19,7 +19,8 @@ describe('useExpenseFilters', () => {
       wrapper,
     })
     expect(result.current.filters.page).toBe(1)
-    expect(result.current.filters.limit).toBe(25)
+    // The tape is continuous rather than paginated: one page holds a month.
+    expect(result.current.filters.limit).toBe(400)
     expect(result.current.filters.sortOrder).toBe('desc')
   })
 
