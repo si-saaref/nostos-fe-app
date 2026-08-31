@@ -1,4 +1,4 @@
-import { AxiosError } from 'axios'
+import axios from 'axios'
 import type { ApiErrorBody } from '@/types/api'
 
 /**
@@ -10,9 +10,12 @@ import type { ApiErrorBody } from '@/types/api'
  * shape is still accepted as a fallback because some earlier mock endpoints
  * answer that way, but the envelope wins — its wording is often the whole
  * feature (the 409s on invite differ per case on purpose).
+ *
+ * `axios.isAxiosError` rather than `instanceof AxiosError`: the guard keeps
+ * working if axios is ever duplicated in the bundle graph.
  */
 export const getErrorMessage = (error: unknown): string => {
-  if (error instanceof AxiosError) {
+  if (axios.isAxiosError(error)) {
     const body = error.response?.data as ApiErrorBody | undefined
     return body?.error?.message ?? body?.message ?? error.message
   }
@@ -20,12 +23,4 @@ export const getErrorMessage = (error: unknown): string => {
     return error.message
   }
   return 'Something went wrong'
-}
-
-/** Error code from the same envelope, for callers that branch on it. */
-export const getErrorCode = (error: unknown): string | undefined => {
-  if (error instanceof AxiosError) {
-    return (error.response?.data as ApiErrorBody | undefined)?.error?.code
-  }
-  return undefined
 }

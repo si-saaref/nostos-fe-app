@@ -1,13 +1,3 @@
-export interface ExpenseType {
-  id: string
-  name: string
-}
-
-export interface PaymentSource {
-  id: string
-  name: string
-}
-
 export interface Expense {
   id: string
   name: string
@@ -35,6 +25,11 @@ export interface CreateExpenseInput {
   paidByUserId: string
 }
 
+/** Sortable columns on the list endpoint. Named so a typo cannot reach the wire. */
+export type ExpenseSortField = 'datePaid' | 'value' | 'name'
+
+export type SortDirection = 'asc' | 'desc'
+
 export interface ExpenseFilters {
   dateFrom?: string
   dateTo?: string
@@ -44,29 +39,6 @@ export interface ExpenseFilters {
   search?: string
   page: number
   limit: number
-  sortBy: string
-  sortOrder: 'asc' | 'desc'
-}
-
-export interface Pagination {
-  total: number
-  page: number
-  pages: number
-}
-
-/**
- * Filter-scoped aggregates returned alongside every list page (BE PRD §3.1).
- * These describe the whole filtered set, not the current page — which is why
- * anything rendered from them must state the scope it is counting.
- */
-export interface Totals {
-  sum: number
-  count: number
-  average: number
-}
-
-export interface Paginated<T> {
-  items: T[]
-  pagination: Pagination
-  totals?: Totals
+  sortBy: ExpenseSortField
+  sortOrder: SortDirection
 }

@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { HouseholdContext } from '@/contexts/HouseholdContext'
 import type { HouseholdContextValue } from '@/contexts/HouseholdContext'
 import { SettingsProvider } from '@/contexts/SettingsContext'
-import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/data'
+import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 
 export const createTestQueryClient = (): QueryClient =>
   new QueryClient({

@@ -1,31 +1,32 @@
 import { useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
-import { ConfirmDialog } from '@/modules/settings/components/ConfirmDialog'
+import { useCurrency } from '@/hooks/useCurrency'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { FormField } from '@/components/FormField'
 import { SettingPlate } from '@/modules/settings/components/SettingPlate'
-import {
-  Field,
-  RowActions,
-  SectionShell,
-} from '@/modules/settings/components/parts'
+import { SectionShell } from '@/modules/settings/components/SectionShell'
+import { RowActions } from '@/modules/settings/components/RowActions'
 import {
   useAccounts,
   useCreateAccount,
   useUpdateAccount,
-} from '@/api/queries/settings'
+} from '@/modules/settings/api/accounts'
+import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay, isoDay } from '@/utils/dates'
-import { rimFor } from '@/types/settings'
-import type { Account, AccountKind } from '@/types/settings'
+import { rimFor } from '@/theme/rims'
+import type { Account, AccountKind } from '@/types/catalog'
+import type { AccountInput } from '@/modules/settings/types/settings'
 
 interface Props {
   householdId: string
   canManage: boolean
 }
 
-const emptyDraft = () => ({
+const emptyDraft = (): AccountInput => ({
   name: '',
-  kind: 'cash' as AccountKind,
+  kind: 'cash',
   openingBalance: 0,
   asOf: isoDay(new Date()),
 })
@@ -33,19 +34,27 @@ const emptyDraft = () => ({
 export const AccountSection = ({ householdId, canManage }: Props) => {
   const m = useMessages()
   const { locale } = useSettings()
+  const currency = useCurrency()
   const {
     data: accounts,
     isLoading,
     isError,
     refetch,
   } = useAccounts(householdId)
-  const { mutate: create, isPending: creating } = useCreateAccount(householdId)
-  const { mutate: update } = useUpdateAccount(householdId)
+  const {
+    mutate: create,
+    isPending: isCreating,
+    error: createError,
+  } = useCreateAccount(householdId)
+  const { mutate: update, error: updateError } = useUpdateAccount(householdId)
 
   const [openId, setOpenId] = useState<string | null>(null)
-  const [adding, setAdding] = useState(false)
-  const [draft, setDraft] = useState(emptyDraft())
-  const [archiving, setArchiving] = useState<Account | null>(null)
+  const [isAdding, setIsAdding] = useState(false)
+  // Two drafts, not one: opening a row used to overwrite whatever had been
+  // typed into the add form, which was still on screen and still bound to it.
+  const [newDraft, setNewDraft] = useState<AccountInput>(emptyDraft)
+  const [editDraft, setEditDraft] = useState<AccountInput>(emptyDraft)
+  const [accountToArchive, setAccountToArchive] = useState<Account | null>(null)
 
   const KINDS: Array<{ value: AccountKind; label: string }> = [
     { value: 'cash', label: m.acc_kind_cash() },
@@ -55,16 +64,19 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
   const kindLabel = (kind: AccountKind) =>
     KINDS.find((option) => option.value === kind)?.label ?? kind
 
-  const fields = () => (
+  const fields = (
+    draft: AccountInput,
+    setDraft: (next: AccountInput) => void,
+  ) => (
     <div className="flex flex-wrap items-end gap-2">
-      <Field label={m.acc_name()} className="min-w-[180px] flex-1">
+      <FormField label={m.acc_name()} className="min-w-[180px] flex-1">
         <input
           value={draft.name}
           onChange={(event) => setDraft({ ...draft, name: event.target.value })}
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
         />
-      </Field>
-      <Field label={m.acc_kind()}>
+      </FormField>
+      <FormField label={m.acc_kind()}>
         <select
           value={draft.kind}
           onChange={(event) =>
@@ -78,8 +90,8 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             </option>
           ))}
         </select>
-      </Field>
-      <Field label={m.acc_opening()}>
+      </FormField>
+      <FormField label={m.acc_opening()}>
         <input
           type="number"
           inputMode="numeric"
@@ -89,21 +101,21 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
           }
           className="well-shadow bg-chip tnum w-[140px] rounded-lg px-3 py-2 text-[12.5px] outline-none"
         />
-      </Field>
-      <Field label={m.acc_as_of()}>
+      </FormField>
+      <FormField label={m.acc_as_of()}>
         <input
           type="date"
           value={draft.asOf}
           onChange={(event) => setDraft({ ...draft, asOf: event.target.value })}
           className="well-shadow bg-chip rounded-lg px-3 py-2 text-[12.5px] outline-none"
         />
-      </Field>
+      </FormField>
     </div>
   )
 
   return (
     <SectionShell
-      id="akun"
+      id={SETTINGS_ANCHORS.accounts}
       title={m.acc_title()}
       description={m.acc_desc()}
       note={m.acc_balance_note()}
@@ -111,39 +123,40 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
       isLoading={isLoading}
       isError={isError}
       onRetry={refetch}
+      actionError={createError ?? updateError}
       isEmpty={(accounts?.length ?? 0) === 0}
       emptyText={m.acc_empty()}
       addLabel={m.acc_add()}
       onAdd={
         canManage
           ? () => {
-              setDraft(emptyDraft())
-              setAdding(true)
+              setNewDraft(emptyDraft())
+              setIsAdding(true)
             }
           : undefined
       }
     >
       <ul className="flex flex-col gap-1.5">
-        {adding && (
+        {isAdding && (
           <li className="bg-card lift-shadow flex flex-col gap-3 rounded-lg p-3">
-            {fields()}
+            {fields(newDraft, setNewDraft)}
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() =>
                   create(
-                    { ...draft, name: draft.name.trim() },
-                    { onSuccess: () => setAdding(false) },
+                    { ...newDraft, name: newDraft.name.trim() },
+                    { onSuccess: () => setIsAdding(false) },
                   )
                 }
-                disabled={creating || !draft.name.trim()}
+                disabled={isCreating || !newDraft.name.trim()}
                 className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
               >
-                {creating ? m.act_saving() : m.act_add()}
+                {isCreating ? m.act_saving() : m.act_add()}
               </button>
               <button
                 type="button"
-                onClick={() => setAdding(false)}
+                onClick={() => setIsAdding(false)}
                 className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
               >
                 {m.act_cancel()}
@@ -160,7 +173,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
               title={account.name}
               meta={`${kindLabel(account.kind)} · ${m.acc_opening()} ${formatCurrency(
                 account.openingBalance,
-                'IDR',
+                currency,
                 locale,
               )} · ${m.acc_as_of()} ${new Intl.DateTimeFormat(locale, {
                 day: 'numeric',
@@ -169,10 +182,17 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
               }).format(fromIsoDay(account.asOf))}`}
               rim={rimFor(account.order)}
               muted={Boolean(account.archivedAt)}
+              trailing={
+                account.archivedAt ? (
+                  <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
+                    {m.cat_archived()}
+                  </span>
+                ) : undefined
+              }
               isOpen={isOpen}
               onToggle={() => {
                 setOpenId(isOpen ? null : account.id)
-                setDraft({
+                setEditDraft({
                   name: account.name,
                   kind: account.kind,
                   openingBalance: account.openingBalance,
@@ -182,20 +202,20 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             >
               {canManage ? (
                 <div className="flex flex-col gap-3">
-                  {fields()}
+                  {fields(editDraft, setEditDraft)}
                   <RowActions
                     onSave={() => {
                       update({
                         id: account.id,
-                        ...draft,
-                        name: draft.name.trim(),
+                        ...editDraft,
+                        name: editDraft.name.trim(),
                       })
                       setOpenId(null)
                     }}
                     onArchive={
                       account.archivedAt
                         ? undefined
-                        : () => setArchiving(account)
+                        : () => setAccountToArchive(account)
                     }
                     onRestore={
                       account.archivedAt
@@ -215,20 +235,20 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
       </ul>
 
       <ConfirmDialog
-        open={Boolean(archiving)}
-        onOpenChange={(open) => !open && setArchiving(null)}
-        title={m.archive_title({ name: archiving?.name ?? '' })}
-        body={m.archive_body({ name: archiving?.name ?? '' })}
+        open={Boolean(accountToArchive)}
+        onOpenChange={(open) => !open && setAccountToArchive(null)}
+        title={m.archive_title({ name: accountToArchive?.name ?? '' })}
+        body={m.archive_body({ name: accountToArchive?.name ?? '' })}
         confirmLabel={m.archive_confirm()}
         destructive
         onConfirm={() => {
-          if (archiving) {
+          if (accountToArchive) {
             update({
-              id: archiving.id,
-              archivedAt: new Date().toISOString().slice(0, 10),
+              id: accountToArchive.id,
+              archivedAt: isoDay(new Date()),
             })
           }
-          setArchiving(null)
+          setAccountToArchive(null)
           setOpenId(null)
         }}
       />

@@ -23,22 +23,25 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+/** The anonymous probe: a 401 here is the expected answer, not a lost session. */
+const isSessionProbe = (url: string | undefined): boolean => {
+  if (!url) return false
+  try {
+    return new URL(url, 'http://local').pathname.endsWith('/auth/session')
+  } catch {
+    return false
+  }
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
-    const status =
-      typeof error === 'object' && error !== null && 'response' in error
-        ? (error as { response?: { status?: number } }).response?.status
-        : undefined
-    const requestUrl =
-      typeof error === 'object' && error !== null && 'config' in error
-        ? (error as { config?: { url?: string } }).config?.url
-        : undefined
     if (
-      status === 401 &&
+      axios.isAxiosError(error) &&
+      error.response?.status === 401 &&
       typeof window !== 'undefined' &&
       !window.location.pathname.startsWith('/auth') &&
-      !requestUrl?.includes('/auth/session')
+      !isSessionProbe(error.config?.url)
     ) {
       window.location.assign('/auth/login')
     }

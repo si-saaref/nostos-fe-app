@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form'
-import { useLogin } from '@/modules/auth/api/useLogin'
+import { useLogin } from '@/modules/auth/api/session'
 import { getErrorMessage } from '@/utils/errors'
 import type { LoginInput } from '@/modules/auth/types/auth'
 

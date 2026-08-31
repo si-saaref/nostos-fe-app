@@ -175,7 +175,7 @@ multi-currency, inline editing, 2FA, international email domains.
   `notes/BE/`. Never copy a vault document into the repo — link to it.
 - **`docs/FRONTEND.md`** is the authoritative technical record for this repo and wins any
   disagreement with the vault about what this code actually does.
-- **Mock fixtures only** for content: `src/mocks/data.ts` — "The Smiths", Alex Smith,
+- **Mock fixtures only** for content: `src/mocks/fixtures/` — "The Smiths", Alex Smith,
   Groceries / Utilities / Transport, Cash / Debit Card, rupiah amounts. Useful as realistic
   shapes; not real household data.
 - **No brand assets exist.** `public/favicon.svg` and `public/icons.svg` are unbranded

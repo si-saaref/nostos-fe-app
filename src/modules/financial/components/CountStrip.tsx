@@ -1,9 +1,11 @@
 import { useMessages } from '@/i18n/useMessages'
-import { useExpenses } from '@/api/queries/expenses'
+import { useExpenses } from '@/modules/financial/api/expenses'
 import { useSettings } from '@/contexts/useSettings'
+import { useCurrency } from '@/hooks/useCurrency'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay, previousMonthRange } from '@/utils/dates'
-import type { ExpenseFilters, Totals } from '@/types/expense'
+import type { Totals } from '@/types/api'
+import type { ExpenseFilters } from '@/types/expense'
 
 interface Props {
   householdId: string
@@ -35,6 +37,7 @@ export const CountStrip = ({
 }: Props) => {
   const m = useMessages()
   const { locale } = useSettings()
+  const currency = useCurrency()
   const previous = previousMonthRange(fromIsoDay(filters.dateFrom ?? ''))
 
   const previousQuery = useExpenses(householdId, {
@@ -69,7 +72,7 @@ export const CountStrip = ({
   const figures = [
     {
       key: m.count_total(),
-      value: formatCurrency(sum, 'IDR', locale),
+      value: formatCurrency(sum, currency, locale),
       note:
         deltaPct === null
           ? null
@@ -83,7 +86,7 @@ export const CountStrip = ({
       key: m.count_previous(),
       value: previousQuery.isLoading
         ? '—'
-        : formatCurrency(previousSum, 'IDR', locale),
+        : formatCurrency(previousSum, currency, locale),
       note: previousTotals
         ? m.tape_entries_short({ n: previousTotals.count })
         : null,
@@ -92,13 +95,13 @@ export const CountStrip = ({
     {
       key: m.count_entries(),
       value: String(count),
-      note: m.count_avg({ amount: formatCurrency(average, 'IDR', locale) }),
+      note: m.count_avg({ amount: formatCurrency(average, currency, locale) }),
       tone: 'muted',
       sub: m.count_per_day({ n: perDay.toLocaleString(locale) }),
     },
     {
       key: m.count_yours(),
-      value: formatCurrency(yourShare, 'IDR', locale),
+      value: formatCurrency(yourShare, currency, locale),
       note: m.count_share_of_total({ pct: `${sharePct}%` }),
       tone: 'muted',
     },

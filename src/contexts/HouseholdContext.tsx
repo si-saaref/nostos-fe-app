@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 import type { ReactNode } from 'react'
-import { useSession } from '@/api/queries/session'
+import { useSession } from '@/modules/auth/api/session'
 import { setHouseholdId } from '@/api/client'
 import type { Household, Role, User } from '@/types/household'
 

@@ -4,14 +4,14 @@ import { Logo } from '@/components/Logo'
 import {
   LINK_TTL_MINUTES,
   MAX_REQUESTS_PER_HOUR,
-  isAsciiEmail,
   submitSignin,
-} from '@/modules/auth/signin/machine'
+} from '@/modules/auth/signin/signin'
+import { isAsciiEmail } from '@/utils/validators'
 import type {
   LandingReason,
   SigninErrorKind,
   SigninState,
-} from '@/modules/auth/signin/machine'
+} from '@/modules/auth/types/auth'
 
 interface Props {
   landing: LandingReason
@@ -44,11 +44,18 @@ export const SigninCard = ({
     if (state.kind === 'sent') sentHeading.current?.focus()
   }, [state.kind])
 
-  const send = async (address: string, used: number) => {
-    setState({ kind: 'sending' })
+  const send = async (address: string, sendsUsed: number) => {
+    // A resend stays on the confirmation: transitioning back to 'sending' took
+    // the whole "check your email" screen away and put the form back, which
+    // reads as the resend having failed.
+    setState((current) =>
+      current.kind === 'sent'
+        ? { ...current, isResending: true }
+        : { kind: 'sending' },
+    )
     const result = await submitSignin(address)
     if (result.ok) {
-      setState({ kind: 'sent', email: address, used })
+      setState({ kind: 'sent', email: address, sendsUsed })
     } else {
       setState({ kind: 'idle', error: result.error })
     }
@@ -73,7 +80,7 @@ export const SigninCard = ({
   const centred = align === 'center'
 
   if (state.kind === 'sent') {
-    const left = MAX_REQUESTS_PER_HOUR - state.used
+    const resendsLeft = MAX_REQUESTS_PER_HOUR - state.sendsUsed
     return (
       <div className={centred ? 'text-center' : ''}>
         {showLogo && (
@@ -101,13 +108,16 @@ export const SigninCard = ({
           {m.sent_body({ email: state.email, n: LINK_TTL_MINUTES })}
         </p>
 
-        {left > 0 ? (
+        {resendsLeft > 0 ? (
           <button
             type="button"
-            onClick={() => void send(state.email, state.used + 1)}
-            className="border-hair text-ink mt-3.5 w-full rounded-lg border px-3 py-2 text-[11.5px] font-semibold"
+            disabled={state.isResending}
+            onClick={() => void send(state.email, state.sendsUsed + 1)}
+            className="border-hair text-ink mt-3.5 w-full rounded-lg border px-3 py-2 text-[11.5px] font-semibold disabled:opacity-60"
           >
-            {m.sent_resend()} · {m.sent_resend_left({ n: left })}
+            {state.isResending
+              ? m.signin_sending()
+              : `${m.sent_resend()} · ${m.sent_resend_left({ n: resendsLeft })}`}
           </button>
         ) : (
           <p className="bg-chip text-muted mt-3.5 rounded-lg px-3 py-2 text-[11px]">
@@ -129,7 +139,7 @@ export const SigninCard = ({
     )
   }
 
-  const sending = state.kind === 'sending'
+  const isSending = state.kind === 'sending'
   const error = state.kind === 'idle' ? state.error : undefined
 
   return (
@@ -201,10 +211,10 @@ export const SigninCard = ({
 
         <button
           type="submit"
-          disabled={sending}
+          disabled={isSending}
           className="bg-accent text-accent-ink mt-3 w-full rounded-lg px-4 py-2.5 text-[12.5px] font-semibold disabled:opacity-60"
         >
-          {sending ? m.signin_sending() : m.signin_cta()}
+          {isSending ? m.signin_sending() : m.signin_cta()}
         </button>
       </form>
 

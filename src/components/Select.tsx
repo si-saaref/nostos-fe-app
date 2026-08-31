@@ -1,5 +1,6 @@
 import { Select as RadixSelect } from 'radix-ui'
-import type { RimIndex } from '@/types/settings'
+import { RIM_CLASS } from '@/theme/rims'
+import type { RimIndex } from '@/theme/rims'
 
 export interface SelectOption {
   value: string
@@ -19,17 +20,11 @@ interface Props {
   disabled?: boolean
   /** Hide the label visually — the placeholder already names the control. */
   hideLabel?: boolean
-}
-
-const RIM_CLASS: Record<RimIndex, string> = {
-  1: 'bg-rim-1',
-  2: 'bg-rim-2',
-  3: 'bg-rim-3',
-  4: 'bg-rim-4',
-  5: 'bg-rim-5',
-  6: 'bg-rim-6',
-  7: 'bg-rim-7',
-  8: 'bg-rim-8',
+  /**
+   * Validation message. Without a slot for this a required Select can block a
+   * submit while explaining nothing, which reads as a broken button.
+   */
+  error?: string
 }
 
 /**
@@ -52,78 +47,97 @@ export const Select = ({
   placeholder,
   disabled = false,
   hideLabel = false,
+  error,
 }: Props) => {
   const selected = options.find((option) => option.value === value)
 
   return (
-    <label className="flex flex-col gap-1">
-      <span
-        className={
-          hideLabel
-            ? 'sr-only'
-            : 'text-muted text-[9px] font-bold tracking-[0.11em] uppercase'
-        }
-      >
-        {label}
-      </span>
-
-      <RadixSelect.Root
-        value={value === '' ? UNSET : value}
-        disabled={disabled}
-        onValueChange={(next) => onChange(next === UNSET ? '' : next)}
-      >
-        <RadixSelect.Trigger
-          aria-label={label}
-          className="well-shadow bg-chip flex items-center gap-2 rounded-lg px-3 py-2 text-[11.5px] font-medium outline-none disabled:opacity-60 data-[state=open]:ring-2 data-[state=open]:ring-[var(--accent)]"
+    <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1">
+        <span
+          className={
+            hideLabel
+              ? 'sr-only'
+              : 'text-muted text-[9px] font-bold tracking-[0.11em] uppercase'
+          }
         >
-          {selected?.rim && (
-            <span
-              aria-hidden="true"
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${RIM_CLASS[selected.rim]}`}
-            />
-          )}
-          <RadixSelect.Value
-            placeholder={
-              <span className="text-muted">{placeholder ?? label}</span>
-            }
-            className={selected ? 'text-ink' : 'text-muted'}
-          />
-          <RadixSelect.Icon className="text-muted ml-auto">
-            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-              <path
-                d="M2 4l3 3 3-3"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </RadixSelect.Icon>
-        </RadixSelect.Trigger>
+          {label}
+        </span>
 
-        <RadixSelect.Portal>
-          <RadixSelect.Content
-            position="popper"
-            sideOffset={6}
-            className="bg-card lift-shadow z-50 max-h-[min(320px,60vh)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl p-1"
+        <RadixSelect.Root
+          value={value === '' ? UNSET : value}
+          disabled={disabled}
+          onValueChange={(next) => onChange(next === UNSET ? '' : next)}
+        >
+          <RadixSelect.Trigger
+            aria-label={label}
+            aria-invalid={error ? true : undefined}
+            className={`well-shadow bg-chip flex items-center gap-2 rounded-lg px-3 py-2 text-[11.5px] font-medium outline-none disabled:opacity-60 data-[state=open]:ring-2 data-[state=open]:ring-[var(--accent)] ${
+              error ? 'ring-danger ring-2' : ''
+            }`}
           >
-            <RadixSelect.Viewport>
-              {placeholder && <Item value={UNSET} label={placeholder} muted />}
-              {options.map((option) => (
-                <Item
-                  key={option.value}
-                  value={option.value}
-                  label={option.label}
-                  hint={option.hint}
-                  rim={option.rim}
+            {selected?.rim && (
+              <span
+                aria-hidden="true"
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${RIM_CLASS[selected.rim]}`}
+              />
+            )}
+            <RadixSelect.Value
+              placeholder={
+                <span className="text-muted">{placeholder ?? label}</span>
+              }
+              className={selected ? 'text-ink' : 'text-muted'}
+            />
+            <RadixSelect.Icon className="text-muted ml-auto">
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 4l3 3 3-3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
-              ))}
-            </RadixSelect.Viewport>
-          </RadixSelect.Content>
-        </RadixSelect.Portal>
-      </RadixSelect.Root>
-    </label>
+              </svg>
+            </RadixSelect.Icon>
+          </RadixSelect.Trigger>
+
+          <RadixSelect.Portal>
+            <RadixSelect.Content
+              position="popper"
+              sideOffset={6}
+              className="bg-card lift-shadow z-50 max-h-[min(320px,60vh)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl p-1"
+            >
+              <RadixSelect.Viewport>
+                {placeholder && (
+                  <Item value={UNSET} label={placeholder} muted />
+                )}
+                {options.map((option) => (
+                  <Item
+                    key={option.value}
+                    value={option.value}
+                    label={option.label}
+                    hint={option.hint}
+                    rim={option.rim}
+                  />
+                ))}
+              </RadixSelect.Viewport>
+            </RadixSelect.Content>
+          </RadixSelect.Portal>
+        </RadixSelect.Root>
+      </label>
+
+      {error && (
+        <span role="alert" className="text-danger text-[10.5px]">
+          {error}
+        </span>
+      )}
+    </div>
   )
 }
 

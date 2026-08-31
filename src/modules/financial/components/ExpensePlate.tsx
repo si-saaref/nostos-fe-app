@@ -1,17 +1,16 @@
 import { useMessages } from '@/i18n/useMessages'
-import { useId } from 'react'
+import { memo, useId } from 'react'
 import { useSettings } from '@/contexts/useSettings'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay } from '@/utils/dates'
-import type {
-  Baseline,
-  Verdict,
-} from '@/modules/financial/hooks/useItemBaselines'
+import { RIM_CLASS } from '@/theme/rims'
+import type { RimIndex } from '@/theme/rims'
+import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
 import type { Expense } from '@/types/expense'
 
 interface Props {
   expense: Expense
-  rim: 1 | 2 | 3 | 4
+  rim: RimIndex
   typeName: string
   sourceName: string
   payerName: string
@@ -20,18 +19,12 @@ interface Props {
   baseline?: Baseline
   recent: Expense[]
   isOpen: boolean
-  onToggle: () => void
+  /** Takes the id so the callback can be stable across a tape of 200 rows. */
+  onToggle: (id: string) => void
+  currency: string
   canManage: boolean
-  onEdit?: (expense: Expense) => void
   onDelete?: (expense: Expense) => void
 }
-
-const RIM_CLASS = {
-  1: 'bg-rim-1',
-  2: 'bg-rim-2',
-  3: 'bg-rim-3',
-  4: 'bg-rim-4',
-} as const
 
 const initials = (name: string) =>
   name
@@ -46,7 +39,7 @@ const initials = (name: string) =>
  * plate lifts it out of the rack in place — no modal, and no per-row buttons
  * cluttering the other 186 rows.
  */
-export const ExpensePlate = ({
+const ExpensePlateBase = ({
   expense,
   rim,
   typeName,
@@ -58,13 +51,17 @@ export const ExpensePlate = ({
   recent,
   isOpen,
   onToggle,
+  currency,
   canManage,
-  onEdit,
   onDelete,
 }: Props) => {
   const m = useMessages()
   const { locale } = useSettings()
   const panelId = useId()
+
+  // Tallest bar in the sparkline, computed once rather than once per bar. The
+  // `|| 1` keeps an all-zero history from dividing into a NaN height.
+  const peak = Math.max(...recent.map((item) => item.value), expense.value) || 1
 
   const marker =
     verdict.kind === 'high'
@@ -108,7 +105,7 @@ export const ExpensePlate = ({
 
         <button
           type="button"
-          onClick={onToggle}
+          onClick={() => onToggle(expense.id)}
           aria-expanded={isOpen}
           aria-controls={panelId}
           className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:h-[42px] sm:flex-row sm:items-center sm:gap-3 sm:py-0"
@@ -118,7 +115,7 @@ export const ExpensePlate = ({
               {expense.name}
             </span>
             <span className="tnum text-[12.5px] font-semibold whitespace-nowrap sm:hidden">
-              {formatCurrency(expense.value, 'IDR', locale)}
+              {formatCurrency(expense.value, currency, locale)}
             </span>
           </span>
 
@@ -143,17 +140,17 @@ export const ExpensePlate = ({
           </span>
 
           <span className="tnum hidden w-[92px] text-right text-[12.5px] font-semibold sm:block">
-            {formatCurrency(expense.value, 'IDR', locale)}
+            {formatCurrency(expense.value, currency, locale)}
           </span>
         </button>
 
         {isOpen && (
           <div id={panelId} className="border-hair border-t px-3 pt-3 pb-3">
             <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Field label={m.plate_category()} value={typeName} />
-              <Field label={m.plate_method()} value={sourceName} />
-              <Field label={m.plate_paid_by()} value={payerName} />
-              <Field
+              <DetailField label={m.plate_category()} value={typeName} />
+              <DetailField label={m.plate_method()} value={sourceName} />
+              <DetailField label={m.plate_paid_by()} value={payerName} />
+              <DetailField
                 label={m.plate_recorded_by()}
                 value={
                   expense.createdAt
@@ -183,10 +180,6 @@ export const ExpensePlate = ({
                 <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end">
                   <ul className="flex h-12 flex-1 items-end gap-1.5">
                     {recent.map((item) => {
-                      const peak = Math.max(
-                        ...recent.map((entry) => entry.value),
-                        expense.value,
-                      )
                       const isCurrent = item.id === expense.id
                       return (
                         <li
@@ -214,7 +207,7 @@ export const ExpensePlate = ({
 
                   <p className="text-muted flex-1 text-[11px] leading-relaxed">
                     {m.baseline_usual({
-                      range: `${formatCurrency(Math.round(baseline.low), 'IDR', locale)} – ${formatCurrency(Math.round(baseline.high), 'IDR', locale)}`,
+                      range: `${formatCurrency(Math.round(baseline.low), currency, locale)} – ${formatCurrency(Math.round(baseline.high), currency, locale)}`,
                     })}{' '}
                     {marker && (
                       <span className="text-ink font-semibold">
@@ -247,13 +240,6 @@ export const ExpensePlate = ({
                   </span>
                   <button
                     type="button"
-                    onClick={() => onEdit?.(expense)}
-                    className="border-hair bg-card rounded-lg border px-3 py-1.5 text-[10.5px] font-semibold"
-                  >
-                    {m.plate_edit()}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => onDelete?.(expense)}
                     className="border-danger-line bg-danger-bg text-danger rounded-lg border px-3 py-1.5 text-[10.5px] font-semibold"
                   >
@@ -269,7 +255,7 @@ export const ExpensePlate = ({
   )
 }
 
-const Field = ({ label, value }: { label: string; value: string }) => (
+const DetailField = ({ label, value }: { label: string; value: string }) => (
   <div>
     <dt className="text-muted text-[8.5px] font-bold tracking-[0.11em] uppercase">
       {label}
@@ -277,3 +263,9 @@ const Field = ({ label, value }: { label: string; value: string }) => (
     <dd className="mt-1 text-[11px] font-medium">{value}</dd>
   </div>
 )
+
+/**
+ * Memoised: a month is ~200 plates and opening one must not re-render the other
+ * 199. Every prop above is either a primitive or a value the page holds stable.
+ */
+export const ExpensePlate = memo(ExpensePlateBase)

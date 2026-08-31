@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
-import { useExpenses } from '@/api/queries/expenses'
+import { useCallback, useMemo } from 'react'
+import { useExpenses } from '@/modules/financial/api/expenses'
 import { isoDay, shiftDays } from '@/utils/dates'
 import type { Expense } from '@/types/expense'
+import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
 
 /**
  * "What's normal?" — the household's own history, per recurring item.
@@ -18,10 +19,10 @@ import type { Expense } from '@/types/expense'
  * scale (a few hundred rows) and needs no backend change; if grouped
  * aggregates ever ship, only this hook moves.
  */
-export const BASELINE_WINDOW_DAYS = 120
+const BASELINE_WINDOW_DAYS = 120
 
 /** Below this many entries a category has no opinion worth voicing. */
-export const MIN_SAMPLE = 5
+const MIN_SAMPLE_SIZE = 5
 
 /** A never-seen item must clear this multiple of its category's p75 to speak. */
 const GROSS_OUTLIER = 2.5
@@ -30,28 +31,14 @@ const GROSS_OUTLIER = 2.5
 const QUIET_LOW = 0.75
 const QUIET_HIGH = 1.25
 
-export interface Baseline {
-  /** Normalised expense name this baseline describes. */
-  key: string
-  count: number
-  median: number
-  /** Interquartile range — the household's usual spread for this category. */
-  low: number
-  high: number
-  min: number
-}
+/** How many past purchases the lifted plate charts. */
+const RECENT_TAKE = 4
 
-export type Verdict =
-  | { kind: 'quiet' }
-  | { kind: 'unknown' }
-  /** No history for this item, but far beyond what the category ever costs. */
-  | { kind: 'bigForCategory'; factor: number; baseline: Baseline }
-  | { kind: 'high'; factor: number; baseline: Baseline }
-  | { kind: 'low'; factor: number; baseline: Baseline }
-  | { kind: 'cheapest'; baseline: Baseline }
+/** One shared empty result, so "no history" is referentially stable too. */
+const NO_ROWS: Expense[] = []
 
 /** Same purchase, loosely spelled — "Token listrik" and "token  Listrik". */
-export const itemKey = (name: string): string =>
+const itemKey = (name: string): string =>
   name.trim().toLowerCase().replace(/\s+/g, ' ')
 
 const quantile = (sorted: number[], q: number): number => {
@@ -65,6 +52,30 @@ const quantile = (sorted: number[], q: number): number => {
     : sorted[base] + rest * (next - sorted[base])
 }
 
+const baselineFrom = (key: string, values: number[]): Baseline | undefined => {
+  if (values.length < MIN_SAMPLE_SIZE) return undefined
+  const sorted = [...values].sort((a, b) => a - b)
+  return {
+    key,
+    count: sorted.length,
+    median: quantile(sorted, 0.5),
+    low: quantile(sorted, 0.25),
+    high: quantile(sorted, 0.75),
+    min: sorted[0],
+  }
+}
+
+const groupBy = <T>(rows: T[], keyOf: (row: T) => string): Map<string, T[]> => {
+  const groups = new Map<string, T[]>()
+  rows.forEach((row) => {
+    const key = keyOf(row)
+    const bucket = groups.get(key)
+    if (bucket) bucket.push(row)
+    else groups.set(key, [row])
+  })
+  return groups
+}
+
 export const useItemBaselines = (householdId: string) => {
   const today = new Date()
   const query = useExpenses(householdId, {
@@ -76,108 +87,105 @@ export const useItemBaselines = (householdId: string) => {
     sortOrder: 'desc',
   })
 
-  const buckets = useMemo(() => {
-    const byType = new Map<string, number[]>()
-    query.data?.items.forEach((expense) => {
-      const bucket = byType.get(expense.typeId)
-      if (bucket) bucket.push(expense.value)
-      else byType.set(expense.typeId, [expense.value])
-    })
-    return { byType }
-  }, [query.data])
+  const items = useMemo(() => query.data?.items ?? [], [query.data])
+
+  /**
+   * Indexed once per fetch rather than scanned per row. The tape calls
+   * `recentFor` and `judge` for every entry it renders, so a linear scan here
+   * is quadratic on screen.
+   */
+  const byItem = useMemo(
+    () => groupBy(items, (expense) => itemKey(expense.name)),
+    [items],
+  )
 
   const categoryBaselines = useMemo(() => {
     const result = new Map<string, Baseline>()
-    buckets.byType.forEach((values, typeId) => {
-      if (values.length < MIN_SAMPLE) return
-      const sorted = [...values].sort((a, b) => a - b)
-      result.set(typeId, {
-        key: typeId,
-        count: sorted.length,
-        median: quantile(sorted, 0.5),
-        low: quantile(sorted, 0.25),
-        high: quantile(sorted, 0.75),
-        min: sorted[0],
-      })
+    groupBy(items, (expense) => expense.typeId).forEach((rows, typeId) => {
+      const baseline = baselineFrom(
+        typeId,
+        rows.map((row) => row.value),
+      )
+      if (baseline) result.set(typeId, baseline)
     })
     return result
-  }, [buckets])
+  }, [items])
 
   const baselines = useMemo(() => {
-    const byItem = new Map<string, number[]>()
-    query.data?.items.forEach((expense) => {
-      const key = itemKey(expense.name)
-      const bucket = byItem.get(key)
-      if (bucket) bucket.push(expense.value)
-      else byItem.set(key, [expense.value])
-    })
-
     const result = new Map<string, Baseline>()
-    byItem.forEach((values, key) => {
-      if (values.length < MIN_SAMPLE) return
-      const sorted = [...values].sort((a, b) => a - b)
-      result.set(key, {
+    byItem.forEach((rows, key) => {
+      const baseline = baselineFrom(
         key,
-        count: sorted.length,
-        median: quantile(sorted, 0.5),
-        low: quantile(sorted, 0.25),
-        high: quantile(sorted, 0.75),
-        min: sorted[0],
-      })
+        rows.map((row) => row.value),
+      )
+      if (baseline) result.set(key, baseline)
     })
     return result
-  }, [query.data])
+  }, [byItem])
 
   /**
    * The instrument's whole discipline lives here: a row is silent unless the
    * household's own history says otherwise, and it never speaks without a
    * sample big enough to mean something.
    */
-  const judge = (expense: Expense): Verdict => {
-    const baseline = baselines.get(itemKey(expense.name))
+  const judge = useCallback(
+    (expense: Expense): Verdict => {
+      const baseline = baselines.get(itemKey(expense.name))
 
-    // No history for this exact item. Stay quiet unless it dwarfs everything
-    // the household has ever spent in its category — then the honest claim is
-    // about the category, not about "usual", and it is worded that way.
-    if (!baseline || baseline.median === 0) {
-      const category = categoryBaselines.get(expense.typeId)
-      if (category && expense.value > category.high * GROSS_OUTLIER) {
-        return {
-          kind: 'bigForCategory',
-          factor: expense.value / category.median,
-          baseline: category,
+      // No history for this exact item. Stay quiet unless it dwarfs everything
+      // the household has ever spent in its category — then the honest claim is
+      // about the category, not about "usual", and it is worded that way.
+      if (!baseline || baseline.median === 0) {
+        const category = categoryBaselines.get(expense.typeId)
+        if (category && expense.value > category.high * GROSS_OUTLIER) {
+          return {
+            kind: 'bigForCategory',
+            factor: expense.value / category.median,
+            baseline: category,
+          }
         }
+        return { kind: 'unknown' }
       }
-      return { kind: 'unknown' }
-    }
-    const factor = expense.value / baseline.median
-    if (expense.value > baseline.high && factor >= QUIET_HIGH) {
-      return { kind: 'high', factor, baseline }
-    }
-    if (expense.value <= baseline.min && baseline.count >= MIN_SAMPLE * 2) {
-      return { kind: 'cheapest', baseline }
-    }
-    if (expense.value < baseline.low && factor <= QUIET_LOW) {
-      return { kind: 'low', factor, baseline }
-    }
-    return { kind: 'quiet' }
-  }
+      const factor = expense.value / baseline.median
+      if (expense.value > baseline.high && factor >= QUIET_HIGH) {
+        return { kind: 'high', factor, baseline }
+      }
+      if (
+        expense.value <= baseline.min &&
+        baseline.count >= MIN_SAMPLE_SIZE * 2
+      ) {
+        return { kind: 'cheapest', baseline }
+      }
+      if (expense.value < baseline.low && factor <= QUIET_LOW) {
+        return { kind: 'low', factor, baseline }
+      }
+      return { kind: 'quiet' }
+    },
+    [baselines, categoryBaselines],
+  )
 
-  /** Recent purchases of the same item, oldest first — the lifted plate's chart. */
-  const recentFor = (name: string, take = 4): Expense[] =>
-    (query.data?.items ?? [])
-      .filter((expense) => itemKey(expense.name) === itemKey(name))
-      .slice(0, take)
-      .reverse()
+  /**
+   * Recent purchases of the same item, oldest first — the lifted plate's chart.
+   * Built once per fetch so each row gets the *same* array on every render:
+   * a fresh array per call would defeat the tape's memoisation.
+   */
+  const recentByItem = useMemo(() => {
+    const result = new Map<string, Expense[]>()
+    byItem.forEach((rows, key) => {
+      result.set(key, rows.slice(0, RECENT_TAKE).reverse())
+    })
+    return result
+  }, [byItem])
 
-  const baselineFor = (name: string): Baseline | undefined =>
-    baselines.get(itemKey(name))
+  const recentFor = useCallback(
+    (name: string): Expense[] => recentByItem.get(itemKey(name)) ?? NO_ROWS,
+    [recentByItem],
+  )
 
-  return {
-    baselines,
-    baselineFor,
-    judge,
-    recentFor,
-    isLoading: query.isLoading,
-  }
+  const baselineFor = useCallback(
+    (name: string): Baseline | undefined => baselines.get(itemKey(name)),
+    [baselines],
+  )
+
+  return { baselineFor, judge, recentFor, isLoading: query.isLoading }
 }

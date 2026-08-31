@@ -9,6 +9,19 @@ import { PreferencesSection } from '@/modules/settings/components/PreferencesSec
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { canManageExpenses } from '@/utils/permissions'
 
+interface IndexEntry {
+  id: string
+  label: string
+}
+
+type GroupId = 'expense' | 'household'
+
+interface SettingsGroup {
+  id: GroupId
+  label: string
+  sections: IndexEntry[]
+}
+
 /**
  * Settings, scoped by what owns each setting.
  *
@@ -32,19 +45,16 @@ export const SettingsPage = () => {
   const navigate = useNavigate()
   const canManage = canManageExpenses(role)
 
-  interface IndexEntry {
-    id: string
-    label: string
-  }
-
-  const groups: Array<{ label: string; sections: IndexEntry[] }> = [
+  const groups: SettingsGroup[] = [
     {
+      id: 'expense',
       label: m.group_expense(),
       sections: [
         { id: SETTINGS_ANCHORS.expenseCategories, label: m.cat_title() },
       ],
     },
     {
+      id: 'household',
       label: m.group_household(),
       sections: [
         { id: SETTINGS_ANCHORS.accounts, label: m.acc_title() },
@@ -53,25 +63,26 @@ export const SettingsPage = () => {
       ],
     },
   ]
-  const flat = groups.flatMap((group) => group.sections)
-  const groupOf = (anchor: string) =>
+  const allSections = groups.flatMap((group) => group.sections)
+  const groupIndexOf = (anchor: string) =>
     groups.findIndex((group) =>
       group.sections.some((section) => section.id === anchor),
     )
 
   // The scope lives in the URL, not in state: it is then shareable, survives a
   // reload, and cannot drift out of sync with the anchor a module linked to.
-  const anchor = hash.replace('#', '') || flat[0].id
-  const activeGroup = Math.max(0, groupOf(anchor))
-  const visible = groups[activeGroup].sections
+  const anchor = hash.replace('#', '') || allSections[0].id
+  const activeGroup = groups[Math.max(0, groupIndexOf(anchor))]
+  const visibleSections = activeGroup.sections
+  const visibleSectionIds = visibleSections.map((s) => s.id).join(',')
 
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [active, setActive] = useState(anchor)
+  const [activeSectionId, setActiveSectionId] = useState(anchor)
 
   const jumpTo = useCallback((id: string) => {
-    setActive(id)
+    setActiveSectionId(id)
     scrollRef.current
-      ?.querySelector(`#${id}`)
+      ?.querySelector(`#${CSS.escape(id)}`)
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
@@ -92,30 +103,32 @@ export const SettingsPage = () => {
     return () => window.clearTimeout(timer)
   }, [hash, jumpTo])
 
+  // Re-observe when the visible section ids change. Keyed on ids rather than on
+  // the group object so a locale switch, which rebuilds every label, does not
+  // tear down and rebuild the observer.
   useEffect(() => {
     const root = scrollRef.current
     if (!root) return
-    const nodes = visible
-      .map((section) => root.querySelector(`#${section.id}`))
+    const nodes = visibleSectionIds
+      .split(',')
+      .map((id) => root.querySelector(`#${CSS.escape(id)}`))
       .filter((node): node is Element => Boolean(node))
     if (nodes.length === 0) return
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries
+        const topmost = entries
           .filter((entry) => entry.isIntersecting)
           .sort(
             (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
           )[0]
-        if (visible?.target.id) setActive(visible.target.id)
+        if (topmost?.target.id) setActiveSectionId(topmost.target.id)
       },
       { root, rootMargin: '0px 0px -70% 0px', threshold: 0 },
     )
     nodes.forEach((node) => observer.observe(node))
     return () => observer.disconnect()
-    // Re-observe when the visible group changes; labels changing locale must not.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeGroup])
+  }, [visibleSectionIds])
 
   return (
     <section className="flex h-full flex-col">
@@ -133,10 +146,10 @@ export const SettingsPage = () => {
           aria-label={m.settings_index()}
           className="well-shadow bg-chip hidden h-fit w-52 shrink-0 rounded-xl p-2 lg:block"
         >
-          {groups.map((group, index) => {
-            const isCurrentGroup = index === activeGroup
+          {groups.map((group) => {
+            const isCurrentGroup = group.id === activeGroup.id
             return (
-              <div key={group.label} className="mb-2 last:mb-0">
+              <div key={group.id} className="mb-2 last:mb-0">
                 <button
                   type="button"
                   onClick={() => goTo(group.sections[0].id)}
@@ -155,10 +168,10 @@ export const SettingsPage = () => {
                           type="button"
                           onClick={() => goTo(section.id)}
                           aria-current={
-                            active === section.id ? 'true' : undefined
+                            activeSectionId === section.id ? 'true' : undefined
                           }
                           className={`w-full rounded-lg px-2.5 py-2 text-left text-[12px] font-medium ${
-                            active === section.id
+                            activeSectionId === section.id
                               ? 'bg-card text-ink font-semibold'
                               : 'text-muted'
                           }`}
@@ -177,14 +190,14 @@ export const SettingsPage = () => {
         <div className="min-h-0 min-w-0 flex-1">
           {/* Mobile: the same index, flattened into a scrollable chip row. */}
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
-            {groups.map((group, index) => (
+            {groups.map((group) => (
               <button
-                key={group.label}
+                key={group.id}
                 type="button"
                 onClick={() => goTo(group.sections[0].id)}
-                aria-current={index === activeGroup ? 'true' : undefined}
+                aria-current={group.id === activeGroup.id ? 'true' : undefined}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-[0.1em] uppercase ${
-                  index === activeGroup
+                  group.id === activeGroup.id
                     ? 'bg-ink text-card'
                     : 'bg-chip text-muted well-shadow'
                 }`}
@@ -195,14 +208,16 @@ export const SettingsPage = () => {
           </div>
 
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
-            {visible.map((section) => (
+            {visibleSections.map((section) => (
               <button
                 key={section.id}
                 type="button"
                 onClick={() => goTo(section.id)}
-                aria-current={active === section.id ? 'true' : undefined}
+                aria-current={
+                  activeSectionId === section.id ? 'true' : undefined
+                }
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold ${
-                  active === section.id
+                  activeSectionId === section.id
                     ? 'bg-accent text-accent-ink'
                     : 'bg-chip text-muted well-shadow'
                 }`}
@@ -216,14 +231,14 @@ export const SettingsPage = () => {
             ref={scrollRef}
             className="h-full overflow-y-auto pr-1 pb-24 lg:pb-4"
           >
-            {activeGroup === 0 && (
+            {activeGroup.id === 'expense' && (
               <CategorySection
                 householdId={householdId}
                 canManage={canManage}
               />
             )}
 
-            {activeGroup === 1 && (
+            {activeGroup.id === 'household' && (
               <>
                 <AccountSection
                   householdId={householdId}

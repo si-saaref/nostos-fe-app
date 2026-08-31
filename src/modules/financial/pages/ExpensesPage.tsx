@@ -1,23 +1,23 @@
 import { useMessages } from '@/i18n/useMessages'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDeleteExpense } from '@/api/mutations/useDeleteExpense'
-import { useExpenseTypes } from '@/api/queries/expenseTypes'
-import { usePaymentSources } from '@/api/queries/paymentSources'
-import { useUsers } from '@/api/queries/users'
+import { useDeleteExpense } from '@/modules/financial/api/expenses'
+import { useActiveCategories } from '@/modules/settings/api/categories'
+import { useActiveAccounts } from '@/modules/settings/api/accounts'
+import { useUsers } from '@/modules/settings/api/members'
 import { useHousehold } from '@/contexts/useHousehold'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CountStrip } from '@/modules/financial/components/CountStrip'
 import { ExpenseFilter } from '@/modules/financial/components/ExpenseFilter'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
 import { ExpenseTape } from '@/modules/financial/components/ExpenseTape'
 import { MonthRail } from '@/modules/financial/components/MonthRail'
-import type { DayGroup } from '@/modules/financial/components/ExpenseTape'
-import type { DayTotal } from '@/modules/financial/components/MonthRail'
 import { useItemBaselines } from '@/modules/financial/hooks/useItemBaselines'
 import { useExpenseFilters } from '@/modules/financial/hooks/useExpenseFilters'
 import { canManageExpenses } from '@/utils/permissions'
+import { getErrorMessage } from '@/utils/errors'
+import { rimFor } from '@/theme/rims'
+import type { DayGroup, DayTotal } from '@/modules/financial/types/ledger'
 import type { Expense } from '@/types/expense'
-
-const RIMS = [1, 2, 3, 4] as const
 
 export const ExpensesPage = () => {
   const m = useMessages()
@@ -33,15 +33,17 @@ export const ExpensesPage = () => {
     refetch,
   } = useExpenseFilters(householdId)
 
-  const { data: types } = useExpenseTypes(householdId)
-  const { data: sources } = usePaymentSources(householdId)
+  const { data: categories } = useActiveCategories(householdId)
+  const { data: accounts } = useActiveAccounts(householdId)
   const { data: users } = useUsers(householdId)
   const { judge, baselineFor, recentFor } = useItemBaselines(householdId)
-  const { mutate: deleteExpense } = useDeleteExpense(householdId)
+  const { mutate: deleteExpense, error: deleteError } =
+    useDeleteExpense(householdId)
 
   const [openId, setOpenId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [scrolledDate, setScrolledDate] = useState<string | undefined>()
+  const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null)
   const dayNodes = useRef(new Map<string, HTMLElement>())
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -75,7 +77,12 @@ export const ExpensesPage = () => {
   )
 
   // Derived, never stored: before any scroll the newest day is the one in view.
-  const activeDate = scrolledDate ?? days[0]?.date
+  // Clamped to a day that is actually on the tape — narrowing the filters can
+  // drop the day you had scrolled to, and a cumulative total counted up to a
+  // day that is no longer shown is the whole filtered sum wearing a date.
+  const activeDate = days.some((day) => day.date === scrolledDate)
+    ? scrolledDate
+    : days[0]?.date
 
   /** Spend from the newest day down to the day currently in view. */
   const cumulative = useMemo(() => {
@@ -111,13 +118,13 @@ export const ExpensesPage = () => {
     if (nodes.length === 0) return
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries
+        const topmost = entries
           .filter((entry) => entry.isIntersecting)
           .sort(
             (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
           )[0]
-        if (!visible) return
-        const match = nodes.find(([, node]) => node === visible.target)
+        if (!topmost) return
+        const match = nodes.find(([, node]) => node === topmost.target)
         if (match) setScrolledDate(match[0])
       },
       { root: scrollRef.current, rootMargin: '0px 0px -75% 0px', threshold: 0 },
@@ -126,26 +133,50 @@ export const ExpensesPage = () => {
     return () => observer.disconnect()
   }, [groups])
 
-  const jumpTo = (date: string) => {
+  const jumpTo = useCallback((date: string) => {
     setScrolledDate(date)
     dayNodes.current
       .get(date)
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+  }, [])
 
-  const rimOf = (typeId: string): 1 | 2 | 3 | 4 => {
-    const index = types?.findIndex((type) => type.id === typeId) ?? -1
-    return RIMS[(index < 0 ? 0 : index) % RIMS.length]
-  }
-  const nameOfType = (typeId: string) =>
-    types?.find((type) => type.id === typeId)?.name ?? '—'
-  const nameOfSource = (sourceId: string) =>
-    sources?.find((source) => source.id === sourceId)?.name ?? '—'
-  const nameOfUser = (userId: string) =>
-    users?.find((member) => member.id === userId)?.name ?? '—'
+  // Stable identities: the tape memoises each plate, and a lookup rebuilt every
+  // render would re-render all 200 of them on every disclosure toggle.
+  const rimOf = useCallback(
+    (typeId: string) =>
+      rimFor(
+        categories?.find((category) => category.id === typeId)?.order ?? 0,
+      ),
+    [categories],
+  )
+  const nameOfType = useCallback(
+    (typeId: string) =>
+      categories?.find((category) => category.id === typeId)?.name ?? '—',
+    [categories],
+  )
+  const nameOfSource = useCallback(
+    (sourceId: string) =>
+      accounts?.find((account) => account.id === sourceId)?.name ?? '—',
+    [accounts],
+  )
+  const nameOfUser = useCallback(
+    (userId: string) =>
+      users?.find((member) => member.id === userId)?.name ?? '—',
+    [users],
+  )
+  const toggleOpen = useCallback(
+    (id: string) => setOpenId((current) => (current === id ? null : id)),
+    [],
+  )
+  const requestDelete = useCallback(
+    (expense: Expense) => setExpenseToDelete(expense),
+    [],
+  )
 
   const canManage = canManageExpenses(role)
-  const activeType = types?.find((type) => type.id === filters.typeId)
+  const activeCategory = categories?.find(
+    (category) => category.id === filters.typeId,
+  )
   const activeMember = users?.find(
     (member) => member.id === filters.paidByUserId,
   )
@@ -160,7 +191,7 @@ export const ExpensesPage = () => {
           filters={filters}
           totals={data?.totals}
           yourShare={yourShare}
-          categoryLabel={activeType?.name}
+          categoryLabel={activeCategory?.name}
           memberLabel={activeMember?.name}
         />
 
@@ -190,6 +221,15 @@ export const ExpensesPage = () => {
               onCancel={() => setShowForm(false)}
             />
           </div>
+        )}
+
+        {deleteError && (
+          <p
+            role="alert"
+            className="border-danger-line bg-danger-bg text-danger rounded-lg border px-3 py-2 text-[11px]"
+          >
+            {getErrorMessage(deleteError)}
+          </p>
         )}
       </div>
 
@@ -250,15 +290,13 @@ export const ExpensesPage = () => {
               nameOfSource={nameOfSource}
               nameOfUser={nameOfUser}
               judge={judge}
-              baselineOf={baselineFor}
+              baselineFor={baselineFor}
               recentFor={recentFor}
               openId={openId}
-              onToggle={(id) =>
-                setOpenId((current) => (current === id ? null : id))
-              }
+              onToggle={toggleOpen}
               registerDay={registerDay}
               canManage={canManage}
-              onDelete={(expense) => deleteExpense(expense.id)}
+              onDelete={requestDelete}
             />
           )}
         </div>
@@ -286,6 +324,22 @@ export const ExpensesPage = () => {
         </span>
         {m.action_record()}
       </button>
+
+      {/* Deleting a money record is irreversible, so it asks — the settings
+          module already stops for the *less* destructive archive. */}
+      <ConfirmDialog
+        open={Boolean(expenseToDelete)}
+        onOpenChange={(open) => !open && setExpenseToDelete(null)}
+        title={m.expense_delete_title({ name: expenseToDelete?.name ?? '' })}
+        body={m.expense_delete_body()}
+        confirmLabel={m.expense_delete_confirm()}
+        destructive
+        onConfirm={() => {
+          if (expenseToDelete) deleteExpense(expenseToDelete.id)
+          setExpenseToDelete(null)
+          setOpenId(null)
+        }}
+      />
     </section>
   )
 }

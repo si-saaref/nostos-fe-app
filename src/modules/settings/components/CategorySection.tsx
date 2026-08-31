@@ -1,20 +1,20 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
-import { ConfirmDialog } from '@/modules/settings/components/ConfirmDialog'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { FormField } from '@/components/FormField'
 import { SettingPlate } from '@/modules/settings/components/SettingPlate'
-import {
-  Field,
-  RowActions,
-  SectionShell,
-} from '@/modules/settings/components/parts'
+import { SectionShell } from '@/modules/settings/components/SectionShell'
+import { RowActions } from '@/modules/settings/components/RowActions'
 import {
   useCategories,
   useCreateCategory,
   useUpdateCategory,
-} from '@/api/queries/settings'
-import { useExpenses } from '@/api/queries/expenses'
-import { rimFor } from '@/types/settings'
-import type { Category } from '@/types/settings'
+} from '@/modules/settings/api/categories'
+import { useExpenses } from '@/modules/financial/api/expenses'
+import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
+import { rimFor } from '@/theme/rims'
+import { isoDay } from '@/utils/dates'
+import type { Category } from '@/types/catalog'
 
 interface Props {
   householdId: string
@@ -29,8 +29,12 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
     isError,
     refetch,
   } = useCategories(householdId)
-  const { mutate: create, isPending: creating } = useCreateCategory(householdId)
-  const { mutate: update } = useUpdateCategory(householdId)
+  const {
+    mutate: create,
+    isPending: isCreating,
+    error: createError,
+  } = useCreateCategory(householdId)
+  const { mutate: update, error: updateError } = useUpdateCategory(householdId)
 
   // Usage count so archiving can state its consequence instead of implying one.
   const { data: expenses } = useExpenses(householdId, {
@@ -41,17 +45,27 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
   })
 
   const [openId, setOpenId] = useState<string | null>(null)
-  const [draft, setDraft] = useState('')
-  const [adding, setAdding] = useState(false)
+  const [draftName, setDraftName] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
-  const [archiving, setArchiving] = useState<Category | null>(null)
+  const [categoryToArchive, setCategoryToArchive] = useState<Category | null>(
+    null,
+  )
 
-  const usageOf = (id: string) =>
-    expenses?.items.filter((expense) => expense.typeId === id).length ?? 0
+  // Counted once per fetch. Filtering the whole list per category turned a
+  // 1000-row month into a scan for every row rendered, twice more per dialog.
+  const usageByCategory = useMemo(() => {
+    const counts = new Map<string, number>()
+    expenses?.items.forEach((expense) => {
+      counts.set(expense.typeId, (counts.get(expense.typeId) ?? 0) + 1)
+    })
+    return counts
+  }, [expenses])
+  const usageOf = (id: string) => usageByCategory.get(id) ?? 0
 
   return (
     <SectionShell
-      id="kategori-pengeluaran"
+      id={SETTINGS_ANCHORS.expenseCategories}
       title={m.cat_title()}
       description={m.cat_desc()}
       note={m.cat_rim_note()}
@@ -59,13 +73,14 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
       isLoading={isLoading}
       isError={isError}
       onRetry={refetch}
+      actionError={createError ?? updateError}
       isEmpty={(categories?.length ?? 0) === 0}
       emptyText={m.cat_empty()}
       addLabel={m.cat_add()}
-      onAdd={canManage ? () => setAdding(true) : undefined}
+      onAdd={canManage ? () => setIsAdding(true) : undefined}
     >
       <ul className="flex flex-col gap-1.5">
-        {adding && (
+        {isAdding && (
           <li>
             <form
               onSubmit={(event) => {
@@ -76,31 +91,31 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
                   {
                     onSuccess: () => {
                       setNewName('')
-                      setAdding(false)
+                      setIsAdding(false)
                     },
                   },
                 )
               }}
               className="bg-card lift-shadow flex flex-wrap items-end gap-2 rounded-lg p-3"
             >
-              <Field label={m.cat_name()} className="min-w-[200px] flex-1">
+              <FormField label={m.cat_name()} className="min-w-[200px] flex-1">
                 <input
                   autoFocus
                   value={newName}
                   onChange={(event) => setNewName(event.target.value)}
                   className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
                 />
-              </Field>
+              </FormField>
               <button
                 type="submit"
-                disabled={creating}
+                disabled={isCreating}
                 className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
               >
-                {creating ? m.act_saving() : m.act_add()}
+                {isCreating ? m.act_saving() : m.act_add()}
               </button>
               <button
                 type="button"
-                onClick={() => setAdding(false)}
+                onClick={() => setIsAdding(false)}
                 className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
               >
                 {m.act_cancel()}
@@ -129,30 +144,33 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
               isOpen={isOpen}
               onToggle={() => {
                 setOpenId(isOpen ? null : category.id)
-                setDraft(category.name)
+                setDraftName(category.name)
               }}
             >
               <div className="flex flex-wrap items-end gap-2">
-                <Field label={m.cat_name()} className="min-w-[200px] flex-1">
+                <FormField
+                  label={m.cat_name()}
+                  className="min-w-[200px] flex-1"
+                >
                   <input
-                    value={draft}
+                    value={draftName}
                     disabled={!canManage}
-                    onChange={(event) => setDraft(event.target.value)}
+                    onChange={(event) => setDraftName(event.target.value)}
                     className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
                   />
-                </Field>
+                </FormField>
                 {canManage && (
                   <RowActions
                     onSave={() => {
-                      if (draft.trim() && draft !== category.name) {
-                        update({ id: category.id, name: draft.trim() })
+                      if (draftName.trim() && draftName !== category.name) {
+                        update({ id: category.id, name: draftName.trim() })
                       }
                       setOpenId(null)
                     }}
                     onArchive={
                       category.archivedAt
                         ? undefined
-                        : () => setArchiving(category)
+                        : () => setCategoryToArchive(category)
                     }
                     onRestore={
                       category.archivedAt
@@ -168,25 +186,27 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
       </ul>
 
       <ConfirmDialog
-        open={Boolean(archiving)}
-        onOpenChange={(open) => !open && setArchiving(null)}
-        title={m.archive_title({ name: archiving?.name ?? '' })}
-        body={m.archive_body({ name: archiving?.name ?? '' })}
+        open={Boolean(categoryToArchive)}
+        onOpenChange={(open) => !open && setCategoryToArchive(null)}
+        title={m.archive_title({ name: categoryToArchive?.name ?? '' })}
+        body={m.archive_body({ name: categoryToArchive?.name ?? '' })}
         note={
-          archiving && usageOf(archiving.id) > 0
-            ? m.archive_in_use({ n: usageOf(archiving.id) })
+          categoryToArchive && usageOf(categoryToArchive.id) > 0
+            ? m.archive_in_use({ n: usageOf(categoryToArchive.id) })
             : undefined
         }
         confirmLabel={m.archive_confirm()}
         destructive
         onConfirm={() => {
-          if (archiving) {
+          if (categoryToArchive) {
+            // Local day, never toISOString(): east of UTC that stamps yesterday
+            // for anything archived before 07:00.
             update({
-              id: archiving.id,
-              archivedAt: new Date().toISOString().slice(0, 10),
+              id: categoryToArchive.id,
+              archivedAt: isoDay(new Date()),
             })
           }
-          setArchiving(null)
+          setCategoryToArchive(null)
           setOpenId(null)
         }}
       />
