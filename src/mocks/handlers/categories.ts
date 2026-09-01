@@ -20,12 +20,12 @@ import type { CategoryInput } from '@/modules/settings/types/settings'
  * want only live rows narrow client-side (`useActiveCategories`).
  */
 export const categoryHandlers = [
-  http.get('/api/expense-types', async () => {
+  http.get('*/api/v1/expense-types', async () => {
     await pause(READ_LATENCY_MS)
     return HttpResponse.json(db.categories)
   }),
 
-  http.post('/api/expense-types', async ({ request }) => {
+  http.post('*/api/v1/expense-types', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const input = (await request.json()) as CategoryInput
     const created: Category = {
@@ -39,7 +39,7 @@ export const categoryHandlers = [
     return HttpResponse.json(created, { status: 201 })
   }),
 
-  http.put('/api/expense-types/:id', async ({ params, request }) => {
+  http.put('*/api/v1/expense-types/:id', async ({ params, request }) => {
     await pause(WRITE_LATENCY_MS)
     const patch = (await request.json()) as Partial<Category>
     const index = db.categories.findIndex((row) => row.id === params.id)

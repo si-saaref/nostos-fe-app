@@ -21,7 +21,7 @@ import type { Expense } from '@/types/expense'
 
 export const ExpensesPage = () => {
   const m = useMessages()
-  const { householdId, role, user } = useHousehold()
+  const { householdId, role, me } = useHousehold()
   const {
     filters,
     updateFilters,
@@ -98,9 +98,9 @@ export const ExpensesPage = () => {
   const yourShare = useMemo(
     () =>
       expenses
-        .filter((expense) => expense.paidByUserId === user?.id)
+        .filter((expense) => expense.paidByUserId === me?.user_id)
         .reduce((sum, expense) => sum + expense.value, 0),
-    [expenses, user],
+    [expenses, me],
   )
 
   const registerDay = useCallback(

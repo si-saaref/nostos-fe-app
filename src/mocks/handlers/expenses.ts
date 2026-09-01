@@ -41,7 +41,7 @@ const compare = (a: Expense, b: Expense, sortBy: string): number => {
 }
 
 export const expenseHandlers = [
-  http.get('/api/expenses', async ({ request }) => {
+  http.get('*/api/v1/expenses', async ({ request }) => {
     await pause(READ_LATENCY_MS)
     const params = new URL(request.url).searchParams
     const page = Number(params.get('page') ?? '1')
@@ -74,13 +74,13 @@ export const expenseHandlers = [
     return HttpResponse.json(paginate(items, page, limit))
   }),
 
-  http.get('/api/expenses/:id', async ({ params }) => {
+  http.get('*/api/v1/expenses/:id', async ({ params }) => {
     await pause(READ_LATENCY_MS)
     const expense = db.expenses.find((row) => row.id === params.id)
     return expense ? HttpResponse.json(expense) : notFound('Expense')
   }),
 
-  http.post('/api/expenses', async ({ request }) => {
+  http.post('*/api/v1/expenses', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const input = (await request.json()) as CreateExpenseInput
     const created: Expense = {
@@ -92,7 +92,7 @@ export const expenseHandlers = [
     return HttpResponse.json(created, { status: 201 })
   }),
 
-  http.put('/api/expenses/:id', async ({ params, request }) => {
+  http.put('*/api/v1/expenses/:id', async ({ params, request }) => {
     await pause(WRITE_LATENCY_MS)
     const patch = (await request.json()) as Partial<Expense>
     const index = db.expenses.findIndex((expense) => expense.id === params.id)
@@ -101,7 +101,7 @@ export const expenseHandlers = [
     return HttpResponse.json(db.expenses[index])
   }),
 
-  http.delete('/api/expenses/:id', async ({ params }) => {
+  http.delete('*/api/v1/expenses/:id', async ({ params }) => {
     await pause(WRITE_LATENCY_MS)
     const exists = db.expenses.some((expense) => expense.id === params.id)
     if (!exists) return notFound('Expense')

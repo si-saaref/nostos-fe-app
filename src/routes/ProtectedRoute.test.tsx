@@ -18,7 +18,7 @@ const renderAt = (value: HouseholdContextValue) =>
               </ProtectedRoute>
             }
           />
-          <Route path="/auth/login" element={<div>login screen</div>} />
+          <Route path="/signin" element={<div>signin screen</div>} />
         </Routes>
       </MemoryRouter>
     </HouseholdContext.Provider>,
@@ -30,8 +30,8 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('secret content')).toBeInTheDocument()
   })
 
-  it('redirects to login when unauthenticated', () => {
-    renderAt({ ...TEST_HOUSEHOLD_VALUE, isAuthenticated: false, user: null })
-    expect(screen.getByText('login screen')).toBeInTheDocument()
+  it('sends an unauthenticated visitor to signin', () => {
+    renderAt({ ...TEST_HOUSEHOLD_VALUE, isAuthenticated: false, me: null })
+    expect(screen.getByText('signin screen')).toBeInTheDocument()
   })
 })

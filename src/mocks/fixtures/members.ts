@@ -1,4 +1,5 @@
 import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
+import { Role } from '@/types/household'
 import type { User } from '@/types/household'
 import type { Member } from '@/modules/settings/types/settings'
 
@@ -7,7 +8,7 @@ export const seedMembers = (): Member[] => [
     id: 'user-001',
     name: 'Budi',
     email: 'budi@example.com',
-    role: 'admin',
+    role: Role.ADMIN,
     householdId: MOCK_HOUSEHOLD.id,
     deletedAt: null,
     deletionReason: null,
@@ -18,7 +19,7 @@ export const seedMembers = (): Member[] => [
     id: 'user-002',
     name: 'Sari',
     email: 'sari@example.com',
-    role: 'member',
+    role: Role.MEMBER,
     householdId: MOCK_HOUSEHOLD.id,
     deletedAt: null,
     deletionReason: null,
@@ -29,7 +30,7 @@ export const seedMembers = (): Member[] => [
     id: 'user-003',
     name: 'Rina',
     email: 'rina@example.com',
-    role: 'member',
+    role: Role.MEMBER,
     householdId: MOCK_HOUSEHOLD.id,
     deletedAt: null,
     deletionReason: null,
@@ -40,7 +41,7 @@ export const seedMembers = (): Member[] => [
     id: 'user-004',
     name: 'Asep',
     email: 'asep@example.com',
-    role: 'member',
+    role: Role.MEMBER,
     householdId: MOCK_HOUSEHOLD.id,
     deletedAt: null,
     deletionReason: null,
@@ -51,7 +52,7 @@ export const seedMembers = (): Member[] => [
     id: 'user-005',
     name: 'Dewi',
     email: 'dewi@example.com',
-    role: 'member',
+    role: Role.MEMBER,
     householdId: MOCK_HOUSEHOLD.id,
     deletedAt: '2026-07-02',
     deletionReason: 'LEFT',

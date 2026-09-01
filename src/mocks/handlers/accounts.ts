@@ -12,12 +12,12 @@ import type { AccountInput } from '@/modules/settings/types/settings'
 
 /** Archived rows are returned for the same reason as categories. */
 export const accountHandlers = [
-  http.get('/api/payment-sources', async () => {
+  http.get('*/api/v1/payment-sources', async () => {
     await pause(READ_LATENCY_MS)
     return HttpResponse.json(db.accounts)
   }),
 
-  http.post('/api/payment-sources', async ({ request }) => {
+  http.post('*/api/v1/payment-sources', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const input = (await request.json()) as AccountInput
     const created: Account = {
@@ -31,7 +31,7 @@ export const accountHandlers = [
     return HttpResponse.json(created, { status: 201 })
   }),
 
-  http.put('/api/payment-sources/:id', async ({ params, request }) => {
+  http.put('*/api/v1/payment-sources/:id', async ({ params, request }) => {
     await pause(WRITE_LATENCY_MS)
     const patch = (await request.json()) as Partial<Account>
     const index = db.accounts.findIndex((row) => row.id === params.id)

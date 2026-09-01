@@ -3,6 +3,7 @@ import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
 import { toUser } from '@/mocks/fixtures/members'
 import { isAsciiEmail } from '@/utils/validators'
+import { Role } from '@/types/household'
 import { MAX_RESENDS } from '@/modules/settings/lib/memberStatus'
 import { isoDay } from '@/utils/dates'
 import {
@@ -15,12 +16,12 @@ import {
 import type { InviteInput, Member } from '@/modules/settings/types/settings'
 
 export const memberHandlers = [
-  http.get('/api/households/:id/members', async () => {
+  http.get('*/api/v1/households/:id/members', async () => {
     await pause(READ_LATENCY_MS)
     return HttpResponse.json(db.members)
   }),
 
-  http.post('/api/households/:id/members', async ({ request }) => {
+  http.post('*/api/v1/households/:id/members', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const input = (await request.json()) as InviteInput
     if (!isAsciiEmail(input.email)) {
@@ -42,7 +43,7 @@ export const memberHandlers = [
       id: nextId('user'),
       name: input.name,
       email: input.email,
-      role: 'member',
+      role: Role.MEMBER,
       householdId: MOCK_HOUSEHOLD.id,
       deletedAt: null,
       deletionReason: null,
@@ -54,7 +55,7 @@ export const memberHandlers = [
   }),
 
   http.post(
-    '/api/households/:id/members/:memberId/resend-invite',
+    '*/api/v1/households/:id/members/:memberId/resend-invite',
     async ({ params }) => {
       await pause(WRITE_LATENCY_MS)
       const member = db.members.find((row) => row.id === params.memberId)
@@ -71,20 +72,23 @@ export const memberHandlers = [
     },
   ),
 
-  http.delete('/api/households/:id/members/:memberId', async ({ params }) => {
-    await pause(WRITE_LATENCY_MS)
-    const member = db.members.find((row) => row.id === params.memberId)
-    if (!member) return notFound('Member')
-    // Tombstoned, never destroyed: expense attribution has to survive.
-    member.deletedAt = isoDay(new Date())
-    member.deletionReason = 'REMOVED'
-    member.invitePending = false
-    return HttpResponse.json(member)
-  }),
+  http.delete(
+    '*/api/v1/households/:id/members/:memberId',
+    async ({ params }) => {
+      await pause(WRITE_LATENCY_MS)
+      const member = db.members.find((row) => row.id === params.memberId)
+      if (!member) return notFound('Member')
+      // Tombstoned, never destroyed: expense attribution has to survive.
+      member.deletedAt = isoDay(new Date())
+      member.deletionReason = 'REMOVED'
+      member.invitePending = false
+      return HttpResponse.json(member)
+    },
+  ),
 
   // Attribution roster, derived from the membership list so an invite reaches
   // the expense "paid by" picker without a second source of truth.
-  http.get('/api/users', async () => {
+  http.get('*/api/v1/users', async () => {
     await pause(READ_LATENCY_MS)
     return HttpResponse.json(
       db.members.filter((member) => !member.deletedAt).map(toUser),

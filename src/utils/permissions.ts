@@ -1,4 +1,4 @@
-import type { Role } from '@/types/household'
+import { Role } from '@/types/household'
 
 /**
  * The matrix from the master document: members create and read; only admins
@@ -6,4 +6,4 @@ import type { Role } from '@/types/household'
  * for it — a function that returns `true` for everyone is a permission check
  * that reads like one and is not.
  */
-export const canManageExpenses = (role: Role): boolean => role === 'admin'
+export const canManageExpenses = (role: Role): boolean => role === Role.ADMIN

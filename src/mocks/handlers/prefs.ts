@@ -8,12 +8,12 @@ import {
 import type { HouseholdPrefs } from '@/modules/settings/types/settings'
 
 export const prefsHandlers = [
-  http.get('/api/households/:id/prefs', async () => {
+  http.get('*/api/v1/households/:id/prefs', async () => {
     await pause(READ_LATENCY_MS)
     return HttpResponse.json(db.prefs)
   }),
 
-  http.put('/api/households/:id/prefs', async ({ request }) => {
+  http.put('*/api/v1/households/:id/prefs', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const patch = (await request.json()) as Partial<HouseholdPrefs>
     db.prefs = { ...db.prefs, ...patch }

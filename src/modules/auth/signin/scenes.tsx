@@ -1,9 +1,9 @@
 import { useMessages } from '@/i18n/useMessages'
 import { SigninCard } from '@/modules/auth/signin/SigninCard'
-import type { LandingReason } from '@/modules/auth/types/auth'
+import type { Landing } from '@/modules/auth/types/auth'
 
 interface SceneProps {
-  landing: LandingReason
+  landing: Landing | null
 }
 
 /* ------------------------------------------------------------------ door */

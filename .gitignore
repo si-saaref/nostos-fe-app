@@ -34,3 +34,5 @@ dist-ssr
 
 /coverage
 .impeccable/
+
+.env

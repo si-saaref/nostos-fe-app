@@ -14,8 +14,11 @@ interface Props {
 }
 
 /**
- * The only modal in the product. Everything else opens in place — a dialog is
+ * The dialog for a choice. Everything else opens in place — a dialog is
  * reserved for the one moment where the user must stop and answer.
+ *
+ * The signin deletion modal is the other dialog in the product, and is not
+ * this: it announces a dead end rather than asking anything.
  *
  * Radix supplies the parts that are genuinely hard to hand-roll and easy to get
  * wrong: focus trap, focus restored to the trigger, Escape, and the aria wiring.

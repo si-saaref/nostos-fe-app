@@ -31,5 +31,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // These are jsdom + MSW integration tests, not unit tests: a render, a
+    // round trip through the mock server, and a user-event interaction. Under
+    // parallel file execution the default 5s is tight enough that whichever
+    // file loses the CPU race times out, which reads as a flaky suite rather
+    // than the machine contention it is.
+    testTimeout: 15_000,
   },
 })

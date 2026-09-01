@@ -4,6 +4,7 @@ import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { Link, NavLink } from 'react-router-dom'
 import { Logo } from '@/components/Logo'
 import { useHousehold } from '@/contexts/useHousehold'
+import { useLogout } from '@/modules/auth/api/logout'
 
 interface NavItem {
   to: string
@@ -78,7 +79,8 @@ const Glyph = ({ path }: { path: string }) => (
  */
 export const Sidebar = () => {
   const m = useMessages()
-  const { household, user } = useHousehold()
+  const { me } = useHousehold()
+  const logout = useLogout()
 
   return (
     <aside className="bg-card hidden h-screen w-56 shrink-0 flex-col shadow-[1px_0_0_var(--hair)] lg:flex">
@@ -126,25 +128,36 @@ export const Sidebar = () => {
         </ul>
       </nav>
 
-      <Link
-        to={settingsHref(SETTINGS_ANCHORS.household)}
-        className="border-hair hover:bg-chip mt-2 flex items-center gap-2.5 border-t px-3 py-3"
-      >
-        <span
-          aria-hidden="true"
-          className="bg-accent text-accent-ink grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[10px] font-bold"
+      <div className="border-hair mt-2 border-t">
+        <Link
+          to={settingsHref(SETTINGS_ANCHORS.household)}
+          className="hover:bg-chip flex items-center gap-2.5 px-3 py-3"
         >
-          {(user?.name ?? 'NN').slice(0, 2).toUpperCase()}
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-[12px] font-semibold">
-            {user?.name}
+          <span
+            aria-hidden="true"
+            className="bg-accent text-accent-ink grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[10px] font-bold"
+          >
+            {(me?.name ?? 'NN').slice(0, 2).toUpperCase()}
           </span>
-          <span className="text-muted block truncate text-[10.5px]">
-            {household?.name}
+          <span className="min-w-0">
+            <span className="block truncate text-[12px] font-semibold">
+              {me?.name}
+            </span>
+            <span className="text-muted block truncate text-[10.5px]">
+              {me?.household_name}
+            </span>
           </span>
-        </span>
-      </Link>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => logout.mutate()}
+          disabled={logout.isPending}
+          className="text-muted hover:text-ink w-full px-3 pb-3 text-left text-[11px] font-semibold disabled:opacity-60"
+        >
+          {m.act_signout()}
+        </button>
+      </div>
     </aside>
   )
 }

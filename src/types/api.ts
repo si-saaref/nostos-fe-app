@@ -1,4 +1,15 @@
 /**
+ * Every v1 response is wrapped. `data` is uniformly the resource — the list
+ * routes hoist their counts into `meta` rather than nesting them here
+ * (BACKEND.md D15), so one unwrap works for every endpoint.
+ */
+export interface ApiEnvelope<T> {
+  success: boolean
+  data: T
+  message?: string
+}
+
+/**
  * The API's error envelope (auth PRD v3.1 §0). `message` stays optional and
  * flat for the handful of endpoints still answering the older shape.
  */

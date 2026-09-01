@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
+import { Role } from '@/types/household'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { FormField } from '@/components/FormField'
 import { SectionShell } from '@/modules/settings/components/SectionShell'
@@ -166,7 +167,7 @@ export const MemberSection = ({
               </span>
 
               <span className="text-muted text-[10.5px] font-semibold">
-                {member.role === 'admin'
+                {member.role === Role.ADMIN
                   ? m.mem_role_admin()
                   : m.mem_role_member()}
               </span>
@@ -199,7 +200,7 @@ export const MemberSection = ({
 
               {canManage &&
                 !isSelf &&
-                member.role !== 'admin' &&
+                member.role !== Role.ADMIN &&
                 !member.deletedAt && (
                   <button
                     type="button"

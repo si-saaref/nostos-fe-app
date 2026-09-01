@@ -78,7 +78,7 @@ describe('useExpenses', () => {
 
   it('surfaces server errors', async () => {
     server.use(
-      http.get('/api/expenses', () =>
+      http.get('*/api/v1/expenses', () =>
         HttpResponse.json({ message: 'boom' }, { status: 500 }),
       ),
     )
@@ -182,7 +182,7 @@ describe('useCreateExpense', () => {
 
   it('rolls every touched cache back when the write fails', async () => {
     server.use(
-      http.post('/api/expenses', () =>
+      http.post('*/api/v1/expenses', () =>
         HttpResponse.json({ message: 'nope' }, { status: 500 }),
       ),
     )
@@ -218,7 +218,7 @@ describe('useDeleteExpense', () => {
       householdId: HOUSEHOLD_ID,
     }
     server.use(
-      http.delete('/api/expenses/:id', () =>
+      http.delete('*/api/v1/expenses/:id', () =>
         HttpResponse.json({ message: 'nope' }, { status: 500 }),
       ),
     )

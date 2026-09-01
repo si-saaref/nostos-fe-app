@@ -1,11 +1,12 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { chooseOption, renderWithProviders } from '@/test/test-utils'
+import { Role } from '@/types/household'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
 
 describe('ExpenseForm', () => {
   it('lets members add expenses — create is not an admin-only action', () => {
-    renderWithProviders(<ExpenseForm />, { household: { role: 'member' } })
+    renderWithProviders(<ExpenseForm />, { household: { role: Role.MEMBER } })
     expect(screen.getByRole('button', { name: /catat/i })).toBeInTheDocument()
   })
 

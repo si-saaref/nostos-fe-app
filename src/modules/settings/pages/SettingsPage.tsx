@@ -40,7 +40,7 @@ interface SettingsGroup {
  */
 export const SettingsPage = () => {
   const m = useMessages()
-  const { householdId, household, role, user } = useHousehold()
+  const { householdId, me, role } = useHousehold()
   const { hash } = useLocation()
   const navigate = useNavigate()
   const canManage = canManageExpenses(role)
@@ -246,9 +246,9 @@ export const SettingsPage = () => {
                 />
                 <MemberSection
                   householdId={householdId}
-                  householdName={household?.name ?? ''}
+                  householdName={me?.household_name ?? ''}
                   canManage={canManage}
-                  currentUserId={user?.id ?? ''}
+                  currentUserId={me?.user_id ?? ''}
                 />
                 <PreferencesSection
                   householdId={householdId}

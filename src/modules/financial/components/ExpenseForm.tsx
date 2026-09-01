@@ -28,7 +28,7 @@ interface Props {
  */
 export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
   const m = useMessages()
-  const { householdId, user } = useHousehold()
+  const { householdId, me } = useHousehold()
   const {
     mutate: createExpense,
     isPending,
@@ -53,7 +53,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
       typeId: '',
       sourceId: '',
       datePaid: today,
-      paidByUserId: user?.id ?? '',
+      paidByUserId: me?.user_id ?? '',
     },
   })
 
