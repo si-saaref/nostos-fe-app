@@ -21,19 +21,16 @@ export const HouseholdContext = createContext<
 >(undefined)
 
 export const HouseholdProvider = ({ children }: { children: ReactNode }) => {
-  const { data: me, isLoading } = useMe()
+  const { data: me, isLoading, isError } = useMe()
   const householdId = me?.household_id ?? ''
 
-  // Set synchronously during render (not in an effect) so the axios request
-  // interceptor has the header value before any descendant's effect fires
-  // its first request — e.g. a deep-link straight to /financial/expenses.
   setHouseholdId(householdId)
 
   const value: HouseholdContextValue = {
     me: me ?? null,
     householdId,
     role: me?.role ?? Role.MEMBER,
-    isAuthenticated: Boolean(me),
+    isAuthenticated: Boolean(me) && !isError,
     isLoading,
     householdStatus: me?.household_status ?? null,
     scheduledDeletionDate: me?.scheduled_deletion_date ?? null,

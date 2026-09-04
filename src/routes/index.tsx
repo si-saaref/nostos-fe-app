@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { DashboardLayout } from '@/components/Layout/DashboardLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
+import { PublicOnlyRoute } from '@/routes/PublicOnlyRoute'
 import { SigninPage } from '@/modules/auth/pages/SigninPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -27,7 +28,11 @@ export const router = createBrowserRouter([
   // it redirects a spent magic link, so this path is not ours to rename.
   {
     path: '/signin',
-    element: <SigninPage />,
+    element: (
+      <PublicOnlyRoute>
+        <SigninPage />
+      </PublicOnlyRoute>
+    ),
     errorElement: <ErrorPage />,
   },
   {

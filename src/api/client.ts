@@ -28,9 +28,21 @@ apiClient.interceptors.request.use((config) => {
 
 /**
  * v1 wraps every response; the resource is always at `data.data`.
+ *
+ * The guard is not paranoia. An unwrapped or empty body silently yields
+ * `undefined`, and TanStack rejects undefined query data with a message naming
+ * neither the endpoint nor the shape — so a contract change would surface as a
+ * mystery rather than as itself.
  */
-export const unwrap = <T>(res: AxiosResponse<ApiEnvelope<T>>): T =>
-  res.data.data
+export const unwrap = <T>(res: AxiosResponse<ApiEnvelope<T>>): T => {
+  const body = res.data
+  if (body == null || typeof body !== 'object' || !('data' in body)) {
+    throw new Error(
+      `Unenveloped response from ${res.config?.url ?? 'the API'}: expected { success, data }`,
+    )
+  }
+  return body.data
+}
 
 /**
  * Endpoints whose 401 is an answer, not a lost session.
