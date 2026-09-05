@@ -3,7 +3,7 @@ import { useMessages } from '@/i18n/useMessages'
 import { Select } from '@/components/Select'
 import { useActiveCategories } from '@/modules/settings/api/categories'
 import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useUsers } from '@/modules/settings/api/members'
+import { useRoster } from '@/modules/settings/api/members'
 import { rimFor } from '@/theme/rims'
 import type { ExpenseFilters } from '@/types/expense'
 
@@ -32,7 +32,7 @@ export const ExpenseFilter = ({
   const m = useMessages()
   const { data: categories } = useActiveCategories(householdId)
   const { data: accounts } = useActiveAccounts(householdId)
-  const { data: users } = useUsers(householdId)
+  const { data: users } = useRoster(householdId)
 
   // Search is part of the query key and of the URL, so an undebounced keystroke
   // was a request and a new cache entry each. Typing "belanja" cost seven of

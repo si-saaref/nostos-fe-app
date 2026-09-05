@@ -1,42 +1,65 @@
-import { http, HttpResponse } from 'msw'
+import { http } from 'msw'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
 import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
   notFound,
+  ok,
   pause,
 } from '@/mocks/handlers/shared'
-import type { Account } from '@/types/catalog'
-import type { AccountInput } from '@/modules/settings/types/settings'
+import type { Account, AccountKind, WireAccount } from '@/types/catalog'
 
-/** Archived rows are returned for the same reason as categories. */
+const toWire = (account: Account): WireAccount => ({
+  id: account.id,
+  name: account.name,
+  kind: account.kind,
+  opening_balance: account.openingBalance,
+  as_of: account.asOf,
+  order: account.order,
+  archived_at: account.archivedAt,
+  household_id: account.householdId,
+})
+
+/** Archived rows and stable `order` for the same reasons as categories. */
 export const accountHandlers = [
   http.get('*/api/v1/payment-sources', async () => {
     await pause(READ_LATENCY_MS)
-    return HttpResponse.json(db.accounts)
+    return ok(db.accounts.map(toWire))
   }),
 
   http.post('*/api/v1/payment-sources', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
-    const input = (await request.json()) as AccountInput
+    const body = (await request.json()) as Partial<WireAccount>
     const created: Account = {
       id: nextId('source'),
-      ...input,
-      order: db.accounts.length,
+      name: body.name ?? '',
+      kind: (body.kind ?? 'cash') as AccountKind,
+      openingBalance: body.opening_balance ?? 0,
+      asOf: body.as_of ?? '',
+      order: db.accounts.reduce((max, row) => Math.max(max, row.order), -1) + 1,
       archivedAt: null,
       householdId: MOCK_HOUSEHOLD.id,
     }
     db.accounts.push(created)
-    return HttpResponse.json(created, { status: 201 })
+    return ok(toWire(created), { status: 201 })
   }),
 
-  http.put('*/api/v1/payment-sources/:id', async ({ params, request }) => {
+  http.patch('*/api/v1/payment-sources/:id', async ({ params, request }) => {
     await pause(WRITE_LATENCY_MS)
-    const patch = (await request.json()) as Partial<Account>
+    const body = (await request.json()) as Partial<WireAccount>
     const index = db.accounts.findIndex((row) => row.id === params.id)
     if (index === -1) return notFound('Account')
-    db.accounts[index] = { ...db.accounts[index], ...patch }
-    return HttpResponse.json(db.accounts[index])
+    db.accounts[index] = {
+      ...db.accounts[index],
+      ...(body.name !== undefined && { name: body.name }),
+      ...(body.kind !== undefined && { kind: body.kind }),
+      ...(body.opening_balance !== undefined && {
+        openingBalance: body.opening_balance,
+      }),
+      ...(body.as_of !== undefined && { asOf: body.as_of }),
+      ...(body.archived_at !== undefined && { archivedAt: body.archived_at }),
+    }
+    return ok(toWire(db.accounts[index]))
   }),
 ]

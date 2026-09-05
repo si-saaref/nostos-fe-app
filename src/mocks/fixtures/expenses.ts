@@ -1,6 +1,6 @@
 import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
 import { isoDay } from '@/utils/dates'
-import type { Expense } from '@/types/expense'
+import type { StoredExpense } from '@/types/expense'
 
 /** Deterministic PRNG so the demo ledger — and every baseline derived from it
  *  — is identical on every reload and in every test run. */
@@ -154,12 +154,12 @@ const ANOMALIES: Array<{
 
 const DAYS_OF_HISTORY = 120
 
-export const seedExpenses = (payerIds: string[]): Expense[] => {
+export const seedExpenses = (payerIds: string[]): StoredExpense[] => {
   const random = mulberry32(20260828)
   const today = new Date()
   // Anchored at noon so a day never straddles a boundary while being formatted.
   today.setHours(12, 0, 0, 0)
-  const rows: Expense[] = []
+  const rows: StoredExpense[] = []
   let seq = 0
 
   for (let daysAgo = DAYS_OF_HISTORY; daysAgo >= 0; daysAgo -= 1) {
@@ -185,7 +185,9 @@ export const seedExpenses = (payerIds: string[]): Expense[] => {
         createdByUserId: recorder,
         householdId: MOCK_HOUSEHOLD.id,
         createdAt: `${datePaid}T${String(9 + Math.floor(random() * 11)).padStart(2, '0')}:${String(Math.floor(random() * 60)).padStart(2, '0')}:00Z`,
+        updatedByAdminId: null,
         updatedAt: null,
+        deletedAt: null,
       })
     })
   }
@@ -205,7 +207,10 @@ export const seedExpenses = (payerIds: string[]): Expense[] => {
       createdByUserId: anomaly.paidBy,
       householdId: MOCK_HOUSEHOLD.id,
       createdAt: `${datePaid}T20:14:00Z`,
+      // The one edited row, so the admin audit stamp has a value somewhere.
+      updatedByAdminId: index === 1 ? 'user-001' : null,
       updatedAt: index === 1 ? `${datePaid}T08:10:00Z` : null,
+      deletedAt: null,
     })
   })
 

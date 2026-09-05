@@ -4,7 +4,7 @@ import { seedExpenses } from '@/mocks/fixtures/expenses'
 import { seedMembers } from '@/mocks/fixtures/members'
 import { seedPrefs } from '@/mocks/fixtures/prefs'
 import type { Account, Category } from '@/types/catalog'
-import type { Expense } from '@/types/expense'
+import type { StoredExpense } from '@/types/expense'
 import type { HouseholdPrefs, Member } from '@/modules/settings/types/settings'
 
 /**
@@ -31,7 +31,7 @@ const seedAll = () => {
 }
 
 export const db: {
-  expenses: Expense[]
+  expenses: StoredExpense[]
   categories: Category[]
   accounts: Account[]
   members: Member[]

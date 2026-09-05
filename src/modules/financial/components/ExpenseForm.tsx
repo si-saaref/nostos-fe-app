@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { useCreateExpense } from '@/modules/financial/api/expenses'
 import { useActiveCategories } from '@/modules/settings/api/categories'
 import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useUsers } from '@/modules/settings/api/members'
+import { useActivePayers } from '@/modules/settings/api/members'
 import { useHousehold } from '@/contexts/useHousehold'
 import { getErrorMessage } from '@/utils/errors'
 import { isoDay } from '@/utils/dates'
@@ -16,6 +16,13 @@ interface Props {
   onSuccess?: () => void
   onCancel?: () => void
 }
+
+/**
+ * The server's own cap (PRD AC1.2). Enforced with `maxLength` rather than a
+ * validation message: a description is trimmed as it is typed, not rejected
+ * after the fact, and nothing here is worth losing to a length error.
+ */
+const NAME_MAX = 100
 
 /**
  * Create is open to every member — the permission matrix gates update and
@@ -36,7 +43,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
   } = useCreateExpense(householdId)
   const { data: categories } = useActiveCategories(householdId)
   const { data: accounts } = useActiveAccounts(householdId)
-  const { data: users } = useUsers(householdId)
+  const { data: users } = useActivePayers(householdId)
 
   const today = isoDay(new Date())
 
@@ -77,6 +84,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
     >
       <FormField label={m.form_name()} error={errors.name?.message}>
         <input
+          maxLength={NAME_MAX}
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('name', { required: m.form_err_name() })}
         />

@@ -26,14 +26,14 @@ export default defineConfig(({ mode }) => {
     ],
     base: env.VITE_BASE_PATH || '/',
     server: {
-      port: 1231,
-      proxy: {
-        '/api': {
-          target: env.VITE_API_URL || 'http://localhost:8080',
-          changeOrigin: true,
-          secure: false,
-        },
-      },
+      port: 6060,
+      // proxy: {
+      //   '/api': {
+      //     target: env.VITE_API_URL || 'http://localhost:8080',
+      //     changeOrigin: true,
+      //     secure: false,
+      //   },
+      // },
     },
     resolve: {
       alias: {

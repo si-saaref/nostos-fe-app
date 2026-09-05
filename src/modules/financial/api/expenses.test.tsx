@@ -5,7 +5,6 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { server } from '@/mocks/server'
-import { apiClient } from '@/api/client'
 import { createTestQueryClient, createWrapper } from '@/test/test-utils'
 import {
   expenseKeys,
@@ -38,7 +37,7 @@ const JULY: ExpenseFilters = {
 
 const emptyPage = (): Paginated<Expense> => ({
   items: [],
-  pagination: { total: 0, page: 1, pages: 1 },
+  pagination: { page: 1, limit: 25, total: 0, totalPages: 1 },
   totals: { sum: 0, count: 0, average: 0 },
 })
 
@@ -88,18 +87,68 @@ describe('useExpenses', () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
   })
 
-  it('honours sortOrder=asc — the mock reads the API parameter name, not the URL one', async () => {
-    const params = { page: 1, limit: 5, sortBy: 'datePaid' }
-    const asc = await apiClient.get<Paginated<Expense>>('/expenses', {
-      params: { ...params, sortOrder: 'asc' },
-    })
-    const desc = await apiClient.get<Paginated<Expense>>('/expenses', {
-      params: { ...params, sortOrder: 'desc' },
-    })
+  it('honours sort_order=ASC — the hook writes the API parameter names, not the URL ones', async () => {
+    const base = { ...BASE, limit: 5 }
+    const asc = renderHook(
+      () => useExpenses(HOUSEHOLD_ID, { ...base, sortOrder: 'asc' }),
+      { wrapper: createWrapper() },
+    )
+    const desc = renderHook(
+      () => useExpenses(HOUSEHOLD_ID, { ...base, sortOrder: 'desc' }),
+      { wrapper: createWrapper() },
+    )
+    await waitFor(() => expect(asc.result.current.isSuccess).toBe(true))
+    await waitFor(() => expect(desc.result.current.isSuccess).toBe(true))
 
-    const ascDates = asc.data.items.map((item) => item.datePaid)
+    const ascDates =
+      asc.result.current.data?.items.map((item) => item.datePaid) ?? []
+    expect(ascDates.length).toBeGreaterThan(0)
     expect([...ascDates].sort()).toEqual(ascDates)
-    expect(asc.data.items[0].datePaid).not.toBe(desc.data.items[0].datePaid)
+    expect(ascDates[0]).not.toBe(desc.result.current.data?.items[0].datePaid)
+  })
+
+  it('maps the snake_case row onto the domain shape', async () => {
+    const { result } = renderHook(() => useExpenses(HOUSEHOLD_ID, BASE), {
+      wrapper: createWrapper(),
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    const row = result.current.data!.items[0]
+    // The wire sends `date_paid` / `type_id`; nothing above this module should
+    // ever see those names.
+    expect(row.datePaid).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(row.typeId).toBeTruthy()
+    expect(row.paidByUserId).toBeTruthy()
+    expect(row).not.toHaveProperty('date_paid')
+  })
+
+  it('reads pagination out of meta, including total_pages', async () => {
+    const { result } = renderHook(
+      () => useExpenses(HOUSEHOLD_ID, { ...BASE, limit: 5 }),
+      { wrapper: createWrapper() },
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    const { pagination, totals } = result.current.data!
+    expect(pagination.limit).toBe(5)
+    expect(pagination.page).toBe(1)
+    expect(pagination.totalPages).toBe(Math.ceil(pagination.total / 5))
+    // Filter-scoped, not page-scoped: 5 rows in hand, every row counted.
+    expect(totals?.count).toBe(pagination.total)
+    expect(totals!.count).toBeGreaterThan(5)
+  })
+
+  it('fails loudly when a list answers without meta.pagination', async () => {
+    // An unenveloped or meta-less page used to yield `undefined` and surface as
+    // a TanStack complaint naming neither the endpoint nor the shape.
+    server.use(
+      http.get('*/api/v1/expenses', () =>
+        HttpResponse.json({ success: true, data: [] }),
+      ),
+    )
+    const { result } = renderHook(() => useExpenses(HOUSEHOLD_ID, BASE), {
+      wrapper: createWrapper(),
+    })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error?.message).toMatch(/meta\.pagination/)
   })
 })
 
@@ -206,6 +255,37 @@ describe('useCreateExpense', () => {
 })
 
 describe('useDeleteExpense', () => {
+  it('soft-deletes: the row leaves every response but stays recoverable', async () => {
+    const { result } = renderHook(
+      () => ({
+        list: useExpenses(HOUSEHOLD_ID, BASE),
+        remove: useDeleteExpense(HOUSEHOLD_ID),
+      }),
+      { wrapper: createWrapper() },
+    )
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const before = result.current.list.data!
+    const target = before.items[0]
+
+    await act(async () => {
+      await result.current.remove.mutateAsync(target.id)
+    })
+
+    // Gone from the page, and counted out of the filter-scoped totals — a
+    // tombstone the list still returned would be worse than a hard delete.
+    await waitFor(() =>
+      expect(
+        result.current.list.data?.items.some((row) => row.id === target.id),
+      ).toBe(false),
+    )
+    expect(result.current.list.data?.pagination.total).toBe(
+      before.pagination.total - 1,
+    )
+    expect(result.current.list.data?.totals?.sum).toBe(
+      before.totals!.sum - target.value,
+    )
+  })
+
   it('removes the row optimistically and restores it when the call fails', async () => {
     const seeded: Expense = {
       id: 'exp-0001',
@@ -225,7 +305,7 @@ describe('useDeleteExpense', () => {
     const client = createTestQueryClient()
     client.setQueryData(expenseKeys.list(HOUSEHOLD_ID, AUGUST), {
       items: [seeded],
-      pagination: { total: 1, page: 1, pages: 1 },
+      pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
       totals: { sum: 24000, count: 1, average: 24000 },
     })
 

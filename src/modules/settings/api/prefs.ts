@@ -27,6 +27,6 @@ export const useUpdatePrefs = (householdId: string) =>
     [prefsKeys.all(householdId)],
     (patch: Partial<HouseholdPrefs>) =>
       apiClient
-        .put<HouseholdPrefs>(`/households/${householdId}/prefs`, patch)
+        .patch<HouseholdPrefs>(`/households/${householdId}/prefs`, patch)
         .then((r) => r.data),
   )

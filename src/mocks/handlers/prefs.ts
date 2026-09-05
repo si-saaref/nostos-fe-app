@@ -13,7 +13,7 @@ export const prefsHandlers = [
     return HttpResponse.json(db.prefs)
   }),
 
-  http.put('*/api/v1/households/:id/prefs', async ({ request }) => {
+  http.patch('*/api/v1/households/:id/prefs', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const patch = (await request.json()) as Partial<HouseholdPrefs>
     db.prefs = { ...db.prefs, ...patch }

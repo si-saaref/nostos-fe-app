@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { AxiosResponse } from 'axios'
 import { queryClient } from '@/api/queryClient'
-import type { ApiEnvelope } from '@/types/api'
+import type { ApiEnvelope, Paginated, Pagination } from '@/types/api'
 
 let currentHouseholdId = ''
 
@@ -42,6 +42,51 @@ export const unwrap = <T>(res: AxiosResponse<ApiEnvelope<T>>): T => {
     )
   }
   return body.data
+}
+
+/**
+ * A list route, turned into a domain page.
+ *
+ * The wire keeps the rows in `data` and the counts in `meta` — `data` is never
+ * a wrapper around the resource — so the two have to be recombined on this
+ * side. `mapRow` is required rather than optional: every list route sends
+ * snake_case rows, and a page assembled without a mapper would type-check and
+ * hand the UI a row whose every field is `undefined`.
+ *
+ * `meta.pagination` is treated as mandatory. Defaulting it would let a page
+ * silently claim one page of one row, which is indistinguishable from a small
+ * result set — and the count strip would then under-report with confidence.
+ */
+export const unwrapPage = <W, T>(
+  res: AxiosResponse<ApiEnvelope<W[]>>,
+  mapRow: (row: W) => T,
+): Paginated<T> => {
+  const rows = unwrap(res)
+  const meta = res.data.meta
+  const wire = meta?.pagination
+  if (!Array.isArray(rows)) {
+    throw new Error(
+      `Expected a list from ${res.config?.url ?? 'the API'}: data was not an array`,
+    )
+  }
+  if (!wire) {
+    throw new Error(
+      `Missing meta.pagination from ${res.config?.url ?? 'the API'}`,
+    )
+  }
+  const pagination: Pagination = {
+    page: wire.page,
+    limit: wire.limit,
+    total: wire.total,
+    totalPages: wire.total_pages,
+  }
+  return {
+    items: rows.map(mapRow),
+    pagination,
+    // Left undefined rather than zeroed when absent: a total of 0 is a claim
+    // about the household's money, and "not sent" is not that claim.
+    totals: meta?.totals && { ...meta.totals },
+  }
 }
 
 /**

@@ -1,75 +1,62 @@
 import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
 import { Role } from '@/types/household'
-import type { User } from '@/types/household'
 import type { Member } from '@/modules/settings/types/settings'
 
+/**
+ * `status` is present on the seed rows but is not what the handler answers
+ * with — `statusOf` derives it per request, because `invite_expired` depends
+ * on the clock and a stored value would go stale between reloads. The field
+ * stays on the row so the store's type is the domain type.
+ */
+const joined = (
+  id: string,
+  name: string,
+  email: string,
+  role: Role = Role.MEMBER,
+): Member => ({
+  id,
+  name,
+  email,
+  role,
+  householdId: MOCK_HOUSEHOLD.id,
+  status: 'joined',
+  resendCount: 0,
+  inviteSentAt: null,
+  inviteExpiresAt: null,
+  deletedAt: null,
+  deletionReason: null,
+})
+
+const hoursFromNow = (hours: number) =>
+  new Date(Date.now() + hours * 3_600_000).toISOString()
+
 export const seedMembers = (): Member[] => [
+  joined('user-001', 'Budi', 'budi@example.com', Role.ADMIN),
+  joined('user-002', 'Sari', 'sari@example.com'),
+  joined('user-003', 'Rina', 'rina@example.com'),
   {
-    id: 'user-001',
-    name: 'Budi',
-    email: 'budi@example.com',
-    role: Role.ADMIN,
-    householdId: MOCK_HOUSEHOLD.id,
-    deletedAt: null,
-    deletionReason: null,
-    invitePending: false,
-    resendCount: 0,
-  },
-  {
-    id: 'user-002',
-    name: 'Sari',
-    email: 'sari@example.com',
-    role: Role.MEMBER,
-    householdId: MOCK_HOUSEHOLD.id,
-    deletedAt: null,
-    deletionReason: null,
-    invitePending: false,
-    resendCount: 0,
-  },
-  {
-    id: 'user-003',
-    name: 'Rina',
-    email: 'rina@example.com',
-    role: Role.MEMBER,
-    householdId: MOCK_HOUSEHOLD.id,
-    deletedAt: null,
-    deletionReason: null,
-    invitePending: false,
-    resendCount: 0,
-  },
-  {
-    id: 'user-004',
-    name: 'Asep',
-    email: 'asep@example.com',
-    role: Role.MEMBER,
-    householdId: MOCK_HOUSEHOLD.id,
-    deletedAt: null,
-    deletionReason: null,
-    invitePending: true,
+    // A live invite with one resend spent — the "Resend · 2 left" state.
+    ...joined('user-004', 'Asep', 'asep@example.com'),
+    status: 'pending',
     resendCount: 1,
+    inviteSentAt: hoursFromNow(-6),
+    inviteExpiresAt: hoursFromNow(42),
   },
   {
-    id: 'user-005',
-    name: 'Dewi',
-    email: 'dewi@example.com',
-    role: Role.MEMBER,
-    householdId: MOCK_HOUSEHOLD.id,
+    // Tombstoned, and still on the list: Dewi's old expenses have to keep
+    // resolving to a name.
+    ...joined('user-005', 'Dewi', 'dewi@example.com'),
+    status: 'left',
     deletedAt: '2026-07-02',
     deletionReason: 'LEFT',
-    invitePending: false,
-    resendCount: 0,
+  },
+  {
+    // An invite nobody spent. Expired rather than pending, so the status the
+    // API distinguishes has something to render against.
+    ...joined('user-006', 'Tono', 'tono@example.com'),
+    status: 'invite_expired',
+    resendCount: 3,
+    inviteSentAt: hoursFromNow(-72),
+    inviteExpiresAt: hoursFromNow(-24),
   },
 ]
-
-/**
- * `/users` is the attribution roster, derived from the membership list rather
- * than kept as a second hardcoded array — so someone invited in Settings shows
- * up in the expense "paid by" picker, the way the real API behaves.
- */
-export const toUser = (member: Member): User => ({
-  id: member.id,
-  name: member.name,
-  email: member.email,
-  role: member.role,
-  householdId: member.householdId,
-})

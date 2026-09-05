@@ -13,7 +13,7 @@ import {
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { getErrorMessage } from '@/utils/errors'
 import { isAsciiEmail } from '@/utils/validators'
-import { MAX_RESENDS, memberStatus } from '@/modules/settings/lib/memberStatus'
+import { memberStatus, resendsLeft } from '@/modules/settings/lib/memberStatus'
 import type { Member, MemberStatus } from '@/modules/settings/types/settings'
 
 interface Props {
@@ -50,6 +50,7 @@ export const MemberSection = ({
   const STATUS_LABEL: Record<MemberStatus, string> = {
     joined: m.mem_status_joined(),
     pending: m.mem_status_pending(),
+    invite_expired: m.mem_status_invite_expired(),
     no_access: m.mem_status_no_access(),
     left: m.mem_status_left(),
     removed: m.mem_status_removed(),
@@ -148,7 +149,12 @@ export const MemberSection = ({
         {members?.map((member) => {
           const status = memberStatus(member)
           const isSelf = member.id === currentUserId
-          const resendsLeft = MAX_RESENDS - member.resendCount
+          const left = resendsLeft(member)
+          // An invite exists but was never delivered, so nothing the person
+          // could click was ever sent. Resending is the only recovery, and
+          // without saying so the row reads as merely "Pending".
+          const undelivered =
+            member.inviteExpiresAt !== null && member.inviteSentAt === null
           return (
             <li
               key={member.id}
@@ -164,6 +170,11 @@ export const MemberSection = ({
                 <span className="text-muted block truncate text-[10.5px]">
                   {member.email}
                 </span>
+                {undelivered && (
+                  <span className="text-danger block truncate text-[10px] font-semibold">
+                    {m.mem_invite_undelivered()}
+                  </span>
+                )}
               </span>
 
               <span className="text-muted text-[10.5px] font-semibold">
@@ -186,17 +197,20 @@ export const MemberSection = ({
                 {STATUS_LABEL[status]}
               </span>
 
-              {canManage && status === 'pending' && (
-                <button
-                  type="button"
-                  onClick={() => resend(member.id)}
-                  disabled={resendsLeft <= 0}
-                  title={resendsLeft <= 0 ? m.mem_resend_max() : undefined}
-                  className="border-hair rounded-lg border px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
-                >
-                  {m.mem_resend()} · {m.mem_resend_left({ n: resendsLeft })}
-                </button>
-              )}
+              {/* An expired invite is the state resending exists for, so the
+                  control has to survive the expiry rather than vanish with it. */}
+              {canManage &&
+                (status === 'pending' || status === 'invite_expired') && (
+                  <button
+                    type="button"
+                    onClick={() => resend(member.id)}
+                    disabled={left <= 0}
+                    title={left <= 0 ? m.mem_resend_max() : undefined}
+                    className="border-hair rounded-lg border px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                  >
+                    {m.mem_resend()} · {m.mem_resend_left({ n: left })}
+                  </button>
+                )}
 
               {canManage &&
                 !isSelf &&

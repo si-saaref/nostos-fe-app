@@ -36,3 +36,27 @@ export interface Account {
   archivedAt: string | null
   householdId: string
 }
+
+/**
+ * `/expense-types` and `/payment-sources` on the wire, snake_case as sent.
+ * Spelled out rather than derived, for the same reason as `WireExpense`: this
+ * shape's job is to be diffable against the API document.
+ */
+export interface WireCategory {
+  id: string
+  name: string
+  order: number
+  archived_at: string | null
+  household_id: string
+}
+
+export interface WireAccount {
+  id: string
+  name: string
+  kind: AccountKind
+  opening_balance: number
+  as_of: string
+  order: number
+  archived_at: string | null
+  household_id: string
+}

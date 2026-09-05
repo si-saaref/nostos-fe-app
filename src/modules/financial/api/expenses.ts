@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '@/api/client'
+import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import type { Paginated } from '@/types/api'
+import type { ApiEnvelope, Paginated } from '@/types/api'
 import type {
   CreateExpenseInput,
   Expense,
   ExpenseFilters,
+  ExpenseSortField,
+  WireExpense,
 } from '@/types/expense'
 
 /**
@@ -28,27 +30,70 @@ export const expenseKeys = {
 const FILTERS_IN_KEY = 4
 
 /**
+ * The wire's own name for each sortable column. The domain calls it
+ * `datePaid`, the browser URL calls it `datePaid`, and the API calls it
+ * `date_paid` — three names for one thing, so the last hop is a lookup rather
+ * than a string transform that would also happily "translate" a typo.
+ */
+const SORT_COLUMN: Record<ExpenseSortField, string> = {
+  datePaid: 'date_paid',
+  value: 'value',
+  name: 'name',
+}
+
+/**
  * The wire shape, written out rather than spreading the filter object straight
  * into axios. The internal names and the query names have drifted apart once
  * already (`sortOrder` vs `order`), and a silent mismatch there reads as a
  * control that works and does nothing.
+ *
+ * Every key is snake_case and `sort_order` is upper-cased, because those are
+ * the API's documented values — `desc` is not one of them, and a server that
+ * falls back to its default on an unrecognised direction would make the sort
+ * control look functional while ignoring it.
  */
 const toRequestParams = (filters?: ExpenseFilters) => {
   if (!filters) return undefined
   const params: Record<string, string | number> = {
     page: filters.page,
     limit: filters.limit,
-    sortBy: filters.sortBy,
-    sortOrder: filters.sortOrder,
+    sort_by: SORT_COLUMN[filters.sortBy],
+    sort_order: filters.sortOrder.toUpperCase(),
   }
-  if (filters.dateFrom) params.dateFrom = filters.dateFrom
-  if (filters.dateTo) params.dateTo = filters.dateTo
-  if (filters.typeId) params.typeId = filters.typeId
-  if (filters.sourceId) params.sourceId = filters.sourceId
-  if (filters.paidByUserId) params.paidByUserId = filters.paidByUserId
+  if (filters.dateFrom) params.date_from = filters.dateFrom
+  if (filters.dateTo) params.date_to = filters.dateTo
+  if (filters.typeId) params.type_id = filters.typeId
+  if (filters.sourceId) params.source_id = filters.sourceId
+  if (filters.paidByUserId) params.paid_by_user_id = filters.paidByUserId
   if (filters.search) params.search = filters.search
   return params
 }
+
+/** Wire → domain. The only place a snake_case expense key is spelled out. */
+export const toExpense = (row: WireExpense): Expense => ({
+  id: row.id,
+  name: row.name,
+  value: row.value,
+  typeId: row.type_id,
+  sourceId: row.source_id,
+  datePaid: row.date_paid,
+  paidByUserId: row.paid_by_user_id,
+  householdId: row.household_id,
+  createdByUserId: row.created_by_user_id,
+  updatedByAdminId: row.updated_by_admin_id,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+})
+
+/** Domain → wire, for the create body. */
+const toExpenseBody = (input: CreateExpenseInput) => ({
+  name: input.name,
+  value: input.value,
+  type_id: input.typeId,
+  source_id: input.sourceId,
+  date_paid: input.datePaid,
+  paid_by_user_id: input.paidByUserId,
+})
 
 /** Would the server have returned this row for these filters? */
 const matchesFilters = (expense: Expense, filters: ExpenseFilters): boolean => {
@@ -119,22 +164,28 @@ export const isOptimisticId = (id: string): boolean =>
 export const useExpenses = (householdId: string, filters?: ExpenseFilters) =>
   useQuery({
     queryKey: expenseKeys.list(householdId, filters),
-    queryFn: async () => {
-      const res = await apiClient.get<Paginated<Expense>>('/expenses', {
-        params: toRequestParams(filters),
-      })
-      return res.data
-    },
+    queryFn: async () =>
+      unwrapPage(
+        await apiClient.get<ApiEnvelope<WireExpense[]>>('/expenses', {
+          params: toRequestParams(filters),
+        }),
+        toExpense,
+      ),
     enabled: Boolean(householdId),
   })
 
 export const useCreateExpense = (householdId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: CreateExpenseInput) => {
-      const res = await apiClient.post<Expense>('/expenses', input)
-      return res.data
-    },
+    mutationFn: async (input: CreateExpenseInput) =>
+      toExpense(
+        unwrap(
+          await apiClient.post<ApiEnvelope<WireExpense>>(
+            '/expenses',
+            toExpenseBody(input),
+          ),
+        ),
+      ),
     onMutate: async (input) => {
       await queryClient.cancelQueries({
         queryKey: expenseKeys.lists(householdId),
