@@ -15,3 +15,6 @@ export const LANGS = locales.map((id) => ({
   id,
   label: LABELS[id] ?? id,
 }))
+
+export const isLang = (value: unknown): value is Lang =>
+  locales.includes(value as Lang)

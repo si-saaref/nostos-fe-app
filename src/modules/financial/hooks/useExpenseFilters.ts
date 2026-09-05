@@ -1,7 +1,11 @@
 import { useSearchParams } from 'react-router-dom'
-import { useExpenses } from '@/api/queries/expenses'
+import { useExpenses } from '@/modules/financial/api/expenses'
 import { monthRange } from '@/utils/dates'
-import type { ExpenseFilters } from '@/types/expense'
+import type {
+  ExpenseFilters,
+  ExpenseSortField,
+  SortDirection,
+} from '@/types/expense'
 
 const PARAM_MAP: Record<keyof ExpenseFilters, string> = {
   dateFrom: 'dateFrom',
@@ -14,6 +18,26 @@ const PARAM_MAP: Record<keyof ExpenseFilters, string> = {
   limit: 'limit',
   sortBy: 'sortBy',
   sortOrder: 'order',
+}
+
+const SORT_FIELDS: ExpenseSortField[] = ['datePaid', 'value', 'name']
+
+/**
+ * The URL is user-editable, so nothing read from it is trusted. A cast here
+ * would fabricate a guarantee: `?order=lol` would be typed `'asc' | 'desc'` and
+ * ride straight onto the wire.
+ */
+const toSortField = (value: string | null): ExpenseSortField =>
+  SORT_FIELDS.includes(value as ExpenseSortField)
+    ? (value as ExpenseSortField)
+    : 'datePaid'
+
+const toSortDirection = (value: string | null): SortDirection =>
+  value === 'asc' ? 'asc' : 'desc'
+
+const toPositiveInt = (value: string | null, fallback: number): number => {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
 /**
@@ -30,11 +54,11 @@ const parseFilters = (params: URLSearchParams): ExpenseFilters => {
     sourceId: params.get('source') ?? undefined,
     paidByUserId: params.get('paidBy') ?? undefined,
     search: params.get('q') ?? undefined,
-    page: Number(params.get('page') ?? '1'),
+    page: toPositiveInt(params.get('page'), 1),
     // The tape is continuous rather than paginated, so one page holds a month.
-    limit: Number(params.get('limit') ?? '400'),
-    sortBy: params.get('sortBy') ?? 'datePaid',
-    sortOrder: (params.get('order') as 'asc' | 'desc' | null) ?? 'desc',
+    limit: toPositiveInt(params.get('limit'), 400),
+    sortBy: toSortField(params.get('sortBy')),
+    sortOrder: toSortDirection(params.get('order')),
   }
 }
 

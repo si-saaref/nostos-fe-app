@@ -1,17 +1,7 @@
 import { useId } from 'react'
 import type { ReactNode } from 'react'
-import type { RimIndex } from '@/types/settings'
-
-const RIM_CLASS: Record<RimIndex, string> = {
-  1: 'bg-rim-1',
-  2: 'bg-rim-2',
-  3: 'bg-rim-3',
-  4: 'bg-rim-4',
-  5: 'bg-rim-5',
-  6: 'bg-rim-6',
-  7: 'bg-rim-7',
-  8: 'bg-rim-8',
-}
+import { RIM_CLASS } from '@/theme/rims'
+import type { RimIndex } from '@/theme/rims'
 
 interface Props {
   title: string

@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { HouseholdContext } from '@/contexts/HouseholdContext'
 import type { HouseholdContextValue } from '@/contexts/HouseholdContext'
 import { SettingsProvider } from '@/contexts/SettingsContext'
-import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/data'
+import { MOCK_ME } from '@/mocks/fixtures/household'
 
 export const createTestQueryClient = (): QueryClient =>
   new QueryClient({
@@ -26,12 +26,13 @@ export const createWrapper = () => {
 }
 
 export const TEST_HOUSEHOLD_VALUE: HouseholdContextValue = {
-  user: MOCK_USER,
-  household: MOCK_HOUSEHOLD,
-  householdId: MOCK_HOUSEHOLD.id,
-  role: 'admin',
+  me: MOCK_ME,
+  householdId: MOCK_ME.household_id,
+  role: MOCK_ME.role,
   isAuthenticated: true,
   isLoading: false,
+  householdStatus: MOCK_ME.household_status,
+  scheduledDeletionDate: MOCK_ME.scheduled_deletion_date,
 }
 
 interface RenderOptions {

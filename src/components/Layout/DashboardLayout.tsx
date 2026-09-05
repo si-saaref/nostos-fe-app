@@ -9,7 +9,7 @@ import { useHousehold } from '@/contexts/useHousehold'
  * month rail in place while only the ledger moves.
  */
 export const DashboardLayout = () => {
-  const { user } = useHousehold()
+  const { me } = useHousehold()
   return (
     <div className="bg-ground flex h-screen overflow-hidden">
       <a
@@ -28,7 +28,7 @@ export const DashboardLayout = () => {
             aria-hidden="true"
             className="bg-accent text-accent-ink grid h-7 w-7 place-items-center rounded-lg text-[9.5px] font-bold"
           >
-            {(user?.name ?? 'NN').slice(0, 2).toUpperCase()}
+            {(me?.name ?? 'NN').slice(0, 2).toUpperCase()}
           </span>
         </header>
 

@@ -1,11 +1,12 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { chooseOption, renderWithProviders } from '@/test/test-utils'
+import { Role } from '@/types/household'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
 
 describe('ExpenseForm', () => {
   it('lets members add expenses — create is not an admin-only action', () => {
-    renderWithProviders(<ExpenseForm />, { household: { role: 'member' } })
+    renderWithProviders(<ExpenseForm />, { household: { role: Role.MEMBER } })
     expect(screen.getByRole('button', { name: /catat/i })).toBeInTheDocument()
   })
 
@@ -51,5 +52,23 @@ describe('ExpenseForm', () => {
     expect(
       await screen.findByText(/tidak boleh tanggal yang akan datang/i),
     ).toBeInTheDocument()
+  })
+
+  // A required Select used to block the submit and render nothing, so the
+  // button simply appeared broken.
+  it('explains a missing category instead of silently refusing to submit', async () => {
+    const onSuccess = vi.fn()
+    renderWithProviders(<ExpenseForm onSuccess={onSuccess} />)
+
+    await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Kopi')
+    await userEvent.type(screen.getByLabelText(/jumlah/i), '25000')
+    await chooseOption(/metode pembayaran/i, /^Tunai/)
+    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+
+    const alerts = await screen.findAllByRole('alert')
+    expect(alerts.map((alert) => alert.textContent).join(' ')).toMatch(
+      /kategori/i,
+    )
+    expect(onSuccess).not.toHaveBeenCalled()
   })
 })

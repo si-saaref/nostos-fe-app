@@ -27,13 +27,3 @@ export const fromIsoDay = (iso: string): Date => {
   const [year, month, day] = iso.slice(0, 10).split('-').map(Number)
   return new Date(year, (month ?? 1) - 1, day ?? 1)
 }
-
-/** Every day in a range, oldest first. */
-export const daysInRange = (from: string, to: string): string[] => {
-  const days: string[] = []
-  const end = fromIsoDay(to)
-  for (let day = fromIsoDay(from); day <= end; day = shiftDays(day, 1)) {
-    days.push(isoDay(day))
-  }
-  return days
-}

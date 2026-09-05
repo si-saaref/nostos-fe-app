@@ -1,12 +1,11 @@
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
-import { SectionShell } from '@/modules/settings/components/parts'
+import { SectionShell } from '@/modules/settings/components/SectionShell'
 import { Select } from '@/components/Select'
-import { useHouseholdPrefs, useUpdatePrefs } from '@/api/queries/settings'
-import { LANGS } from '@/i18n/locales'
-import type { Lang } from '@/i18n/locales'
-import { THEMES } from '@/theme/themes'
-import type { ThemeId } from '@/theme/themes'
+import { useHouseholdPrefs, useUpdatePrefs } from '@/modules/settings/api/prefs'
+import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
+import { LANGS, isLang } from '@/i18n/locales'
+import { THEMES, isThemeId } from '@/theme/themes'
 
 interface Props {
   householdId: string
@@ -29,17 +28,18 @@ export const PreferencesSection = ({ householdId, canManage }: Props) => {
     isError,
     refetch,
   } = useHouseholdPrefs(householdId)
-  const { mutate: update } = useUpdatePrefs(householdId)
+  const { mutate: update, error: updateError } = useUpdatePrefs(householdId)
 
   return (
     <SectionShell
-      id="rumah"
+      id={SETTINGS_ANCHORS.household}
       title={m.pref_title()}
       description={m.settings_intro()}
       canManage={canManage}
       isLoading={isLoading}
       isError={isError}
       onRetry={refetch}
+      actionError={updateError}
     >
       <div className="flex flex-col gap-3">
         <div className="bg-card plate-shadow rounded-xl p-4">
@@ -81,10 +81,12 @@ export const PreferencesSection = ({ householdId, canManage }: Props) => {
           </p>
 
           <div className="mt-3 flex flex-wrap gap-3">
+            {/* Guarded rather than cast: the Select speaks in strings, and a
+                cast here would let a stale option id become a theme id. */}
             <Select
               label={m.theme_label()}
               value={theme}
-              onChange={(value) => setTheme(value as ThemeId)}
+              onChange={(value) => isThemeId(value) && setTheme(value)}
               options={THEMES.map((option) => ({
                 value: option.id,
                 label: option.label,
@@ -94,7 +96,7 @@ export const PreferencesSection = ({ householdId, canManage }: Props) => {
             <Select
               label={m.lang_label()}
               value={lang}
-              onChange={(value) => setLang(value as Lang)}
+              onChange={(value) => isLang(value) && setLang(value)}
               options={LANGS.map((option) => ({
                 value: option.id,
                 label: option.label,

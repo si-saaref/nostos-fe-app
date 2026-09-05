@@ -64,6 +64,17 @@ npm run cap:ios        # opens Xcode
 
 See [`docs/FRONTEND.md`](docs/FRONTEND.md) §6.
 
+## Engineering reports
+
+| Document                                                       | What it covers                                                                   |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [`docs/CODE-REVIEW-FINDINGS.md`](docs/CODE-REVIEW-FINDINGS.md) | Full review of the codebase, by severity, with what is fixed and what is open    |
+| [`docs/REFACTOR-2026-08-31.md`](docs/REFACTOR-2026-08-31.md)   | What the `refactor/code` branch changed and why                                  |
+| [`docs/API-GAP-ANALYSIS.md`](docs/API-GAP-ANALYSIS.md)         | Where the frontend and the shipped API disagree, and what the backend still owes |
+
+**Read the gap analysis before starting integration work** — the frontend was built against
+its own MSW mock, and 3 of its 18 endpoint calls currently exist on the server.
+
 ## Security notes
 
 `npm audit` in CI is **informational**, and one advisory

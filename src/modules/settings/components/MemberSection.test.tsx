@@ -48,12 +48,34 @@ describe('MemberSection', () => {
     ).toBeInTheDocument()
   })
 
-  it('derives member states from the payload', async () => {
+  it('renders the status the server derived, including invite_expired', async () => {
     setup()
     expect(await screen.findByText('Dewi')).toBeInTheDocument()
-    // Dewi left; Asep has an unspent invite.
+    // Dewi left; Asep has a live invite; Tono's lapsed. `invite_expired` is a
+    // state the API distinguishes and the FE used to collapse into 'pending',
+    // which offered no reason the link had stopped working.
     expect(screen.getByText(/^Keluar$/)).toBeInTheDocument()
     expect(screen.getByText(/^Menunggu$/)).toBeInTheDocument()
+    expect(screen.getByText(/^Undangan kedaluwarsa$/)).toBeInTheDocument()
+  })
+
+  it('keeps the resend control on an expired invite, disabled once the ration is spent', async () => {
+    setup()
+    await screen.findByText('Tono')
+    // Resending is the only recovery from an expiry, so the control has to
+    // outlive the invite rather than vanish with it.
+    const resends = screen.getAllByRole('button', { name: /kirim ulang/i })
+    expect(resends).toHaveLength(2)
+    // Asep has one of three spent; Tono has all three.
+    expect(resends.map((button) => button.textContent)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Sisa 2 kali'),
+        expect.stringContaining('Sisa 0 kali'),
+      ]),
+    )
+    expect(
+      resends.find((button) => button.textContent?.includes('Sisa 0 kali')),
+    ).toBeDisabled()
   })
 
   it('hides invite and remove controls from members', async () => {
@@ -73,8 +95,9 @@ describe('MemberSection', () => {
     await screen.findByText(/^Budi/)
     await waitFor(() => {
       const removes = screen.queryAllByRole('button', { name: /keluarkan/i })
-      // Sari, Rina, Asep — never Budi (admin, and the caller).
-      expect(removes).toHaveLength(3)
+      // Sari, Rina, Asep, Tono — never Budi (admin, and the caller), and never
+      // Dewi, who is already tombstoned.
+      expect(removes).toHaveLength(4)
     })
   })
 })

@@ -1,13 +1,9 @@
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
+import { useCurrency } from '@/hooks/useCurrency'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay } from '@/utils/dates'
-
-export interface DayTotal {
-  date: string
-  total: number
-  count: number
-}
+import type { DayTotal } from '@/modules/financial/types/ledger'
 
 interface Props {
   /** Newest first, matching the tape. */
@@ -37,6 +33,7 @@ export const MonthRail = ({
 }: Props) => {
   const m = useMessages()
   const { locale } = useSettings()
+  const currency = useCurrency()
   const peak = days.reduce((max, day) => Math.max(max, day.total), 0) || 1
   const pct = monthTotal > 0 ? Math.round((cumulative / monthTotal) * 100) : 0
 
@@ -103,7 +100,7 @@ export const MonthRail = ({
                     day: 'numeric',
                     month: 'long',
                   }).format(fromIsoDay(day.date)),
-                })} — ${formatCurrency(day.total, 'IDR', locale)}`}
+                })} — ${formatCurrency(day.total, currency, locale)}`}
                 className="group flex w-full items-center justify-end gap-1.5 rounded-sm py-[1px]"
               >
                 <span
@@ -142,7 +139,7 @@ export const MonthRail = ({
           })}
         </p>
         <p className="font-display tnum mt-0.5 text-[13px] font-bold">
-          {formatCurrency(cumulative, 'IDR', locale)}
+          {formatCurrency(cumulative, currency, locale)}
         </p>
         <p className="text-muted mt-0.5 text-[8.5px]">{pct}%</p>
       </div>

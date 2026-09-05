@@ -1,4 +1,4 @@
-export const isNonEmpty = (value: string): boolean => value.trim().length > 0
-
-export const isPositiveNumber = (value: number): boolean =>
-  Number.isFinite(value) && value > 0
+/** ASCII-only in Phase 1 — punycode is explicitly deferred. */
+export const isAsciiEmail = (email: string): boolean =>
+  // eslint-disable-next-line no-control-regex
+  /^[\x00-\x7F]+$/.test(email) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)

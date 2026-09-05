@@ -1,20 +1,21 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMessages } from '@/i18n/useMessages'
 import { Logo } from '@/components/Logo'
+import { useRequestSigninLink } from '@/modules/auth/api/signin'
 import {
   LINK_TTL_MINUTES,
   MAX_REQUESTS_PER_HOUR,
-  isAsciiEmail,
-  submitSignin,
-} from '@/modules/auth/signin/machine'
-import type {
-  LandingReason,
-  SigninErrorKind,
-  SigninState,
-} from '@/modules/auth/signin/machine'
+  deletionDeadlineFromResponse,
+  signinErrorFromResponse,
+} from '@/modules/auth/signin/signin'
+import { HouseholdDeletionModal } from '@/modules/auth/signin/HouseholdDeletionModal'
+import { isAsciiEmail } from '@/utils/validators'
+import { LandingReason, SigninError } from '@/modules/auth/types/auth'
+import type { Landing } from '@/modules/auth/types/auth'
 
 interface Props {
-  landing: LandingReason
+  landing: Landing | null
   /** Scenes that already show the mark in their own chrome suppress it here. */
   showLogo?: boolean
   align?: 'left' | 'center'
@@ -35,45 +36,76 @@ export const SigninCard = ({
   const m = useMessages()
   const fieldId = useId()
   const [email, setEmail] = useState('')
-  const [state, setState] = useState<SigninState>({ kind: 'idle' })
+  const [formatError, setFormatError] = useState(false)
+  // The latch. TanStack flips `isSuccess` back to false the moment a resend
+  // starts, so the sent view cannot be keyed on it — this counter both holds
+  // the view and drives the "n left" copy.
+  const [sendsUsed, setSendsUsed] = useState(0)
+  // Two entry points, one piece of state: the URL the redirect landed on, and
+  // a 403 from the request below.
+  const [deletionDeadline, setDeletionDeadline] = useState<string | null>(
+    landing?.reason === LandingReason.DELETION_PENDING
+      ? (landing.until ?? null)
+      : null,
+  )
   const sentHeading = useRef<HTMLParagraphElement>(null)
+  const navigate = useNavigate()
+
+  const request = useRequestSigninLink()
 
   // The form is gone once the link is sent, so focus has to go somewhere real
   // or a screen-reader user is left on a button that no longer exists.
   useEffect(() => {
-    if (state.kind === 'sent') sentHeading.current?.focus()
-  }, [state.kind])
+    if (sendsUsed > 0) sentHeading.current?.focus()
+  }, [sendsUsed])
 
-  const send = async (address: string, used: number) => {
-    setState({ kind: 'sending' })
-    const result = await submitSignin(address)
-    if (result.ok) {
-      setState({ kind: 'sent', email: address, used })
-    } else {
-      setState({ kind: 'idle', error: result.error })
-    }
+  const send = (address: string) => {
+    setFormatError(false)
+    request.mutate(address, {
+      onSuccess: () => setSendsUsed((used) => used + 1),
+      onError: (failure) => {
+        const deadline = deletionDeadlineFromResponse(failure)
+        if (deadline) setDeletionDeadline(deadline)
+      },
+    })
   }
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     if (!isAsciiEmail(email)) {
-      setState({ kind: 'idle', error: 'format' })
+      setFormatError(true)
       return
     }
-    void send(email, 1)
+    send(email)
   }
 
-  const errorText: Record<SigninErrorKind, string> = {
-    format: m.signin_err_format(),
-    not_invited: m.signin_err_not_invited(),
-    rate_limited: m.signin_err_rate(),
-    network: m.signin_err_network(),
+  const changeEmail = () => {
+    request.reset()
+    setSendsUsed(0)
+    setFormatError(false)
   }
 
+  const errorText: Record<SigninError, string> = {
+    [SigninError.FORMAT]: m.signin_err_format(),
+    [SigninError.NOT_INVITED]: m.signin_err_not_invited(),
+    [SigninError.RATE_LIMITED]: m.signin_err_rate(),
+    [SigninError.NETWORK]: m.signin_err_network(),
+  }
+
+  // A 403 opens the modal instead; rendering it inline as well would say the
+  // same thing twice, in two different registers.
+  const error = formatError
+    ? SigninError.FORMAT
+    : request.error && !deletionDeadlineFromResponse(request.error)
+      ? signinErrorFromResponse(request.error)
+      : undefined
+
+  const isSending = request.isPending
+  const sentEmail = request.variables ?? email
   const centred = align === 'center'
 
-  if (state.kind === 'sent') {
-    const left = MAX_REQUESTS_PER_HOUR - state.used
+  if (sendsUsed > 0) {
+    const resendsLeft = MAX_REQUESTS_PER_HOUR - sendsUsed
     return (
       <div className={centred ? 'text-center' : ''}>
         {showLogo && (
@@ -98,39 +130,65 @@ export const SigninCard = ({
           {m.sent_title()}
         </p>
         <p className="text-muted mt-1.5 text-[11.5px] leading-relaxed">
-          {m.sent_body({ email: state.email, n: LINK_TTL_MINUTES })}
+          {m.sent_body({ email: sentEmail, n: LINK_TTL_MINUTES })}
         </p>
 
-        {left > 0 ? (
+        {/* A refused resend has to say so here. The client-side counter resets
+            on reload while the server's hour does not, so the UI will sometimes
+            offer a send the API turns down. */}
+        {error && (
+          <p
+            role="alert"
+            className="border-danger-line bg-danger-bg text-danger mt-3.5 rounded-lg border px-3 py-2 text-[11px] leading-relaxed"
+          >
+            {errorText[error]}
+          </p>
+        )}
+
+        {resendsLeft > 0 && !error ? (
           <button
             type="button"
-            onClick={() => void send(state.email, state.used + 1)}
-            className="border-hair text-ink mt-3.5 w-full rounded-lg border px-3 py-2 text-[11.5px] font-semibold"
+            disabled={isSending}
+            onClick={() => send(sentEmail)}
+            className="border-hair text-ink mt-3.5 w-full rounded-lg border px-3 py-2 text-[11.5px] font-semibold disabled:opacity-60"
           >
-            {m.sent_resend()} · {m.sent_resend_left({ n: left })}
+            {isSending
+              ? m.signin_sending()
+              : `${m.sent_resend()} · ${m.sent_resend_left({ n: resendsLeft })}`}
           </button>
         ) : (
-          <p className="bg-chip text-muted mt-3.5 rounded-lg px-3 py-2 text-[11px]">
-            {m.sent_resend_none()}
-          </p>
+          !error && (
+            <p className="bg-chip text-muted mt-3.5 rounded-lg px-3 py-2 text-[11px]">
+              {m.sent_resend_none()}
+            </p>
+          )
         )}
 
         <p className="text-muted mt-2.5 text-[11px]">
           {m.sent_wrong()}{' '}
           <button
             type="button"
-            onClick={() => setState({ kind: 'idle' })}
+            onClick={changeEmail}
             className="text-ink font-semibold underline underline-offset-2"
           >
             {m.sent_change()}
           </button>
         </p>
+
+        <HouseholdDeletionModal
+          deadline={deletionDeadline}
+          onDismiss={() => {
+            setDeletionDeadline(null)
+            // Strip the query string, or a reload reopens the modal and the
+            // dismiss reads as broken.
+            if (landing?.reason === LandingReason.DELETION_PENDING) {
+              navigate('/signin', { replace: true })
+            }
+          }}
+        />
       </div>
     )
   }
-
-  const sending = state.kind === 'sending'
-  const error = state.kind === 'idle' ? state.error : undefined
 
   return (
     <div className={centred ? 'text-center' : ''}>
@@ -140,17 +198,29 @@ export const SigninCard = ({
         </div>
       )}
 
-      {landing && (
+      {landing && landing.reason !== LandingReason.DELETION_PENDING && (
         <div role="status" className="bg-chip mt-4 rounded-lg px-3 py-2.5">
           <p className="text-[12px] font-semibold">
-            {landing === 'expired_link'
-              ? m.land_expired_title()
-              : m.land_ended_title()}
+            {
+              {
+                [LandingReason.EXPIRED_LINK]: m.land_expired_title(),
+                [LandingReason.SESSION_ENDED]: m.land_ended_title(),
+                [LandingReason.HOUSEHOLD_UNAVAILABLE]:
+                  m.land_unavailable_title(),
+                [LandingReason.ALREADY_IN_HOUSEHOLD]: m.land_already_title(),
+              }[landing.reason]
+            }
           </p>
           <p className="text-muted mt-1 text-[11px] leading-relaxed">
-            {landing === 'expired_link'
-              ? m.land_expired_body()
-              : m.land_ended_body()}
+            {
+              {
+                [LandingReason.EXPIRED_LINK]: m.land_expired_body(),
+                [LandingReason.SESSION_ENDED]: m.land_ended_body(),
+                [LandingReason.HOUSEHOLD_UNAVAILABLE]:
+                  m.land_unavailable_body(),
+                [LandingReason.ALREADY_IN_HOUSEHOLD]: m.land_already_body(),
+              }[landing.reason]
+            }
           </p>
         </div>
       )}
@@ -166,7 +236,7 @@ export const SigninCard = ({
           without ever running our own rule, so the user would be told nothing. */}
       <form onSubmit={onSubmit} noValidate className="mt-4">
         <label
-          htmlFor={fieldId}
+          htmlFor="signin-email"
           className={`text-muted block text-[9px] font-bold tracking-[0.12em] uppercase ${
             centred ? 'text-center' : ''
           }`}
@@ -174,7 +244,7 @@ export const SigninCard = ({
           {m.signin_email()}
         </label>
         <input
-          id={fieldId}
+          id="signin-email"
           type="email"
           inputMode="email"
           autoComplete="email"
@@ -201,16 +271,28 @@ export const SigninCard = ({
 
         <button
           type="submit"
-          disabled={sending}
+          disabled={isSending}
           className="bg-accent text-accent-ink mt-3 w-full rounded-lg px-4 py-2.5 text-[12.5px] font-semibold disabled:opacity-60"
         >
-          {sending ? m.signin_sending() : m.signin_cta()}
+          {isSending ? m.signin_sending() : m.signin_cta()}
         </button>
       </form>
 
       <p className="text-muted mt-3 text-[10.5px] leading-relaxed">
         {m.signin_expiry({ n: LINK_TTL_MINUTES })} {m.signin_invited_only()}
       </p>
+
+      <HouseholdDeletionModal
+        deadline={deletionDeadline}
+        onDismiss={() => {
+          setDeletionDeadline(null)
+          // Strip the query string, or a reload reopens the modal and the
+          // dismiss reads as broken.
+          if (landing?.reason === LandingReason.DELETION_PENDING) {
+            navigate('/signin', { replace: true })
+          }
+        }}
+      />
     </div>
   )
 }

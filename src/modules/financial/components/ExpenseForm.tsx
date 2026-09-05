@@ -1,14 +1,15 @@
 import { useMessages } from '@/i18n/useMessages'
 import { Controller, useForm } from 'react-hook-form'
-import { useCreateExpense } from '@/api/mutations/useCreateExpense'
-import { useExpenseTypes } from '@/api/queries/expenseTypes'
-import { usePaymentSources } from '@/api/queries/paymentSources'
-import { useUsers } from '@/api/queries/users'
+import { useCreateExpense } from '@/modules/financial/api/expenses'
+import { useActiveCategories } from '@/modules/settings/api/categories'
+import { useActiveAccounts } from '@/modules/settings/api/accounts'
+import { useActivePayers } from '@/modules/settings/api/members'
 import { useHousehold } from '@/contexts/useHousehold'
 import { getErrorMessage } from '@/utils/errors'
 import { isoDay } from '@/utils/dates'
 import { Select } from '@/components/Select'
-import { rimFor } from '@/types/settings'
+import { FormField } from '@/components/FormField'
+import { rimFor } from '@/theme/rims'
 import type { CreateExpenseInput } from '@/types/expense'
 
 interface Props {
@@ -17,21 +18,32 @@ interface Props {
 }
 
 /**
+ * The server's own cap (PRD AC1.2). Enforced with `maxLength` rather than a
+ * validation message: a description is trimmed as it is typed, not rejected
+ * after the fact, and nothing here is worth losing to a length error.
+ */
+const NAME_MAX = 100
+
+/**
  * Create is open to every member — the permission matrix gates update and
  * delete, not recording what you just paid for. Six fields, because capture
  * has to be faster than remembering.
+ *
+ * Every rule renders where it applies: a required field that blocks submission
+ * without saying so reads as a broken button, and three of the six fields here
+ * are Selects.
  */
 export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
   const m = useMessages()
-  const { householdId, user } = useHousehold()
+  const { householdId, me } = useHousehold()
   const {
     mutate: createExpense,
     isPending,
     error,
   } = useCreateExpense(householdId)
-  const { data: types } = useExpenseTypes(householdId)
-  const { data: sources } = usePaymentSources(householdId)
-  const { data: users } = useUsers(householdId)
+  const { data: categories } = useActiveCategories(householdId)
+  const { data: accounts } = useActiveAccounts(householdId)
+  const { data: users } = useActivePayers(householdId)
 
   const today = isoDay(new Date())
 
@@ -48,7 +60,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
       typeId: '',
       sourceId: '',
       datePaid: today,
-      paidByUserId: user?.id ?? '',
+      paidByUserId: me?.user_id ?? '',
     },
   })
 
@@ -70,14 +82,15 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
       noValidate
       className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
     >
-      <Field label={m.form_name()} error={errors.name?.message}>
+      <FormField label={m.form_name()} error={errors.name?.message}>
         <input
+          maxLength={NAME_MAX}
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('name', { required: m.form_err_name() })}
         />
-      </Field>
+      </FormField>
 
-      <Field label={m.form_amount()} error={errors.value?.message}>
+      <FormField label={m.form_amount()} error={errors.value?.message}>
         <input
           type="number"
           inputMode="numeric"
@@ -88,9 +101,9 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
             min: { value: 1, message: m.form_err_positive() },
           })}
         />
-      </Field>
+      </FormField>
 
-      <Field label={m.form_date()} error={errors.datePaid?.message}>
+      <FormField label={m.form_date()} error={errors.datePaid?.message}>
         <input
           type="date"
           max={today}
@@ -100,23 +113,24 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
             validate: (value) => value <= today || m.form_err_future(),
           })}
         />
-      </Field>
+      </FormField>
 
       <Controller
         control={control}
         name="typeId"
         rules={{ required: m.form_err_category() }}
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Select
             label={m.form_category()}
             placeholder={m.form_choose()}
             value={field.value}
             onChange={field.onChange}
+            error={fieldState.error?.message}
             options={
-              types?.map((type, index) => ({
-                value: type.id,
-                label: type.name,
-                rim: rimFor(index),
+              categories?.map((category) => ({
+                value: category.id,
+                label: category.name,
+                rim: rimFor(category.order),
               })) ?? []
             }
           />
@@ -127,16 +141,17 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
         control={control}
         name="sourceId"
         rules={{ required: m.form_err_method() }}
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Select
             label={m.form_method()}
             placeholder={m.form_choose()}
             value={field.value}
             onChange={field.onChange}
+            error={fieldState.error?.message}
             options={
-              sources?.map((source) => ({
-                value: source.id,
-                label: source.name,
+              accounts?.map((account) => ({
+                value: account.id,
+                label: account.name,
               })) ?? []
             }
           />
@@ -146,12 +161,13 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
       <Controller
         control={control}
         name="paidByUserId"
-        rules={{ required: true }}
-        render={({ field }) => (
+        rules={{ required: m.form_err_paid_by() }}
+        render={({ field, fieldState }) => (
           <Select
             label={m.form_paid_by()}
             value={field.value}
             onChange={field.onChange}
+            error={fieldState.error?.message}
             options={
               users?.map((member) => ({
                 value: member.id,
@@ -192,25 +208,3 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
     </form>
   )
 }
-
-const Field = ({
-  label,
-  error,
-  children,
-}: {
-  label: string
-  error?: string
-  children: React.ReactNode
-}) => (
-  <label className="flex flex-col gap-1">
-    <span className="text-muted text-[9px] font-bold tracking-[0.11em] uppercase">
-      {label}
-    </span>
-    {children}
-    {error && (
-      <span role="alert" className="text-danger text-[10.5px]">
-        {error}
-      </span>
-    )}
-  </label>
-)

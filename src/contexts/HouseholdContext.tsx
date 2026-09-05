@@ -1,16 +1,18 @@
 import { createContext } from 'react'
 import type { ReactNode } from 'react'
-import { useSession } from '@/api/queries/session'
+import { useMe } from '@/modules/auth/api/me'
 import { setHouseholdId } from '@/api/client'
-import type { Household, Role, User } from '@/types/household'
+import { Role } from '@/types/household'
+import type { HouseholdStatus, Me } from '@/types/household'
 
 export interface HouseholdContextValue {
-  user: User | null
-  household: Household | null
+  me: Me | null
   householdId: string
   role: Role
   isAuthenticated: boolean
   isLoading: boolean
+  householdStatus: HouseholdStatus | null
+  scheduledDeletionDate: string | null
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -19,21 +21,19 @@ export const HouseholdContext = createContext<
 >(undefined)
 
 export const HouseholdProvider = ({ children }: { children: ReactNode }) => {
-  const { data: session, isLoading } = useSession()
-  const householdId = session?.household?.id ?? ''
+  const { data: me, isLoading, isError } = useMe()
+  const householdId = me?.household_id ?? ''
 
-  // Set synchronously during render (not in an effect) so the axios request
-  // interceptor has the header value before any descendant's effect fires
-  // its first request — e.g. a deep-link straight to /financial/expenses.
   setHouseholdId(householdId)
 
   const value: HouseholdContextValue = {
-    user: session?.user ?? null,
-    household: session?.household ?? null,
+    me: me ?? null,
     householdId,
-    role: session?.user?.role ?? 'member',
-    isAuthenticated: Boolean(session?.user),
+    role: me?.role ?? Role.MEMBER,
+    isAuthenticated: Boolean(me) && !isError,
     isLoading,
+    householdStatus: me?.household_status ?? null,
+    scheduledDeletionDate: me?.scheduled_deletion_date ?? null,
   }
 
   return (

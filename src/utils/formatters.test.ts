@@ -1,10 +1,15 @@
 import { formatCurrency, formatDate } from '@/utils/formatters'
 
 describe('formatCurrency', () => {
-  it('formats an integer amount as a currency string', () => {
-    const result = formatCurrency(150000)
-    expect(typeof result).toBe('string')
+  it('formats rupiah with no decimals', () => {
+    const result = formatCurrency(150000, 'IDR', 'id-ID')
+    expect(result).toMatch(/^Rp/)
     expect(result).toContain('150')
+    expect(result).not.toContain(',00')
+  })
+
+  it('honours the currency it is given', () => {
+    expect(formatCurrency(1500, 'USD', 'en-US')).toBe('$1,500')
   })
 })
 

@@ -1,4 +1,4 @@
-import { landingFromParams } from '@/modules/auth/signin/machine'
+import { landingFromParams } from '@/modules/auth/signin/signin'
 import { DoorScene } from '@/modules/auth/signin/scenes'
 import { useLocation } from 'react-router-dom'
 
@@ -11,7 +11,5 @@ export const SigninPage = () => {
   const params = new URLSearchParams(search)
   const landing = landingFromParams(params)
 
-  // return <StillLifeScene landing={landing} />
-  // return <LedgerScene landing={landing} />
   return <DoorScene landing={landing} />
 }

@@ -1,13 +1,9 @@
-import type { Role } from '@/types/household'
+import { Role } from '@/types/household'
 
 /**
- * The matrix from the master document, which the shipped code had inverted:
- * members create and read; only admins change or remove history.
+ * The matrix from the master document: members create and read; only admins
+ * change or remove history. Creating is not gated, so there is no predicate
+ * for it — a function that returns `true` for everyone is a permission check
+ * that reads like one and is not.
  */
-export const canCreateExpenses = (): boolean => true
-
-/** Update, delete and export — the treasurer's actions. */
-export const canManageExpenses = (role: Role): boolean => role === 'admin'
-
-export const hasRole = (role: Role, required: Role): boolean =>
-  role === required
+export const canManageExpenses = (role: Role): boolean => role === Role.ADMIN

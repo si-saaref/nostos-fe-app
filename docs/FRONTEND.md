@@ -151,7 +151,7 @@ Rules that hold across every theme, and that a reviewer should enforce:
 
 - `--danger` is reserved for destructive actions and is **never** a category rim.
 - `--rim-1..8` are the category channel. Categories are user-created and unbounded, so
-  assignment wraps at eight (`rimFor(order)` in `src/types/settings.ts`); colours repeat past
+  assignment wraps at eight (`rimFor(order)` in `src/theme/rims.ts`); colours repeat past
   that, which degrades scanning without breaking meaning because the name is always present.
 - Colour never carries meaning alone — every rim and every deviation marker has text beside it.
 - Containers lift (`plate-shadow`, `lift-shadow`); data stays flat; inset (`well-shadow`) is
@@ -173,33 +173,45 @@ reports `navigator.language` as `en-US` and assertions need one language to targ
 
 ## 6. Module layout
 
+Sliced by **entity**, not by HTTP verb. `src/api/` is transport only; every
+entity's key factory, reads and writes live in one file inside the module that
+owns the write side. One endpoint → one query key → one response type.
+
 ```
 src/
-├── api/
+├── api/                   transport only — nothing entity-shaped lives here
 │   ├── client.ts          axios instance + both interceptors
-│   ├── queryClient.ts     staleTime 5m, gcTime 10m, no refetch-on-focus, retry 2
-│   ├── queries/           expenses, expenseTypes, paymentSources, users, session, settings
-│   └── mutations/         useCreateExpense, useUpdateExpense*, useDeleteExpense
-├── components/            ErrorBoundary, Loading, Logo, Select, PermissionGuard*, Layout/
+│   ├── keys.ts            household-rooted key helper: ['h', householdId, entity]
+│   ├── queryClient.ts     staleTime 5m, gcTime 10m, retry 5xx only
+│   └── useInvalidatingMutation.ts   a write plus the reads it makes stale
+├── components/            ConfirmDialog, ErrorBoundary, FormField, Loading, Logo,
+│   │                      Select, Layout/
 │   └── Layout/            AuthLayout, DashboardLayout, Sidebar (+ BottomBar)
 ├── contexts/              HouseholdContext, SettingsContext (theme + language)
+├── hooks/                 useCurrency
 ├── i18n/                  locales.ts, useMessages.ts
 ├── messages/              id.json, en.json  ← source of truth for copy (repo root)
-├── mocks/                 MSW handlers, seed data, browser + server entry points
+├── mocks/
+│   ├── db.ts              the ONLY mutable store + resetMockState + nextId
+│   ├── fixtures/          pure seed functions, one file per context
+│   └── handlers/          one file per context + index.ts barrel
 ├── modules/
-│   ├── auth/              LoginForm, LoginPage, useLogin, useLogout*
-│   ├── financial/         CountStrip, ExpenseFilter, ExpenseForm, ExpensePlate,
-│   │                      ExpenseTape, MonthRail, useExpenseFilters, useItemBaselines
-│   └── settings/          anchors.ts, SettingsPage, CategorySection, AccountSection,
-│                          MemberSection, PreferencesSection, SettingPlate, ConfirmDialog
+│   ├── auth/              api/session.ts (session + login), signin/, types/auth.ts
+│   ├── financial/         api/expenses.ts (keys + read + create + delete),
+│   │                      components/, hooks/, pages/, types/
+│   └── settings/          api/{categories,accounts,members,prefs}.ts,
+│                          components/, lib/, pages/, types/, anchors.ts
 ├── paraglide/             GENERATED — do not edit, do not commit
 ├── pages/                 DashboardPage, ErrorPage, NotFoundPage
-├── routes/                router, ProtectedRoute, PermissionRoute*
-├── theme/                 themes.ts
-├── types/  utils/  test/
+├── routes/                router, ProtectedRoute
+├── theme/                 themes.ts, rims.ts
+├── types/                 api.ts, catalog.ts (Category/Account), expense.ts, household.ts
+└── utils/  test/
 ```
 
-`*` = present but never called. See §10.
+Type placement follows the same rule: cross-module domain types in `src/types/`,
+module-scoped types in `src/modules/<module>/types/`, component `Props` local to
+the component.
 
 ---
 
@@ -314,15 +326,20 @@ locally because MSW answers them; they will 404 against the real API.
 
 ## 10. Known defects and unwired code
 
-| #   | Item                       | Detail                                                                             |
-| --- | -------------------------- | ---------------------------------------------------------------------------------- |
-| 1   | **Password auth vs. spec** | Repo ships email+password; `prd-auth-fe.md` v3.1 mandates passwordless magic links |
-| 2   | `PermissionRoute`          | 0 call sites                                                                       |
-| 3   | `PermissionGuard`          | 0 call sites                                                                       |
-| 4   | `hasRole`                  | 0 call sites outside its own test                                                  |
-| 5   | `canCreateExpenses`        | 0 call sites — added when the create gate was removed, then never needed           |
-| 6   | `useLogout`                | 0 call sites — no logout control exists in the UI                                  |
-| 7   | `useUpdateExpense`         | 0 call sites — no edit UI                                                          |
+> Companion documents: [`CODE-REVIEW-FINDINGS.md`](CODE-REVIEW-FINDINGS.md) is the full
+> review this table summarises; [`REFACTOR-2026-08-31.md`](REFACTOR-2026-08-31.md) records
+> what was fixed; [`API-GAP-ANALYSIS.md`](API-GAP-ANALYSIS.md) covers the FE↔BE contract,
+> which is a separate axis from everything below.
+
+| #   | Item                         | Detail                                                                                                                                                                                                                                |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Password auth vs. spec**   | Repo ships email+password; `prd-auth-fe.md` v3.1 mandates passwordless magic links                                                                                                                                                    |
+| 2   | **Two routed login screens** | `/auth/login` is what every redirect targets; `/auth/signin` is designed but its `submitSignin` is a stub with no network call. Needs a decision, not a deletion                                                                      |
+| 3   | `monthStartDay`              | Persisted by Settings and read nowhere — custom period boundaries are unimplemented                                                                                                                                                   |
+| 4   | Fresh-clone build            | `src/paraglide` is generated and untracked, and the `postinstall` that generates it lives only in the gitignored `package.json.local`. CI passes because `npm run test` runs before `npm run build` and generates it as a side effect |
+| 5   | Auth/error/loading screens   | `LoginForm`, `AuthLayout`, `Loading`, `NotFoundPage`, `ErrorPage`, `ErrorBoundary` use raw Tailwind palette classes and hardcoded English instead of design tokens and Paraglide                                                      |
+| 6   | No logout                    | No sign-out control exists anywhere; the unused hook was removed rather than left as dead code                                                                                                                                        |
+| 7   | No expense edit              | The inert Edit button and `useUpdateExpense` were removed. Restoring edit is a feature task                                                                                                                                           |
 
 **Fixed since the last revision**, kept here so an audit does not re-raise them:
 
@@ -330,16 +347,27 @@ locally because MSW answers them; they will 404 against the real API.
   update/delete = admin only. `ExpenseForm.test.tsx` now asserts the specified behaviour
   rather than the bug.
 - ~~`getErrorMessage` read the wrong error shape.~~ Now reads the real envelope (§9).
-- ~~No modals of any kind.~~ `ConfirmDialog` (Radix) handles archive and remove.
-- ~~`useDeleteExpense` unwired.~~ Wired to the lifted plate.
+- ~~No modals of any kind.~~ `ConfirmDialog` (Radix) handles archive, remove and delete.
+- ~~`useDeleteExpense` unwired.~~ Wired to the lifted plate, behind a confirmation.
 - ~~`ExpenseTable` / `Navbar`.~~ Deleted — replaced by the tape and the sidebar.
+- ~~Delete had no confirmation step.~~ It now confirms, removes optimistically, rolls back on
+  failure, and surfaces the error.
+- ~~Category and account edits never reached the expenses page.~~ `/expense-types` and
+  `/payment-sources` were each read through two query keys and only one was invalidated.
+  One key per endpoint now, with `useActiveCategories` / `useActiveAccounts` narrowing by
+  `select` rather than by a second request.
+- ~~`PermissionRoute`, `PermissionGuard`, `hasRole`, `canCreateExpenses`, `useLogout`,
+  `useUpdateExpense`, `useExpense`, `getErrorCode`, `daysInRange`, both type barrels.~~
+  Deleted — all had zero call sites.
+- ~~Required Selects blocked submission with no message.~~ `Select` has an error slot; every
+  rule in `ExpenseForm` renders where it applies.
+- ~~`toISOString()` in the archive paths.~~ Replaced with `isoDay`, which reports the local day.
 
 **Still missing against the Expenditure FE PRD:** `ExpenseCard`, `ExpenseRow`,
 `DeleteConfirmModal` and `useExpenseActions` as named. The shipped ledger solves the same jobs
 with a different structure (`ExpenseTape` + `ExpensePlate`, one responsive component instead of
 a table/card split), and create is an inline panel rather than the modal the PRD specifies.
-`ExpenseStats` is superseded by `CountStrip`. **Delete has no confirmation step** — it fires
-immediately from the lifted plate, which should change before real households use it.
+`ExpenseStats` is superseded by `CountStrip`.
 
 ---
 

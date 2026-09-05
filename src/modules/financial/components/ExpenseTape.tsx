@@ -1,36 +1,34 @@
+import { useMemo } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
+import { useCurrency } from '@/hooks/useCurrency'
 import { ExpensePlate } from '@/modules/financial/components/ExpensePlate'
+import { isOptimisticId } from '@/modules/financial/api/expenses'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay } from '@/utils/dates'
-import type {
-  Baseline,
-  Verdict,
-} from '@/modules/financial/hooks/useItemBaselines'
+import type { RimIndex } from '@/theme/rims'
+import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
+import type { DayGroup } from '@/modules/financial/types/ledger'
 import type { Expense } from '@/types/expense'
-
-export interface DayGroup {
-  date: string
-  total: number
-  expenses: Expense[]
-}
 
 interface Props {
   groups: DayGroup[]
-  rimOf: (typeId: string) => 1 | 2 | 3 | 4
+  rimOf: (typeId: string) => RimIndex
   nameOfType: (typeId: string) => string
   nameOfSource: (sourceId: string) => string
   nameOfUser: (userId: string) => string
   judge: (expense: Expense) => Verdict
-  baselineOf: (name: string) => Baseline | undefined
+  baselineFor: (name: string) => Baseline | undefined
   recentFor: (name: string) => Expense[]
   openId: string | null
   onToggle: (id: string) => void
   canManage: boolean
-  onEdit?: (expense: Expense) => void
   onDelete?: (expense: Expense) => void
   registerDay: (date: string, element: HTMLElement | null) => void
 }
+
+/** Referentially stable stand-in, so a missing row still memoises cleanly. */
+const UNKNOWN: Verdict = { kind: 'unknown' }
 
 /**
  * One continuous tape, newest first — the order a member expects the moment
@@ -44,17 +42,28 @@ export const ExpenseTape = ({
   nameOfSource,
   nameOfUser,
   judge,
-  baselineOf,
+  baselineFor,
   recentFor,
   openId,
   onToggle,
   canManage,
-  onEdit,
   onDelete,
   registerDay,
 }: Props) => {
   const m = useMessages()
   const { locale } = useSettings()
+  const currency = useCurrency()
+
+  // Judged once per group change rather than once per render: `judge` returns a
+  // fresh object each call, which would hand every plate a new prop and undo
+  // the memoisation the tape depends on at 200 rows.
+  const verdicts = useMemo(() => {
+    const byId = new Map<string, Verdict>()
+    groups.forEach((group) =>
+      group.expenses.forEach((expense) => byId.set(expense.id, judge(expense))),
+    )
+    return byId
+  }, [groups, judge])
 
   return (
     <div className="flex flex-col">
@@ -82,7 +91,7 @@ export const ExpenseTape = ({
               className="bg-bar h-0.5 flex-1 rounded-full opacity-45"
             />
             <span className="tnum text-[10.5px] font-semibold whitespace-nowrap">
-              {formatCurrency(group.total, 'IDR', locale)} ·{' '}
+              {formatCurrency(group.total, currency, locale)} ·{' '}
               {m.tape_entries_short({ n: group.expenses.length })}
             </span>
           </header>
@@ -99,13 +108,15 @@ export const ExpenseTape = ({
                 recorderName={nameOfUser(
                   expense.createdByUserId ?? expense.paidByUserId,
                 )}
-                verdict={judge(expense)}
-                baseline={baselineOf(expense.name)}
+                verdict={verdicts.get(expense.id) ?? UNKNOWN}
+                baseline={baselineFor(expense.name)}
                 recent={recentFor(expense.name)}
                 isOpen={openId === expense.id}
-                onToggle={() => onToggle(expense.id)}
-                canManage={canManage}
-                onEdit={onEdit}
+                onToggle={onToggle}
+                currency={currency}
+                // A row the server has not acknowledged has no id worth acting
+                // on: deleting it would address a record that does not exist.
+                canManage={canManage && !isOptimisticId(expense.id)}
                 onDelete={onDelete}
               />
             ))}

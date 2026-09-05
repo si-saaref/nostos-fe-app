@@ -33,3 +33,6 @@ dist-ssr
 # .inlang
 
 /coverage
+.impeccable/
+
+.env
