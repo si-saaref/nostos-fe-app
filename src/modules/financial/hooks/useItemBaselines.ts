@@ -34,6 +34,15 @@ const QUIET_HIGH = 1.25
 /** How many past purchases the lifted plate charts. */
 const RECENT_TAKE = 4
 
+/**
+ * The widest page the list route accepts. Asking for 1000 was rejected with a
+ * 400, which the hook has no error branch for — so every plate silently read
+ * "Not enough history to compare yet" and the whole baseline feature was dark.
+ * A truncated window still produces honest baselines; a rejected one produces
+ * none.
+ */
+const MAX_PAGE_SIZE = 500
+
 /** One shared empty result, so "no history" is referentially stable too. */
 const NO_ROWS: Expense[] = []
 
@@ -82,7 +91,7 @@ export const useItemBaselines = (householdId: string) => {
     dateFrom: isoDay(shiftDays(today, -BASELINE_WINDOW_DAYS)),
     dateTo: isoDay(today),
     page: 1,
-    limit: 1000,
+    limit: MAX_PAGE_SIZE,
     sortBy: 'datePaid',
     sortOrder: 'desc',
   })

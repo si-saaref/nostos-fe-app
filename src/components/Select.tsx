@@ -69,10 +69,13 @@ export const Select = ({
           disabled={disabled}
           onValueChange={(next) => onChange(next === UNSET ? '' : next)}
         >
+          {/* Open is signalled by the caret and a hairline, not by a 2px accent
+              ring: the focus outline already draws one, and the two stacked
+              read as an error state. */}
           <RadixSelect.Trigger
             aria-label={label}
             aria-invalid={error ? true : undefined}
-            className={`well-shadow bg-chip flex items-center gap-2 rounded-lg px-3 py-2 text-[11.5px] font-medium outline-none disabled:opacity-60 data-[state=open]:ring-2 data-[state=open]:ring-[var(--accent)] ${
+            className={`well-shadow bg-chip ring-accent/45 group flex items-center gap-2 rounded-lg px-3 py-2 text-[11.5px] font-medium outline-none disabled:opacity-60 data-[state=open]:ring-1 ${
               error ? 'ring-danger ring-2' : ''
             }`}
           >
@@ -86,9 +89,9 @@ export const Select = ({
               placeholder={
                 <span className="text-muted">{placeholder ?? label}</span>
               }
-              className={selected ? 'text-ink' : 'text-muted'}
+              className={selected ? 'text-ink font-semibold' : 'text-muted'}
             />
-            <RadixSelect.Icon className="text-muted ml-auto">
+            <RadixSelect.Icon className="text-muted ml-auto transition-transform duration-150 group-data-[state=open]:rotate-180">
               <svg
                 width="10"
                 height="10"
@@ -111,11 +114,16 @@ export const Select = ({
             <RadixSelect.Content
               position="popper"
               sideOffset={6}
-              className="bg-card lift-shadow z-50 max-h-[min(320px,60vh)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl p-1"
+              className="bg-card lift-shadow z-50 max-h-[min(320px,60vh)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl p-1 outline-none"
             >
               <RadixSelect.Viewport>
+                {/* The reset row is separated rather than sitting flush with
+                    the values: it widens the view, it does not pick one. */}
                 {placeholder && (
-                  <Item value={UNSET} label={placeholder} muted />
+                  <>
+                    <Item value={UNSET} label={placeholder} muted />
+                    <RadixSelect.Separator className="bg-hair mx-1.5 my-1 h-px" />
+                  </>
                 )}
                 {options.map((option) => (
                   <Item
@@ -141,6 +149,12 @@ export const Select = ({
   )
 }
 
+/**
+ * Highlight and selection are two different facts, so they get two different
+ * channels: the pointer/keyboard highlight is a background, the current value
+ * is accent text plus the tick. Sharing one treatment made the checked row look
+ * permanently hovered.
+ */
 const Item = ({
   value,
   label,
@@ -156,7 +170,7 @@ const Item = ({
 }) => (
   <RadixSelect.Item
     value={value}
-    className={`data-[highlighted]:bg-chip flex cursor-default items-center gap-2 rounded-lg px-2.5 py-2 text-[11.5px] outline-none select-none data-[state=checked]:font-semibold ${
+    className={`data-[highlighted]:bg-chip data-[state=checked]:text-accent flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-[7px] text-[11.5px] outline-none select-none data-[state=checked]:font-semibold ${
       muted ? 'text-muted' : 'text-ink'
     }`}
   >

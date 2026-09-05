@@ -103,14 +103,19 @@ const ExpensePlateBase = ({
           className={`absolute inset-y-0 left-0 w-[3px] ${RIM_CLASS[rim]}`}
         />
 
+        {/* Four columns on the same track widths for every row, so the
+            categories, the methods and the payers each read down a column.
+            Sized by flex, the name took all the slack and the meta of every
+            row began somewhere different; sized to content, they crowded each
+            other. A grid is neither. */}
         <button
           type="button"
           onClick={() => onToggle(expense.id)}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:h-[42px] sm:flex-row sm:items-center sm:gap-3 sm:py-0"
+          className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:grid sm:h-[42px] sm:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_7.5rem_6.5rem] sm:items-center sm:gap-3 sm:py-0"
         >
-          <span className="flex items-baseline justify-between gap-3 sm:flex-1 sm:items-center">
+          <span className="flex items-baseline justify-between gap-3 sm:min-w-0 sm:items-center">
             <span className="truncate pl-1 text-[12.5px] font-medium">
               {expense.name}
             </span>
@@ -119,27 +124,32 @@ const ExpensePlateBase = ({
             </span>
           </span>
 
-          <span className="flex items-center gap-2 pl-1 sm:contents">
+          <span className="flex min-w-0 items-center gap-2 pl-1 sm:pl-0">
             <span
               aria-hidden="true"
               className={`grid h-4 w-4 shrink-0 place-items-center rounded text-[7px] font-bold text-white sm:h-[19px] sm:w-[19px] sm:text-[8.5px] ${RIM_CLASS[rim]}`}
             >
               {initials(payerName)}
             </span>
-            <span className="text-muted truncate text-[10px] sm:w-[190px] sm:text-[11px]">
+            <span className="text-muted truncate text-[10px] sm:text-[11px]">
               {typeName} · {sourceName} · {payerName}
             </span>
             {marker && (
               <span
-                className={`ml-auto text-[9.5px] font-bold whitespace-nowrap sm:ml-0 sm:w-[120px] sm:text-right ${marker.className}`}
+                className={`ml-auto text-[9.5px] font-bold whitespace-nowrap sm:hidden ${marker.className}`}
               >
                 {marker.text}
               </span>
             )}
-            {!marker && <span className="sm:w-[120px]" />}
           </span>
 
-          <span className="tnum hidden w-[92px] text-right text-[12.5px] font-semibold sm:block">
+          <span
+            className={`hidden truncate text-right text-[9.5px] font-bold sm:block ${marker?.className ?? ''}`}
+          >
+            {marker?.text}
+          </span>
+
+          <span className="tnum hidden text-right text-[12.5px] font-semibold sm:block">
             {formatCurrency(expense.value, currency, locale)}
           </span>
         </button>
@@ -178,25 +188,41 @@ const ExpensePlateBase = ({
                 </p>
               ) : (
                 <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end">
-                  <ul className="flex h-12 flex-1 items-end gap-1.5">
+                  {/* Each bar is absolutely placed inside a track with a
+                      resolved height. As a percentage height on a flex item
+                      whose own height was auto, every bar computed to zero and
+                      the sparkline drew four dates and nothing above them. */}
+                  <ul className="flex h-14 w-full max-w-[220px] items-end gap-1.5 lg:shrink-0">
                     {recent.map((item) => {
                       const isCurrent = item.id === expense.id
                       return (
                         <li
                           key={item.id}
-                          className="flex flex-1 flex-col items-center gap-1"
+                          className="flex h-full flex-1 flex-col gap-1"
                         >
                           <span
                             aria-hidden="true"
-                            style={{
-                              height: `${Math.max(6, (item.value / peak) * 100)}%`,
-                            }}
-                            className={`w-full rounded-t-sm ${
-                              isCurrent ? 'bg-bar-now' : 'bg-bar opacity-60'
+                            className="relative w-full flex-1"
+                          >
+                            <span
+                              style={{
+                                height: `${Math.max(6, (item.value / peak) * 100)}%`,
+                              }}
+                              className={`absolute inset-x-0 bottom-0 rounded-t-sm ${
+                                isCurrent ? 'bg-bar-now' : 'bg-bar opacity-55'
+                              }`}
+                            />
+                          </span>
+                          <span
+                            className={`text-center text-[7.5px] font-semibold ${
+                              isCurrent ? 'text-ink' : 'text-muted'
                             }`}
-                          />
-                          <span className="text-muted text-[7.5px] font-semibold">
+                          >
+                            {/* Day and month: four purchases of the same item
+                                are often in one month, and four "Sep"s name
+                                nothing. */}
                             {new Intl.DateTimeFormat(locale, {
+                              day: 'numeric',
                               month: 'short',
                             }).format(fromIsoDay(item.datePaid))}
                           </span>

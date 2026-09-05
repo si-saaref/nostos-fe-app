@@ -54,6 +54,10 @@ export const ExpenseTape = ({
   const { locale } = useSettings()
   const currency = useCurrency()
 
+  /** A day with one expense on it does not have "1 entries" on it. */
+  const countLabel = (n: number) =>
+    n === 1 ? m.tape_entries_one() : m.tape_entries_short({ n })
+
   // Judged once per group change rather than once per render: `judge` returns a
   // fresh object each call, which would hand every plate a new prop and undo
   // the memoisation the tape depends on at 200 rows.
@@ -76,23 +80,30 @@ export const ExpenseTape = ({
             day: 'numeric',
             month: 'long',
           }).format(fromIsoDay(group.date))}
-          className="scroll-mt-4"
+          className="scroll-mt-2 pt-6 first:pt-1"
         >
-          <header className="flex items-center gap-2.5 pt-3 pb-1.5">
-            <h3 className="font-display text-[11px] font-bold tracking-[0.11em] uppercase">
+          {/* A day is a group, and the spacing has to say so: 24px above the
+              header against 6px between its rows. Sticky, because a day with
+              thirty entries otherwise loses its own date off the top. */}
+          <header className="bg-ground sticky top-0 z-10 flex items-center gap-3 pb-2">
+            <h3 className="font-display text-[11px] font-bold tracking-[0.12em] uppercase">
               {new Intl.DateTimeFormat(locale, {
                 weekday: 'short',
                 day: 'numeric',
                 month: 'long',
               }).format(fromIsoDay(group.date))}
             </h3>
-            <span
-              aria-hidden="true"
-              className="bg-bar h-0.5 flex-1 rounded-full opacity-45"
-            />
-            <span className="tnum text-[10.5px] font-semibold whitespace-nowrap">
-              {formatCurrency(group.total, currency, locale)} ·{' '}
-              {m.tape_entries_short({ n: group.expenses.length })}
+            <span aria-hidden="true" className="bg-hair h-px flex-1" />
+            {/* The day's subtotal outranks any single row in it, so it is not
+                set smaller than the amounts it adds up. */}
+            <span className="tnum text-[12px] whitespace-nowrap">
+              <span className="font-semibold">
+                {formatCurrency(group.total, currency, locale)}
+              </span>
+              <span className="text-muted font-medium">
+                {' · '}
+                {countLabel(group.expenses.length)}
+              </span>
             </span>
           </header>
 
