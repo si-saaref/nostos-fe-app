@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { DashboardLayout } from '@/components/Layout/DashboardLayout'
+import { SessionBoundary } from '@/routes/SessionBoundary'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { PublicOnlyRoute } from '@/routes/PublicOnlyRoute'
 import { SigninPage } from '@/modules/auth/pages/SigninPage'
@@ -24,44 +25,51 @@ const SettingsPage = lazy(() =>
 )
 
 export const router = createBrowserRouter([
-  // The only public route. The backend hardcodes `/signin` onto APP_URL when
-  // it redirects a spent magic link, so this path is not ours to rename.
   {
-    path: '/signin',
-    element: (
-      <PublicOnlyRoute>
-        <SigninPage />
-      </PublicOnlyRoute>
-    ),
-    errorElement: <ErrorPage />,
-  },
-  {
-    element: (
-      <ProtectedRoute>
-        <DashboardLayout />
-      </ProtectedRoute>
-    ),
+    element: <SessionBoundary />,
+    // One boundary for the whole tree. Every route below renders inside the
+    // session, so an error in any of them can be shown by the same page.
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: '/dashboard', element: <DashboardPage /> },
+      // The only public route. The backend hardcodes `/signin` onto APP_URL
+      // when it redirects a spent magic link, so this path is not ours to
+      // rename.
       {
-        path: '/financial/expenses',
+        path: '/signin',
         element: (
-          <Suspense fallback={<Loading />}>
-            <ExpensesPage />
-          </Suspense>
+          <PublicOnlyRoute>
+            <SigninPage />
+          </PublicOnlyRoute>
         ),
       },
       {
-        path: '/settings',
         element: (
-          <Suspense fallback={<Loading />}>
-            <SettingsPage />
-          </Suspense>
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
         ),
+        children: [
+          { index: true, element: <Navigate to="/dashboard" replace /> },
+          { path: '/dashboard', element: <DashboardPage /> },
+          {
+            path: '/financial/expenses',
+            element: (
+              <Suspense fallback={<Loading />}>
+                <ExpensesPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/settings',
+            element: (
+              <Suspense fallback={<Loading />}>
+                <SettingsPage />
+              </Suspense>
+            ),
+          },
+        ],
       },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
-  { path: '*', element: <NotFoundPage /> },
 ])

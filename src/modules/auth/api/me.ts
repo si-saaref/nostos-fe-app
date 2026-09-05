@@ -12,9 +12,16 @@ export const meKey = ['auth', 'me'] as const
  * `staleTime` is a minute rather than `Infinity` because the backend re-reads
  * the user on every request — this endpoint is the revocation signal, and
  * caching it forever is what would let a removed member keep browsing.
+ *
+ * `Me | null` rather than `Me`, because the cache has to be able to hold
+ * "definitively signed out" as a *value*. `undefined` means "not asked yet"
+ * and an error means "the ask failed"; neither is something logout can assert
+ * synchronously, and a guard that reads a stale session for even one render
+ * bounces the user back into the app they just left. `useLogout` writes `null`
+ * here for exactly that reason.
  */
 export const useMe = () =>
-  useQuery({
+  useQuery<Me | null>({
     queryKey: meKey,
     queryFn: async () =>
       unwrap(await apiClient.get<ApiEnvelope<Me>>('/auth/me')),

@@ -16,7 +16,6 @@ import { Loading } from '@/components/Loading'
 export const PublicOnlyRoute = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated, isLoading } = useHousehold()
 
-  console.log(isAuthenticated)
   if (isLoading) return <Loading />
   if (isAuthenticated) return <Navigate to="/dashboard" replace />
   return <>{children}</>
