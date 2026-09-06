@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
+import { averageMoney, roundMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated } from '@/types/api'
 import type {
   CreateExpenseInput,
   Expense,
   ExpenseFilters,
   ExpenseSortField,
+  UpdateExpenseInput,
   WireExpense,
 } from '@/types/expense'
 
@@ -95,6 +97,30 @@ const toExpenseBody = (input: CreateExpenseInput) => ({
   paid_by_user_id: input.paidByUserId,
 })
 
+/**
+ * Domain → wire for a PATCH. Only the keys the caller actually passed are
+ * written: under PATCH an absent key means "leave it alone", so spreading a
+ * fixed shape would send `undefined` for every field the admin did not touch.
+ *
+ * `value` goes out exactly as typed — deliberately not rounded here. Rounding
+ * at this boundary would turn `10.999` into `11.00` on its way out, charging a
+ * member an amount they did not enter and making the server's own precision
+ * check unreachable. The form rejects it, the server rejects it, nothing
+ * quietly fixes it.
+ */
+const toExpensePatch = (patch: UpdateExpenseInput) => {
+  const body: Record<string, unknown> = {}
+  if (patch.name !== undefined) body.name = patch.name
+  if (patch.value !== undefined) body.value = patch.value
+  if (patch.typeId !== undefined) body.type_id = patch.typeId
+  if (patch.sourceId !== undefined) body.source_id = patch.sourceId
+  if (patch.datePaid !== undefined) body.date_paid = patch.datePaid
+  if (patch.paidByUserId !== undefined) {
+    body.paid_by_user_id = patch.paidByUserId
+  }
+  return body
+}
+
 /** Would the server have returned this row for these filters? */
 const matchesFilters = (expense: Expense, filters: ExpenseFilters): boolean => {
   if (filters.dateFrom && expense.datePaid < filters.dateFrom) return false
@@ -123,13 +149,13 @@ const withRow = (
   expense: Expense,
 ): Paginated<Expense> => {
   const count = (page.totals?.count ?? page.items.length) + 1
-  const sum = (page.totals?.sum ?? 0) + expense.value
+  const sum = roundMoney((page.totals?.sum ?? 0) + expense.value)
   return {
     ...page,
     items: [expense, ...page.items],
     pagination: { ...page.pagination, total: page.pagination.total + 1 },
     totals: page.totals
-      ? { sum, count, average: Math.round(sum / count) }
+      ? { sum, count, average: averageMoney(sum, count) }
       : undefined,
   }
 }
@@ -141,7 +167,7 @@ const withoutRow = (
   const removed = page.items.find((item) => item.id === id)
   if (!removed) return page
   const count = Math.max(0, (page.totals?.count ?? page.items.length) - 1)
-  const sum = Math.max(0, (page.totals?.sum ?? 0) - removed.value)
+  const sum = Math.max(0, roundMoney((page.totals?.sum ?? 0) - removed.value))
   return {
     ...page,
     items: page.items.filter((item) => item.id !== id),
@@ -150,7 +176,7 @@ const withoutRow = (
       total: Math.max(0, page.pagination.total - 1),
     },
     totals: page.totals
-      ? { sum, count, average: count ? Math.round(sum / count) : 0 }
+      ? { sum, count, average: averageMoney(sum, count) }
       : undefined,
   }
 }
@@ -215,6 +241,42 @@ export const useCreateExpense = (householdId: string) => {
       context?.previous?.forEach(([key, data]) => {
         queryClient.setQueryData(key, data)
       })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: expenseKeys.all(householdId) })
+    },
+  })
+}
+
+/**
+ * Correct a row already on the tape. Admin-only, per the permission matrix —
+ * members record what they paid for, admins fix history.
+ *
+ * Invalidating rather than writing optimistically, unlike create and delete.
+ * An edit can move a row out of the filters it is currently rendered under —
+ * change the date and it belongs to another month, change the category and it
+ * leaves the filtered view — so the honest answer to "where does this row
+ * belong now" is the server's. A wrong optimistic guess would show the row
+ * jumping to a place it does not stay.
+ */
+export const useUpdateExpense = (householdId: string) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string } & UpdateExpenseInput) =>
+      toExpense(
+        unwrap(
+          await apiClient.patch<ApiEnvelope<WireExpense>>(
+            `/expenses/${id}`,
+            toExpensePatch(patch),
+          ),
+        ),
+      ),
+    onSuccess: (updated) => {
+      // The detail cache can be refreshed for free from the response body.
+      queryClient.setQueryData(
+        expenseKeys.detail(householdId, updated.id),
+        updated,
+      )
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.all(householdId) })

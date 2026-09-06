@@ -4,12 +4,12 @@
 **Status:** Approved (design), pending implementation plan
 **Branch:** `feat/integrate-expense`
 **Source docs:** `notes/BE/API-SPEC-DEVIATIONS.md` (2026-09-06),
-`docs/API-SPEC-FINANCIAL.md` §1.3 / §3.6 / §4.3 / §6
+`docs/API-SPEC-EXPENSE.md` §1.3 / §3.6 / §4.3 / §6
 
 ## 1. Goal
 
 Reconcile the frontend with the eight deviations backend reported against
-`docs/API-SPEC-FINANCIAL.md`. Five need code; three do not.
+`docs/API-SPEC-EXPENSE.md`. Five need code; three do not.
 
 The note's framing and our code disagree in three places, and those
 disagreements are most of the work:

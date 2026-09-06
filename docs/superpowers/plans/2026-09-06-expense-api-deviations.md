@@ -1227,7 +1227,7 @@ git commit -m "feat: name the deletion date on a refused invite, and reject stal
 - Consumes: nothing.
 - Produces: `src/utils/money.ts` exports only `roundMoney` and `sumMoney` after this.
 
-`MONEY_MAX = 99_999_999.99` is the ceiling deviation #6 says can be dropped. It is not enforced anywhere — the expense form has `min: 1` and no maximum — and the whole file documents a `DECIMAL(10,2)` convention that `docs/API-SPEC-FINANCIAL.md` §3.2 replaced with integer minor units. Only `sumMoney` is imported (`ExpensesPage.tsx:20`).
+`MONEY_MAX = 99_999_999.99` is the ceiling deviation #6 says can be dropped. It is not enforced anywhere — the expense form has `min: 1` and no maximum — and the whole file documents a `DECIMAL(10,2)` convention that `docs/API-SPEC-EXPENSE.md` §3.2 replaced with integer minor units. Only `sumMoney` is imported (`ExpensesPage.tsx:20`).
 
 - [ ] **Step 1: Confirm nothing else imports the removals**
 
@@ -1245,7 +1245,7 @@ In `src/utils/money.ts`, delete `MONEY_MAX`, `MONEY_MIN`, `MONEY_DECIMALS`, `MON
 
 ```ts
 /**
- * Money is an integer in minor units on the wire (`API-SPEC-FINANCIAL.md`
+ * Money is an integer in minor units on the wire (`API-SPEC-EXPENSE.md`
  * §3.2) — for IDR the minor unit is the rupiah itself, so `87000` is Rp 87.000.
  *
  * Summing is still routed through here rather than done inline. The values are

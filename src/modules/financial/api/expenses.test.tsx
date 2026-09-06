@@ -11,6 +11,7 @@ import {
   useCreateExpense,
   useDeleteExpense,
   useExpenses,
+  useUpdateExpense,
 } from '@/modules/financial/api/expenses'
 import type { Paginated } from '@/types/api'
 import type { Expense, ExpenseFilters } from '@/types/expense'
@@ -322,5 +323,120 @@ describe('useDeleteExpense', () => {
         expenseKeys.list(HOUSEHOLD_ID, AUGUST),
       )?.items,
     ).toHaveLength(1)
+  })
+})
+
+describe('useUpdateExpense', () => {
+  const setup = () =>
+    renderHook(
+      () => ({
+        list: useExpenses(HOUSEHOLD_ID, BASE),
+        update: useUpdateExpense(HOUSEHOLD_ID),
+      }),
+      { wrapper: createWrapper() },
+    )
+
+  it('sends only the fields the admin touched', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.patch('*/api/v1/expenses/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({
+          success: true,
+          data: { ...body, id: target.id },
+        })
+      }),
+    )
+
+    await act(async () => {
+      await result.current.update.mutateAsync({ id: target.id, value: 12345 })
+    })
+
+    // Under PATCH an absent key means "leave it alone", so a fixed body shape
+    // would blank the five fields the admin never opened.
+    expect(body).toEqual({ value: 12345 })
+    expect(body).not.toHaveProperty('name')
+  })
+
+  it('writes the corrected row back to the list, decimals intact', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        id: target.id,
+        name: 'Belanja mingguan',
+        value: 180000.5,
+      })
+    })
+
+    await waitFor(() => {
+      const row = result.current.list.data?.items.find(
+        (r) => r.id === target.id,
+      )
+      expect(row?.name).toBe('Belanja mingguan')
+      expect(row?.value).toBe(180000.5)
+    })
+  })
+
+  it('records which admin last edited it, apart from who recorded it', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    const updated = await act(async () =>
+      result.current.update.mutateAsync({ id: target.id, value: 99000 }),
+    )
+
+    // Only an admin can reach this route, so "who logged it" and "who last
+    // changed it" are different questions and both get answered.
+    expect(updated!.updatedByAdminId).toBeTruthy()
+    expect(updated!.updatedAt).toBeTruthy()
+  })
+
+  it('rejects a third decimal place rather than letting it be truncated', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    await act(async () => {
+      await result.current.update
+        .mutateAsync({ id: target.id, value: 10.999 })
+        .catch(() => undefined)
+    })
+
+    // The client does not round on the way out, so this check is reachable
+    // rather than decorative.
+    await waitFor(() => expect(result.current.update.isError).toBe(true))
+  })
+
+  it('404s on a soft-deleted row', async () => {
+    const { result } = renderHook(
+      () => ({
+        list: useExpenses(HOUSEHOLD_ID, BASE),
+        remove: useDeleteExpense(HOUSEHOLD_ID),
+        update: useUpdateExpense(HOUSEHOLD_ID),
+      }),
+      { wrapper: createWrapper() },
+    )
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    await act(async () => {
+      await result.current.remove.mutateAsync(target.id)
+    })
+    await act(async () => {
+      await result.current.update
+        .mutateAsync({ id: target.id, value: 1000 })
+        .catch(() => undefined)
+    })
+
+    // A tombstone is indistinguishable from an id that never existed.
+    await waitFor(() => expect(result.current.update.isError).toBe(true))
   })
 })

@@ -23,6 +23,7 @@ interface Props {
   openId: string | null
   onToggle: (id: string) => void
   canManage: boolean
+  onEdit?: (expense: Expense) => void
   onDelete?: (expense: Expense) => void
   registerDay: (date: string, element: HTMLElement | null) => void
 }
@@ -47,6 +48,7 @@ export const ExpenseTape = ({
   openId,
   onToggle,
   canManage,
+  onEdit,
   onDelete,
   registerDay,
 }: Props) => {
@@ -128,6 +130,7 @@ export const ExpenseTape = ({
                 // A row the server has not acknowledged has no id worth acting
                 // on: deleting it would address a record that does not exist.
                 canManage={canManage && !isOptimisticId(expense.id)}
+                onEdit={onEdit}
                 onDelete={onDelete}
               />
             ))}

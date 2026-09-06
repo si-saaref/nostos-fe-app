@@ -63,6 +63,9 @@ export const ExpensesPage = () => {
   const [scrolledDate, setScrolledDate] = useState<string | undefined>()
   const [atEnd, setAtEnd] = useState(true)
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null)
+  // The row being corrected. Separate state from `showForm` so opening an edit
+  // never silently discards a half-typed new entry.
+  const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null)
   const dayNodes = useRef(new Map<string, HTMLElement>())
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -206,6 +209,12 @@ export const ExpensesPage = () => {
     (id: string) => setOpenId((current) => (current === id ? null : id)),
     [],
   )
+  const requestEdit = useCallback((expense: Expense) => {
+    setExpenseToEdit(expense)
+    // The plate's disclosure and the edit panel would otherwise show the same
+    // row twice, in two places, with two sets of values.
+    setOpenId(null)
+  }, [])
   const requestDelete = useCallback(
     (expense: Expense) => setExpenseToDelete(expense),
     [],
@@ -338,6 +347,22 @@ export const ExpensesPage = () => {
           </div>
         )}
 
+        {expenseToEdit && (
+          <div className="bg-card lift-shadow rounded-xl p-4">
+            <h2 className="font-display mb-3 text-[12.5px] font-bold">
+              {m.expense_edit_title({ name: expenseToEdit.name })}
+            </h2>
+            {/* Keyed on the row: hitting Edit on a second plate while one is
+                open must reset the fields, not keep the first row's values. */}
+            <ExpenseForm
+              key={expenseToEdit.id}
+              expense={expenseToEdit}
+              onSuccess={() => setExpenseToEdit(null)}
+              onCancel={() => setExpenseToEdit(null)}
+            />
+          </div>
+        )}
+
         {deleteError && (
           <p
             role="alert"
@@ -419,6 +444,7 @@ export const ExpensesPage = () => {
               onToggle={toggleOpen}
               registerDay={registerDay}
               canManage={canManage}
+              onEdit={requestEdit}
               onDelete={requestDelete}
             />
           )}

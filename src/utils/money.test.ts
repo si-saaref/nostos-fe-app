@@ -1,4 +1,10 @@
-import { roundMoney, sumMoney } from '@/utils/money'
+import {
+  MONEY_MIN,
+  averageMoney,
+  isValidMoney,
+  roundMoney,
+  sumMoney,
+} from '@/utils/money'
 import { formatCurrency } from '@/utils/formatters'
 
 describe('roundMoney', () => {
@@ -33,5 +39,35 @@ describe('formatCurrency', () => {
     // bury the digits that actually differ.
     expect(formatCurrency(87000, 'IDR', 'id-ID')).not.toMatch(/,00/)
     expect(formatCurrency(50000.5, 'IDR', 'id-ID')).toMatch(/,50/)
+  })
+})
+
+describe('decimal support (restored 2026-09-06)', () => {
+  it('accepts two decimal places — a split bill is a real amount', () => {
+    // `min: 1` on the form, plus the deletion of this guard, silently made
+    // 50000.50 unrecordable while the API accepted it.
+    expect(isValidMoney(50000.5)).toBe(true)
+    expect(isValidMoney(50000.55)).toBe(true)
+    expect(isValidMoney(MONEY_MIN)).toBe(true)
+  })
+
+  it('rejects a third place rather than letting the server truncate it', () => {
+    expect(isValidMoney(10.999)).toBe(false)
+  })
+
+  it('rejects zero and negatives', () => {
+    expect(isValidMoney(0)).toBe(false)
+    expect(isValidMoney(-5)).toBe(false)
+    expect(isValidMoney(Number.NaN)).toBe(false)
+  })
+
+  it('has no ceiling — BE caps at twelve digits, not the client', () => {
+    // Deviation #6 widened the column and said the client ceiling can go.
+    expect(isValidMoney(999_999_999_999.99)).toBe(true)
+  })
+
+  it('averages at two places rather than truncating to whole units', () => {
+    expect(averageMoney(10, 3)).toBe(3.33)
+    expect(averageMoney(0, 0)).toBe(0)
   })
 })

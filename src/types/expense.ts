@@ -30,6 +30,13 @@ export interface CreateExpenseInput {
   paidByUserId: string
 }
 
+/**
+ * What an admin may change. All six fields are editable (PRD AC3.3), and all
+ * six are optional: PATCH writes only the keys present, so an admin correcting
+ * an amount does not restate the other five.
+ */
+export type UpdateExpenseInput = Partial<CreateExpenseInput>
+
 /** Sortable columns on the list endpoint. Named so a typo cannot reach the wire. */
 export type ExpenseSortField = 'datePaid' | 'value' | 'name'
 

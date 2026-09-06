@@ -5,6 +5,7 @@ import { server } from '@/mocks/server'
 import { chooseOption, renderWithProviders } from '@/test/test-utils'
 import { Role } from '@/types/household'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
+import type { Expense } from '@/types/expense'
 
 describe('ExpenseForm', () => {
   it('lets members add expenses — create is not an admin-only action', () => {
@@ -174,5 +175,110 @@ describe('ExpenseForm', () => {
     expect(
       await screen.findByText('Terlalu banyak permintaan'),
     ).toBeInTheDocument()
+  })
+})
+
+const EXISTING: Expense = {
+  id: 'exp-0001',
+  name: 'Belanja mingguan',
+  value: 150000,
+  typeId: 'type-belanja',
+  sourceId: 'source-debit',
+  datePaid: '2026-08-20',
+  paidByUserId: 'user-002',
+  householdId: 'household-001',
+}
+
+describe('ExpenseForm — decimals', () => {
+  it('accepts two decimal places, so a split bill is recordable', async () => {
+    const onSuccess = vi.fn()
+    renderWithProviders(<ExpenseForm onSuccess={onSuccess} />)
+
+    await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Patungan')
+    await userEvent.type(screen.getByLabelText(/jumlah/i), '50000.50')
+    await chooseOption(/kategori/i, 'Belanja')
+    await chooseOption(/metode pembayaran/i, /^Tunai/)
+    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+  })
+
+  it('rejects a third decimal place rather than rounding it away', async () => {
+    const onSuccess = vi.fn()
+    renderWithProviders(<ExpenseForm onSuccess={onSuccess} />)
+
+    await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Patungan')
+    await userEvent.type(screen.getByLabelText(/jumlah/i), '10.999')
+    await chooseOption(/kategori/i, 'Belanja')
+    await chooseOption(/metode pembayaran/i, /^Tunai/)
+    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+
+    expect(
+      await screen.findByText(/2 angka di belakang koma/i),
+    ).toBeInTheDocument()
+    expect(onSuccess).not.toHaveBeenCalled()
+  })
+
+  it('rejects zero', async () => {
+    renderWithProviders(<ExpenseForm />)
+    await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Gratis')
+    await userEvent.type(screen.getByLabelText(/jumlah/i), '0')
+    await chooseOption(/kategori/i, 'Belanja')
+    await chooseOption(/metode pembayaran/i, /^Tunai/)
+    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+
+    expect(await screen.findByText(/lebih dari nol/i)).toBeInTheDocument()
+  })
+})
+
+describe('ExpenseForm — edit mode', () => {
+  it('pre-populates every field from the row being corrected', async () => {
+    renderWithProviders(<ExpenseForm expense={EXISTING} />)
+
+    expect(
+      await screen.findByDisplayValue('Belanja mingguan'),
+    ).toBeInTheDocument()
+    expect(screen.getByDisplayValue('150000')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('2026-08-20')).toBeInTheDocument()
+    // The submit says what it will do, rather than offering to "Record" a row
+    // that already exists.
+    expect(
+      screen.getByRole('button', { name: /simpan perubahan/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('saves a correction and calls onSuccess', async () => {
+    const onSuccess = vi.fn()
+    renderWithProviders(
+      <ExpenseForm expense={EXISTING} onSuccess={onSuccess} />,
+    )
+
+    const amount = await screen.findByLabelText(/jumlah/i)
+    await userEvent.clear(amount)
+    await userEvent.type(amount, '180000.25')
+    await userEvent.click(
+      screen.getByRole('button', { name: /simpan perubahan/i }),
+    )
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps a departed payer selectable on the row they are already on', async () => {
+    // Dewi left the household. Her old rows must not be silently reattributed
+    // just because an admin opened the form to fix the amount.
+    renderWithProviders(
+      <ExpenseForm expense={{ ...EXISTING, paidByUserId: 'user-005' }} />,
+    )
+    // Assert on the trigger, not on any node with the text: Radix mirrors the
+    // options into a hidden native select for form compatibility.
+    await waitFor(() =>
+      expect(screen.getByLabelText(/dibayar oleh/i)).toHaveTextContent('Dewi'),
+    )
+  })
+
+  it('does not offer a departed member on a new expense', async () => {
+    renderWithProviders(<ExpenseForm />)
+    await screen.findByLabelText(/nama pengeluaran/i)
+    expect(screen.queryByText('Dewi')).not.toBeInTheDocument()
   })
 })

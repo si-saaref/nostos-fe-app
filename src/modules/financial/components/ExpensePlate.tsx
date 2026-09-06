@@ -23,6 +23,7 @@ interface Props {
   onToggle: (id: string) => void
   currency: string
   canManage: boolean
+  onEdit?: (expense: Expense) => void
   onDelete?: (expense: Expense) => void
 }
 
@@ -53,6 +54,7 @@ const ExpensePlateBase = ({
   onToggle,
   currency,
   canManage,
+  onEdit,
   onDelete,
 }: Props) => {
   const m = useMessages()
@@ -264,6 +266,13 @@ const ExpensePlateBase = ({
                   <span className="text-muted text-[8px] font-bold tracking-[0.08em] uppercase">
                     {m.plate_admin_only()}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => onEdit?.(expense)}
+                    className="border-hair rounded-lg border px-3 py-1.5 text-[10.5px] font-semibold"
+                  >
+                    {m.plate_edit()}
+                  </button>
                   <button
                     type="button"
                     onClick={() => onDelete?.(expense)}

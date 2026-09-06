@@ -11,6 +11,7 @@ import {
   pause,
 } from '@/mocks/handlers/shared'
 import type { WireMeta } from '@/mocks/handlers/shared'
+import { averageMoney, isValidMoney, sumMoney } from '@/utils/money'
 import type { StoredExpense, WireExpense } from '@/types/expense'
 
 /**
@@ -35,7 +36,7 @@ const toWire = (expense: StoredExpense): WireExpense => ({
 
 /**
  * Soft delete, per the PRD: a removed row keeps its `deleted_at` and stays in
- * the store for the 30-day recovery window, but never reaches a response.
+ * the store for the 7-day recovery window, but never reaches a response.
  * Every read starts here, so a route cannot forget the filter.
  */
 const live = (): StoredExpense[] =>
@@ -54,7 +55,7 @@ const metaFor = (
   page: number,
   limit: number,
 ): WireMeta => {
-  const sum = items.reduce((acc, expense) => acc + expense.value, 0)
+  const sum = sumMoney(items.map((expense) => expense.value))
   return {
     pagination: {
       page,
@@ -65,7 +66,7 @@ const metaFor = (
     totals: {
       sum,
       count: items.length,
-      average: items.length ? Math.round(sum / items.length) : 0,
+      average: averageMoney(sum, items.length),
     },
   }
 }
@@ -209,6 +210,13 @@ export const expenseHandlers = [
   http.patch('*/api/v1/expenses/:id', async ({ params, request }) => {
     await pause(WRITE_LATENCY_MS)
     const body = (await request.json()) as Partial<WireExpense>
+    if (body.value !== undefined && !isValidMoney(body.value)) {
+      return errorBody(
+        400,
+        'VALIDATION_ERROR',
+        'value must be a positive number with at most 2 decimal places',
+      )
+    }
     const index = db.expenses.findIndex(
       (expense) => expense.id === params.id && expense.deletedAt === null,
     )

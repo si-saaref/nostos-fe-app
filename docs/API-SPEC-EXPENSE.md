@@ -26,8 +26,8 @@ explicitly, because those are the ones worth pushing back on before they are bui
 
 **§7 reconciles this document against `MASTER_PRD_EXPENDITURE` (v3.0).** Read it before
 building: it lists the four places the PRD was right and this spec has been corrected, the
-three genuine conflicts still needing a decision, and the PRD statements that are simply out
-of date and should not be implemented.
+three conflicts that were open and are now **resolved** (§7.2), and the PRD statements that
+are simply out of date and should not be implemented.
 
 Companion reading: [`API-GAP-ANALYSIS.md`](API-GAP-ANALYSIS.md) — why none of this exists
 yet, and the eleven other things that also need doing.
@@ -197,20 +197,20 @@ can adopt. What does not work is omitting them.
 }
 ```
 
-| Field                 | Type            | Required | Notes                                                          |
-| --------------------- | --------------- | -------- | -------------------------------------------------------------- |
-| `id`                  | string          | ✅       | Opaque. The FE never parses it.                                |
-| `name`                | string          | ✅       | 1–100 chars, trimmed. What the member typed. PRD AC1.2         |
-| `value`               | integer         | ✅       | **Minor units of the household currency, as an integer.** §3.2 |
-| `type_id`             | string          | ✅       | An `/expense-types` id. May reference an archived one.         |
-| `source_id`           | string          | ✅       | A `/payment-sources` id. May reference an archived one.        |
-| `date_paid`           | `YYYY-MM-DD`    | ✅       | A calendar day, not a timestamp. §3.3                          |
-| `paid_by_user_id`     | string          | ✅       | A member id. **May be tombstoned.** §5.1                       |
-| `household_id`        | string          | ✅       | Always the caller's household.                                 |
-| `created_by_user_id`  | string          | ➖       | Who recorded it — not necessarily who paid. Immutable.         |
-| `updated_by_admin_id` | string / null   | ➖       | Which admin last edited it. `null` when never edited. §3.8     |
-| `created_at`          | ISO 8601        | ➖       | UTC.                                                           |
-| `updated_at`          | ISO 8601 / null | ➖       | `null` when never edited.                                      |
+| Field                 | Type            | Required | Notes                                                      |
+| --------------------- | --------------- | -------- | ---------------------------------------------------------- |
+| `id`                  | string          | ✅       | Opaque. The FE never parses it.                            |
+| `name`                | string          | ✅       | 1–100 chars, trimmed. What the member typed. PRD AC1.2     |
+| `value`               | number          | ✅       | Decimal, **at most 2 places**. `> 0`. §3.2                 |
+| `type_id`             | string          | ✅       | An `/expense-types` id. May reference an archived one.     |
+| `source_id`           | string          | ✅       | A `/payment-sources` id. May reference an archived one.    |
+| `date_paid`           | `YYYY-MM-DD`    | ✅       | A calendar day, not a timestamp. §3.3                      |
+| `paid_by_user_id`     | string          | ✅       | A member id. **May be tombstoned.** §5.1                   |
+| `household_id`        | string          | ✅       | Always the caller's household.                             |
+| `created_by_user_id`  | string          | ➖       | Who recorded it — not necessarily who paid. Immutable.     |
+| `updated_by_admin_id` | string / null   | ➖       | Which admin last edited it. `null` when never edited. §3.8 |
+| `created_at`          | ISO 8601        | ➖       | UTC.                                                       |
+| `updated_at`          | ISO 8601 / null | ➖       | `null` when never edited.                                  |
 
 The four optional fields are optional on the FE side because the list route has not always
 returned them; the UI degrades to "recorded by whoever paid" when they are absent. Returning
@@ -225,14 +225,40 @@ accountability the second one exists for.
 soft-deleted row never reaches a response — see §3.9. Modelling it client-side would invite
 a caller to filter on it, which is the server's job.
 
-### 3.2 `value` is an integer in minor units
+### 3.2 `value` is a decimal with at most two places
 
-The FE stores and sends an integer and formats with `Intl.NumberFormat`. For IDR — the
-default household currency — the minor unit is the rupiah itself, so `87000` is Rp 87.000.
+**Decided 2026-09-05**, matching the PRD (AC1.4). The frontend had shipped
+integer-only and proposed making that the contract; decimal won and the frontend has been
+corrected.
 
-Do not switch this to a decimal string or a float without saying so: rounding a float sum
-across 84 rows produces a total that does not match the rows the member can see, and a
-ledger that cannot add up is worse than one that is missing.
+|             |                                                                 |
+| ----------- | --------------------------------------------------------------- |
+| Stored      | `DECIMAL(14,2)` — widened by BE, see below                      |
+| On the wire | a JSON **number**, not a string. `87000`, `50000.5`, `50000.55` |
+| Range       | `0.01` … `999,999,999,999.99`. Zero is not an expense           |
+| Precision   | **at most 2 decimal places**                                    |
+
+**A third decimal place is a `400`, not a rounding.** The column would truncate
+`10.999` to `11.00` — charging a member an amount they did not type. The FE rejects it in
+the form and deliberately does **not** round it away on the way out, so this validation is
+reachable rather than decorative. Do the same server-side.
+
+Two consequences, because both are easy to get wrong once fractions are legal:
+
+- **`meta.totals.sum` must be summed at decimal precision**, not in floating point. Two
+  hundred rows summed as IEEE doubles drift far enough to print a total that disagrees with
+  the entries behind it. The FE routes every derived figure through one helper
+  (`src/utils/money.ts`); the server has `DECIMAL` and should use it.
+- **`meta.totals.average` is `sum / count` rounded to 2 places**, and `0` when `count` is
+  `0` — not `null`, not a division by zero.
+
+**The ceiling question this section raised is now answered.** It asked product to widen
+`DECIMAL(10,2)` before it became a migration, on the grounds that 99,999,999.99 is reachable
+in IDR — a car, a deposit — within the life of the product. BE did: their
+`API-SPEC-DEVIATIONS.md` #6 widened the column to cap at **999,999,999,999.99** and noted a
+client-side ceiling can be dropped. The FE has dropped it — `utils/money.ts` enforces the
+`0.01` floor and the two-place precision, and nothing else. A client refusing an amount the
+server would accept is a client inventing policy.
 
 ### 3.3 `date_paid` is a day, not an instant
 
@@ -303,7 +329,7 @@ should be rejected (`400 WHITELIST_VALIDATION`) rather than honoured.
 
 **Permissions:** any member may create. Both admins and members.
 
-Validation errors to expect: `name` blank or over 100 chars, `value` not a positive number,
+Validation errors to expect: `name` blank or over 100 chars, `value` not a positive number or carrying more than 2 decimal places,
 `date_paid` malformed or in the future, `type_id`/`source_id`/`paid_by_user_id` not in this
 household.
 
@@ -352,8 +378,14 @@ Answers `200` with the full updated resource and a refreshed `updated_at`.
 ### 3.9 `DELETE /api/v1/expenses/:id` — soft delete
 
 **This is a soft delete.** The row is stamped with `deleted_at` and kept; it is never
-removed from the table. Per the PRD, deleted expenses stay recoverable for **30 days**, and
-a Phase 2 admin Trash view restores them.
+removed from the table. Deleted expenses stay recoverable for **7 days**, and a Phase 2
+admin Trash view restores them.
+
+> **Retention changed 2026-09-05, was 30 days.** Money records are corrected within days or
+> not at all — an expense noticed as wrong a month later is re-entered, not restored. A
+> shorter window keeps the Trash view readable and shortens how long a household's deleted
+> spending sits recoverable. Make it a config value, not a literal. All three PRDs have been
+> updated to match.
 
 Consequences the server owns, not the client:
 
@@ -439,11 +471,11 @@ Name uniqueness within a household: undecided. The FE does not enforce it and wi
 }
 ```
 
-| Field             | Type                          | Notes                                                   |
-| ----------------- | ----------------------------- | ------------------------------------------------------- |
-| `kind`            | `cash` \| `bank` \| `ewallet` | **Lowercase** — unlike `role`, which is upper. Confirm. |
-| `opening_balance` | integer, minor units          | Same convention as `value`. May be `0`.                 |
-| `as_of`           | `YYYY-MM-DD`                  | The day the opening balance was true.                   |
+| Field             | Type                          | Notes                                                               |
+| ----------------- | ----------------------------- | ------------------------------------------------------------------- |
+| `kind`            | `cash` \| `bank` \| `ewallet` | **Lowercase** — unlike `role`, which is upper. Confirm.             |
+| `opening_balance` | number                        | Decimal, at most 2 places — same convention as `value`. May be `0`. |
+| `as_of`           | `YYYY-MM-DD`                  | The day the opening balance was true.                               |
 
 | Endpoint                     | Body                                                               | Permissions |
 | ---------------------------- | ------------------------------------------------------------------ | ----------- |
@@ -635,15 +667,15 @@ both invite timestamps cleared, `status: "removed"`.
 
 Ordered by how expensive they are to change after the endpoints ship.
 
-| #   | Decision                                                              | Default assumed here                             | Cost of changing later                               |
-| --- | --------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
-| 1   | `meta.totals` on `GET /expenses` (§2.1)                               | Present, filter-scoped                           | High — three shipped surfaces have nothing to render |
-| 2   | `limit` ceiling of 500 (§3.5) — **PRD specifies a paged table, §7.2** | 500, one request per month                       | High — the tape becomes cursor-paginated, a redesign |
-| 3   | `value` as integer minor units (§3.2) — **PRD says decimal, §7.2**    | Integer                                          | High — every stored row needs migrating              |
-| 4   | ~~`PUT` vs `POST` for updates~~ — **decided: `PATCH`** (§3.8)         | `PATCH`, sent by the FE and answered by the mock | Low — one verb per FE api module                     |
-| 5   | `kind` lowercase vs uppercase (§4.3)                                  | Lowercase, as the FE has it                      | Low — one union type                                 |
-| 6   | Category/account name uniqueness (§4.2)                               | Not enforced                                     | Low — the FE renders a 409 verbatim already          |
-| 7   | Hard-delete placeholder rows (§5.5)                                   | Tombstones only; placeholder handled             | Low — FE handles both                                |
+| #   | Decision                                                               | Default assumed here                             | Cost of changing later                               |
+| --- | ---------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| 1   | `meta.totals` on `GET /expenses` (§2.1)                                | Present, filter-scoped                           | High — three shipped surfaces have nothing to render |
+| 2   | ~~`limit` ceiling of 500~~ — **decided: continuous tape** (§3.5)       | 500, one request per month. No page navigation   | — resolved 2026-09-05                                |
+| 3   | ~~`value` integer vs decimal~~ — **decided: decimal, 2 places** (§3.2) | `DECIMAL(10,2)`; the FE was corrected            | — resolved 2026-09-05                                |
+| 4   | ~~`PUT` vs `POST` for updates~~ — **decided: `PATCH`** (§3.8)          | `PATCH`, sent by the FE and answered by the mock | Low — one verb per FE api module                     |
+| 5   | `kind` lowercase vs uppercase (§4.3)                                   | Lowercase, as the FE has it                      | Low — one union type                                 |
+| 6   | Category/account name uniqueness (§4.2)                                | Not enforced                                     | Low — the FE renders a 409 verbatim already          |
+| 7   | Hard-delete placeholder rows (§5.5)                                    | Tombstones only; placeholder handled             | Low — FE handles both                                |
 
 Not covered here, and still needed before the module is complete:
 `GET|PATCH /households/:id/prefs` (currency and `month_start_day`), and the household
@@ -673,58 +705,26 @@ a frontend gap that is not the API's problem (§7.4).
 | AC1.2, field table — name max **100**       | §3.1 said 1–120                          | Corrected to 100. The FE form now carries `maxLength={100}`, which it did not                                                    |
 | "Paid By dropdown only shows active users"  | §3.6 validated household membership only | §3.6 now rejects a tombstoned `paid_by_user_id` (and an archived type/source) on create                                          |
 
-### 7.2 Genuine conflicts — a decision is needed
+### 7.2 The three conflicts — resolved 2026-09-05
 
-#### 1. `value`: integer vs decimal — **the significant one**
+All three are settled. The PRDs have been updated; nothing here is still open.
 
-|                  |                                                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------------------- |
-| **PRD**          | `value: Decimal (required, must be > 0, precision 10,2)`. AC1.4: _"decimals allowed (e.g., 50000.50 IDR)"_ |
-| **This spec**    | §3.2 — integer in minor units                                                                              |
-| **The FE today** | Integer. `min: 1` on the amount field, no `step`, `Math.round` throughout the optimistic-totals maths      |
+| #   | Conflict                                                | Decision                                               | What moved                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `value` — PRD `DECIMAL(10,2)`, spec integer minor units | **Decimal, at most 2 places.** The PRD wins            | The **frontend** was wrong and is fixed: the amount field takes `step=0.01`, rejects a third decimal place instead of rounding it, and every derived total goes through `src/utils/money.ts`. §3.2           |
+| 2   | List view — PRD paginated table, FE continuous tape     | **Continuous tape.** The frontend wins                 | `MASTER_PRD_EXPENDITURE` AC2.1–AC2.4 rewritten to describe the tape, month rail and one-request-per-month loading. The API still defaults to `limit=25` and accepts `page`, so a paged client stays possible |
+| 3   | Sortable columns — PRD implies six, spec allows three   | **Three: `date_paid`, `value`, `name`.** The spec wins | AC2.3 updated. Type / Source / Paid By are filterable, not sortable — sorting them would order by opaque id rather than the name a member reads                                                              |
 
-These cannot both be true, and this is open decision #3 — the most expensive one to reverse,
-because it is a stored-column migration rather than a code change.
+Two notes that came out of settling #1, because they are the parts most likely to be
+implemented wrongly:
 
-The PRD's own example undercuts itself: `50000.50 IDR` is not a real amount. The rupiah has
-no circulating sub-unit, and the PRD elsewhere names IDR as the base currency and defers
-multi-currency to Phase 2. A `DECIMAL(10,2)` column also caps the household at
-99,999,999.99 — plausible to hit in IDR within a few years of rent and school fees.
-
-**Recommendation: integer minor units, and update the PRD.** If BE wants headroom for a
-future currency that does have sub-units, `DECIMAL(14,2)` stored but transported as an
-integer count of minor units is a reasonable hedge — but the wire type must be settled now,
-because the FE's rounding and the `meta.totals` sum both depend on it.
-
-#### 2. List view: paginated table vs continuous tape
-
-|                  |                                                                                                       |
-| ---------------- | ----------------------------------------------------------------------------------------------------- |
-| **PRD**          | AC2.1–AC2.4 — a **table** with sortable column headers, _"25 per page default, with page navigation"_ |
-| **This spec**    | §3.5 — `limit` up to 500; the FE requests 400 and scrolls                                             |
-| **The FE today** | A continuous month-long tape grouped into day shelves, with a month rail. No page navigation exists   |
-
-The frontend deliberately built something other than what the PRD specified. The spec's
-default is still 25, so the API serves both — but BE should know that no client currently
-sends `page > 1`, and that the 500 ceiling exists solely for the tape.
-
-**This is a product decision, not an API one.** It needs an owner either way: either the PRD
-is updated to describe the tape, or the tape is wrong and the FE owes a table.
-
-#### 3. Sortable columns
-
-|                  |                                                                                              |
-| ---------------- | -------------------------------------------------------------------------------------------- |
-| **PRD**          | AC2.1 lists six columns; AC2.3: _"User can click column headers to sort"_ — implying all six |
-| **This spec**    | §3.4 — `sort_by` accepts `date_paid`, `value`, `name` only                                   |
-| **The FE today** | Three, matching the spec. And no clickable headers at all, because there is no table         |
-
-Sorting by `type_id` / `source_id` / `paid_by_user_id` would sort by opaque id, not by the
-name a member sees — so it needs a join and a documented collation to be worth anything.
-
-**Recommendation: leave it at three.** Sorting a ledger by category name is a weak use case
-next to filtering by it, which is already supported. If BE builds the other three anyway,
-say so and the FE will surface them.
+- The FE now sends `value` **exactly as typed**. It previously rounded at the request
+  boundary, which turned `10.999` into `11.00` on the way out and made the server's
+  precision check unreachable. A client that silently corrects input hides the bug it is
+  papering over; both ends validate and neither rounds.
+- Float summation is a real hazard now that fractions are legal, not a theoretical one.
+  `0.1 + 0.2` is `0.30000000000000004`, and a month of rows accumulates enough of that to
+  print a total a member can disprove with a calculator. Sum in `DECIMAL`.
 
 ### 7.3 Where the PRD is out of date — this spec wins
 
