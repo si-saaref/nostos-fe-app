@@ -108,8 +108,9 @@ call `clearErrors(name)` first.
 - `WireAccount.kind: WireAccountKind`.
 - Two lookup records in `accounts.ts`; `toAccount` maps down, the create body
   and `toAccountBody` map up.
-- `mocks/fixtures/accounts.ts` and `mocks/handlers/accounts.ts` move to
-  uppercase on the wire (handler default becomes `'CASH'`).
+- `mocks/handlers/accounts.ts` maps at its `toWire` and body-parsing edges
+  (handler default becomes `'CASH'`). `mocks/fixtures/accounts.ts` is **not**
+  touched: it is typed `Account[]`, the domain type, so it stays lowercase.
 - `AccountSection.tsx` untouched.
 
 ### 4.5 `error.details` nesting
@@ -121,8 +122,13 @@ call `clearErrors(name)` first.
 
 `MemberSection.tsx`'s `inviteError` block appends the
 `deletion_scheduled_for` date from `getErrorDetails` when present. The message
-itself stays verbatim. A mock case for the `403` and for the two new resend
-`409`s.
+itself stays verbatim. A mock case for the `403`.
+
+The resend `409` needs no work: `mocks/handlers/members.ts:120` already answers
+`409 CONFLICT` for both a tombstoned member and an accepted invite, and
+`MemberSection` renders it verbatim through `actionError`. The only change worth
+making is splitting the two cases' shared message in the mock, since §5.7 makes
+per-case wording the feature.
 
 ### 4.7 `utils/money.ts`
 
