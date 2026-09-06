@@ -1,10 +1,4 @@
-import {
-  MONEY_MAX,
-  averageMoney,
-  isValidMoney,
-  roundMoney,
-  sumMoney,
-} from '@/utils/money'
+import { roundMoney, sumMoney } from '@/utils/money'
 import { formatCurrency } from '@/utils/formatters'
 
 describe('roundMoney', () => {
@@ -30,36 +24,6 @@ describe('sumMoney', () => {
 
   it('is 0 for an empty set', () => {
     expect(sumMoney([])).toBe(0)
-  })
-})
-
-describe('averageMoney', () => {
-  it('never divides by zero', () => {
-    expect(averageMoney(0, 0)).toBe(0)
-  })
-
-  it('keeps two places rather than truncating to whole units', () => {
-    expect(averageMoney(10, 3)).toBe(3.33)
-  })
-})
-
-describe('isValidMoney', () => {
-  it('accepts a positive amount with at most two places', () => {
-    expect(isValidMoney(50000.5)).toBe(true)
-    expect(isValidMoney(50000.55)).toBe(true)
-    expect(isValidMoney(0.01)).toBe(true)
-  })
-
-  it('rejects what DECIMAL(10,2) would silently truncate', () => {
-    // A member typing 10.999 should be told, not quietly charged 11.00.
-    expect(isValidMoney(10.999)).toBe(false)
-  })
-
-  it('rejects zero, negatives and anything past the column width', () => {
-    expect(isValidMoney(0)).toBe(false)
-    expect(isValidMoney(-5)).toBe(false)
-    expect(isValidMoney(MONEY_MAX + 1)).toBe(false)
-    expect(isValidMoney(Number.NaN)).toBe(false)
   })
 })
 

@@ -74,11 +74,28 @@ describe('signinErrorFromResponse', () => {
 })
 
 describe('deletionDeadlineFromResponse', () => {
-  it('reads the deadline out of a 403', () => {
+  it('reads the deadline nested under error — the shape the API sends', () => {
+    const error = axiosError(403, {
+      error: {
+        code: 'HOUSEHOLD_DELETION_PENDING',
+        details: { deletion_scheduled_for: '2026-09-26' },
+      },
+    })
+    expect(deletionDeadlineFromResponse(error)).toBe('2026-09-26')
+  })
+
+  // The flat shape shipped first. Kept as the regression test for the fallback.
+  it('reads the deadline out of a flat 403', () => {
     const error = axiosError(403, {
       details: { deletion_scheduled_for: '2026-09-26' },
     })
     expect(deletionDeadlineFromResponse(error)).toBe('2026-09-26')
+  })
+
+  it('is null when a 403 carries no details at all', () => {
+    expect(
+      deletionDeadlineFromResponse(axiosError(403, { error: { code: 'X' } })),
+    ).toBeNull()
   })
 
   it('returns null for any other status', () => {

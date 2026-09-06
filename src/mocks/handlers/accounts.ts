@@ -8,12 +8,30 @@ import {
   ok,
   pause,
 } from '@/mocks/handlers/shared'
-import type { Account, AccountKind, WireAccount } from '@/types/catalog'
+import type {
+  Account,
+  AccountKind,
+  WireAccount,
+  WireAccountKind,
+} from '@/types/catalog'
+
+/** The mock's store holds domain rows; only the wire is uppercase. */
+const KIND_TO_WIRE: Record<AccountKind, WireAccountKind> = {
+  cash: 'CASH',
+  bank: 'BANK',
+  ewallet: 'EWALLET',
+}
+
+const KIND_FROM_WIRE: Record<string, AccountKind | undefined> = {
+  CASH: 'cash',
+  BANK: 'bank',
+  EWALLET: 'ewallet',
+}
 
 const toWire = (account: Account): WireAccount => ({
   id: account.id,
   name: account.name,
-  kind: account.kind,
+  kind: KIND_TO_WIRE[account.kind],
   opening_balance: account.openingBalance,
   as_of: account.asOf,
   order: account.order,
@@ -34,7 +52,7 @@ export const accountHandlers = [
     const created: Account = {
       id: nextId('source'),
       name: body.name ?? '',
-      kind: (body.kind ?? 'cash') as AccountKind,
+      kind: KIND_FROM_WIRE[body.kind ?? 'CASH'] ?? 'cash',
       openingBalance: body.opening_balance ?? 0,
       asOf: body.as_of ?? '',
       order: db.accounts.reduce((max, row) => Math.max(max, row.order), -1) + 1,
@@ -53,7 +71,9 @@ export const accountHandlers = [
     db.accounts[index] = {
       ...db.accounts[index],
       ...(body.name !== undefined && { name: body.name }),
-      ...(body.kind !== undefined && { kind: body.kind }),
+      ...(body.kind !== undefined && {
+        kind: KIND_FROM_WIRE[body.kind] ?? 'cash',
+      }),
       ...(body.opening_balance !== undefined && {
         openingBalance: body.opening_balance,
       }),

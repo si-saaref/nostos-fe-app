@@ -11,7 +11,9 @@ import {
   useResendInvite,
 } from '@/modules/settings/api/members'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
-import { getErrorMessage } from '@/utils/errors'
+import { getErrorDetails, getErrorMessage } from '@/utils/errors'
+import { useSettings } from '@/contexts/useSettings'
+import { formatDate } from '@/utils/formatters'
 import { isAsciiEmail } from '@/utils/validators'
 import { memberStatus, resendsLeft } from '@/modules/settings/lib/memberStatus'
 import type { Member, MemberStatus } from '@/modules/settings/types/settings'
@@ -41,6 +43,7 @@ export const MemberSection = ({
   } = useInviteMember(householdId)
   const { mutate: resend, error: resendError } = useResendInvite(householdId)
   const { mutate: remove, error: removeError } = useRemoveMember(householdId)
+  const { locale } = useSettings()
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -65,6 +68,17 @@ export const MemberSection = ({
     hasAttemptedSubmit && !isAsciiEmail(email) ? m.mem_err_email() : undefined
 
   const canInvite = canManage && householdActive
+
+  /**
+   * `HOUSEHOLD_DELETION_PENDING` is one of two errors that carry `details`
+   * (BE #5). The message is rendered verbatim as every invite error is; the
+   * date is the part it does not contain, and the part that tells a member
+   * whether waiting is an option.
+   */
+  const inviteDeadline = (
+    getErrorDetails(inviteError) as
+      { deletion_scheduled_for?: string } | undefined
+  )?.deletion_scheduled_for
 
   return (
     <SectionShell
@@ -140,6 +154,14 @@ export const MemberSection = ({
             // the feature, so it is never replaced with a generic message.
             <p role="alert" className="text-danger mt-2 text-[11px]">
               {getErrorMessage(inviteError)}
+              {inviteDeadline && (
+                <>
+                  {' '}
+                  {m.mem_invite_deletion_deadline({
+                    date: formatDate(inviteDeadline, locale),
+                  })}
+                </>
+              )}
             </p>
           )}
         </form>

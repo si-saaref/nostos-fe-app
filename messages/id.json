@@ -113,6 +113,7 @@
   "mem_invite_email": "Email",
   "mem_invite_name": "Nama",
   "mem_invite_note": "Mereka langsung muncul di daftar, dan bisa bergabung setelah mengeklik tautan di email.",
+  "mem_invite_deletion_deadline": "Rumah tangga ini dijadwalkan dihapus pada {date}.",
   "mem_invite_send": "Kirim undangan",
   "mem_invite_undelivered": "Undangan gagal terkirim — kirim ulang",
   "mem_leave": "Keluar dari rumah ini",

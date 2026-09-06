@@ -165,6 +165,28 @@ export const expenseHandlers = [
   http.post('*/api/v1/expenses', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const body = (await request.json()) as Partial<WireExpense>
+    // Deviation #1: a bad reference is a 422 with a code and no `details[]`,
+    // not a 400 with a field list. Checked against the live rows so an
+    // archived category or a tombstoned member is rejected on create.
+    if (body.type_id && !db.categories.some((row) => row.id === body.type_id)) {
+      return errorBody(422, 'INVALID_TYPE', 'Kategori tidak ditemukan')
+    }
+    if (
+      body.source_id &&
+      !db.accounts.some((row) => row.id === body.source_id)
+    ) {
+      return errorBody(
+        422,
+        'INVALID_SOURCE',
+        'Metode pembayaran tidak ditemukan',
+      )
+    }
+    if (
+      body.paid_by_user_id &&
+      !db.members.some((row) => row.id === body.paid_by_user_id)
+    ) {
+      return errorBody(422, 'INVALID_USER', 'Anggota tidak ditemukan')
+    }
     const created: StoredExpense = {
       id: nextId('exp'),
       name: body.name ?? '',

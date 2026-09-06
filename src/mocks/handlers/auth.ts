@@ -32,16 +32,17 @@ export const authHandlers = [
     }
     if (email.includes('hapus')) {
       // The only error carrying a `details` payload, so it cannot go through
-      // `errorBody` — the modal is useless without the date.
+      // `errorBody` — the modal is useless without the date. Nested inside
+      // `error`, which is where the API puts it.
       return HttpResponse.json(
         {
           success: false,
-          status_code: 403,
           error: {
-            code: 'FORBIDDEN',
+            code: 'HOUSEHOLD_DELETION_PENDING',
             message: 'This household is being deleted.',
+            status_code: 403,
+            details: { deletion_scheduled_for: '2026-09-26' },
           },
-          details: { deletion_scheduled_for: '2026-09-26' },
         },
         { status: 403 },
       )

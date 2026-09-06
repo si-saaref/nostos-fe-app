@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { Controller, useForm } from 'react-hook-form'
 import { useCreateExpense } from '@/modules/financial/api/expenses'
+import { expenseFieldErrors } from '@/modules/financial/lib/expenseErrors'
+import type { ExpenseField } from '@/modules/financial/lib/expenseErrors'
 import { useActiveCategories } from '@/modules/settings/api/categories'
 import { useActiveAccounts } from '@/modules/settings/api/accounts'
 import { useActivePayers } from '@/modules/settings/api/members'
@@ -52,6 +55,8 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
     control,
     handleSubmit,
     reset,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm<CreateExpenseInput>({
     defaultValues: {
@@ -64,17 +69,47 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
     },
   })
 
+  // Whether the last failure landed on a field. The summary line stands down
+  // when it did — a field error plus a summary says the same thing twice.
+  const [handledOnField, setHandledOnField] = useState(false)
+
   const onSubmit = (data: CreateExpenseInput) => {
     createExpense(
       { ...data, value: Number(data.value) },
       {
         onSuccess: () => {
+          setHandledOnField(false)
           reset()
           onSuccess?.()
+        },
+        onError: (failure) => {
+          const fieldErrors = expenseFieldErrors(failure)
+          fieldErrors.forEach(({ field, message }) => {
+            setError(field, { type: 'server', message })
+          })
+          setHandledOnField(fieldErrors.length > 0)
         },
       },
     )
   }
+
+  /**
+   * A server field error survives until the member acts on it. RHF does not
+   * clear a `setError` error on change under the default `onSubmit` mode, so
+   * each Select clears its own — otherwise a rejected category stays marked
+   * after being corrected.
+   *
+   * `handledOnField` is deliberately not reset here. It describes the last
+   * *submission*, and the mutation's `error` outlives the edit: clearing the
+   * flag would pull the same message back into the summary line the moment the
+   * field stopped showing it.
+   */
+  const changeAndClear =
+    (field: ExpenseField, onChange: (value: string) => void) =>
+    (value: string) => {
+      clearErrors(field)
+      onChange(value)
+    }
 
   return (
     <form
@@ -124,7 +159,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
             label={m.form_category()}
             placeholder={m.form_choose()}
             value={field.value}
-            onChange={field.onChange}
+            onChange={changeAndClear('typeId', field.onChange)}
             error={fieldState.error?.message}
             options={
               categories?.map((category) => ({
@@ -146,7 +181,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
             label={m.form_method()}
             placeholder={m.form_choose()}
             value={field.value}
-            onChange={field.onChange}
+            onChange={changeAndClear('sourceId', field.onChange)}
             error={fieldState.error?.message}
             options={
               accounts?.map((account) => ({
@@ -166,7 +201,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
           <Select
             label={m.form_paid_by()}
             value={field.value}
-            onChange={field.onChange}
+            onChange={changeAndClear('paidByUserId', field.onChange)}
             error={fieldState.error?.message}
             options={
               users?.map((member) => ({
@@ -178,7 +213,7 @@ export const ExpenseForm = ({ onSuccess, onCancel }: Props) => {
         )}
       />
 
-      {error && (
+      {error && !handledOnField && (
         <p
           role="alert"
           className="text-danger text-[11px] sm:col-span-2 lg:col-span-3"
