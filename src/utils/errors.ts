@@ -83,3 +83,10 @@ export const getFieldErrors = (error: unknown): ApiFieldError[] => {
     return parsed ? [parsed] : []
   })
 }
+
+/**
+ * The status, for the rare decision that turns on it. Branch on `error.code`
+ * otherwise — the exception is a route that does not exist at all.
+ */
+export const getErrorStatus = (error: unknown): number | undefined =>
+  axios.isAxiosError(error) ? error.response?.status : undefined

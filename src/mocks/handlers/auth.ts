@@ -12,7 +12,7 @@ import {
  * The v1 auth API, kept but NOT registered by default — auth runs against the
  * real backend now (see `handlers/index.ts`). Two things keep this from
  * rotting: tests opt in with `server.use(...authHandlers)`, and setting
- * `VITE_MOCK_AUTH=true` re-registers it for offline work.
+ * `MOCKED.auth = true` in `handlers/index.ts` re-registers it for offline work.
  *
  * Three addresses drive the unhappy paths on demand:
  *   contains "belum"  → 401, never invited

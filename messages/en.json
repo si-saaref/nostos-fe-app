@@ -163,6 +163,7 @@
   "pref_personal": "Personal preferences",
   "pref_personal_note": "This device only. Other members are unaffected.",
   "pref_title": "Household & Preferences",
+  "pref_unavailable": "Currency and month start are not available on the server yet. Amounts print in IDR until that route ships.",
   "quote_buffett": "Do not save what is left after spending, but spend what is left after saving.",
   "quote_buffett_by": "Warren Buffett",
   "quote_ledger": "Spend what is left after saving.",

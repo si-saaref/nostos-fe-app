@@ -18,10 +18,21 @@ export const pause = (ms: number): Promise<void> =>
  * A bare `new HttpResponse(null, { status })` leaves `getErrorMessage` nothing
  * to read, so the UI falls back to axios's "Request failed with status code
  * 404" and no error copy is testable.
+ *
+ * `details` is omitted when absent, not `null` — what the server does.
  */
-export const errorBody = (status: number, code: string, message: string) =>
+export const errorBody = (
+  status: number,
+  code: string,
+  message: string,
+  details?: unknown,
+) =>
   HttpResponse.json(
-    { success: false, status_code: status, error: { code, message } },
+    {
+      success: false,
+      status_code: status,
+      error: { code, message, ...(details !== undefined && { details }) },
+    },
     { status },
   )
 

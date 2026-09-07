@@ -20,20 +20,28 @@ async function enableMocking() {
     )
     return
   }
+  // Dynamic: a static import would bundle the mocks into production.
   const { worker } = await import('@/mocks/browser')
+  const { MOCKED, isLiveApiPath } = await import('@/mocks/handlers')
   await worker.start({
     onUnhandledRequest(request, print) {
       const { pathname } = new URL(request.url)
       // Assets, HMR, fonts — never our concern.
       if (!pathname.includes('/api/')) return
-      // Auth has shipped: these are meant to reach the real backend.
-      if (pathname.includes('/api/v1/auth/')) return
+      // A domain we deliberately let reach the real backend.
+      if (isLiveApiPath(pathname)) return
       // Anything else is an endpoint nobody mocked, or a handler path that
       // stopped matching. Both are invisible 404s under 'bypass'.
       print.warning()
     },
   })
-  console.info('[msw] mocking enabled — /api/v1/auth/* still hits the real API')
+  // Read from the declaration, so it cannot disagree with it.
+  console.info(
+    '[msw] worker started. Mocked:',
+    Object.entries(MOCKED)
+      .map(([domain, mocked]) => `${domain} ${mocked ? 'mocked' : 'live'}`)
+      .join(', '),
+  )
 }
 
 enableMocking()

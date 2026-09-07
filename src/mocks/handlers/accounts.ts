@@ -4,6 +4,7 @@ import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
 import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
+  errorBody,
   notFound,
   ok,
   pause,
@@ -39,6 +40,17 @@ const toWire = (account: Account): WireAccount => ({
   household_id: account.householdId,
 })
 
+/** Name uniqueness, enforced exactly as it is for categories. */
+const nameTaken = (name: string, exceptId?: string): boolean =>
+  db.accounts.some(
+    (row) =>
+      row.id !== exceptId &&
+      row.name.trim().toLowerCase() === name.trim().toLowerCase(),
+  )
+
+const conflict = (name: string) =>
+  errorBody(409, 'CONFLICT', `Akun "${name}" sudah ada`)
+
 /** Archived rows and stable `order` for the same reasons as categories. */
 export const accountHandlers = [
   http.get('*/api/v1/payment-sources', async () => {
@@ -49,9 +61,11 @@ export const accountHandlers = [
   http.post('*/api/v1/payment-sources', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const body = (await request.json()) as Partial<WireAccount>
+    const name = (body.name ?? '').trim()
+    if (nameTaken(name)) return conflict(name)
     const created: Account = {
       id: nextId('source'),
-      name: body.name ?? '',
+      name,
       kind: KIND_FROM_WIRE[body.kind ?? 'CASH'] ?? 'cash',
       openingBalance: body.opening_balance ?? 0,
       asOf: body.as_of ?? '',
@@ -68,6 +82,9 @@ export const accountHandlers = [
     const body = (await request.json()) as Partial<WireAccount>
     const index = db.accounts.findIndex((row) => row.id === params.id)
     if (index === -1) return notFound('Account')
+    if (body.name !== undefined && nameTaken(body.name, String(params.id))) {
+      return conflict(body.name)
+    }
     db.accounts[index] = {
       ...db.accounts[index],
       ...(body.name !== undefined && { name: body.name }),

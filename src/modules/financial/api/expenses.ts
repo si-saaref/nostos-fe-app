@@ -28,6 +28,12 @@ export const expenseKeys = {
     [...entityKey(householdId, 'expenses'), 'detail', id] as const,
 }
 
+/**
+ * The widest page the list route accepts (§3.4). More is a `400`, not a
+ * truncation — ask for 1000 and you get nothing.
+ */
+export const MAX_PAGE_SIZE = 500
+
 /** Index of the filters object inside a `list` key, used to match cache writes. */
 const FILTERS_IN_KEY = 4
 

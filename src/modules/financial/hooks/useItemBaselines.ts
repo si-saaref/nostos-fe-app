@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import { useExpenses } from '@/modules/financial/api/expenses'
+import { MAX_PAGE_SIZE, useExpenses } from '@/modules/financial/api/expenses'
 import { isoDay, shiftDays } from '@/utils/dates'
 import type { Expense } from '@/types/expense'
 import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
@@ -33,15 +33,6 @@ const QUIET_HIGH = 1.25
 
 /** How many past purchases the lifted plate charts. */
 const RECENT_TAKE = 4
-
-/**
- * The widest page the list route accepts. Asking for 1000 was rejected with a
- * 400, which the hook has no error branch for — so every plate silently read
- * "Not enough history to compare yet" and the whole baseline feature was dark.
- * A truncated window still produces honest baselines; a rejected one produces
- * none.
- */
-const MAX_PAGE_SIZE = 500
 
 /** One shared empty result, so "no history" is referentially stable too. */
 const NO_ROWS: Expense[] = []

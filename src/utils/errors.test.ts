@@ -3,6 +3,7 @@ import {
   getErrorCode,
   getErrorDetails,
   getErrorMessage,
+  getErrorStatus,
   getFieldErrors,
 } from '@/utils/errors'
 
@@ -109,5 +110,16 @@ describe('getErrorMessage', () => {
   it('still prefers the enveloped message', () => {
     const error = axiosError(409, { error: { message: 'Already a member' } })
     expect(getErrorMessage(error)).toBe('Already a member')
+  })
+})
+
+describe('getErrorStatus', () => {
+  it('reads the status off an axios error', () => {
+    expect(getErrorStatus(axiosError(404))).toBe(404)
+  })
+
+  it('is undefined for anything that is not an axios error', () => {
+    expect(getErrorStatus(new Error('boom'))).toBeUndefined()
+    expect(getErrorStatus('nope')).toBeUndefined()
   })
 })

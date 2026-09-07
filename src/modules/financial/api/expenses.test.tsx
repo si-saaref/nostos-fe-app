@@ -13,6 +13,8 @@ import {
   useExpenses,
   useUpdateExpense,
 } from '@/modules/financial/api/expenses'
+import { db } from '@/mocks/db'
+import { getErrorCode, getFieldErrors } from '@/utils/errors'
 import type { Paginated } from '@/types/api'
 import type { Expense, ExpenseFilters } from '@/types/expense'
 
@@ -438,5 +440,139 @@ describe('useUpdateExpense', () => {
 
     // A tombstone is indistinguishable from an id that never existed.
     await waitFor(() => expect(result.current.update.isError).toBe(true))
+  })
+})
+
+/**
+ * A retired ref is a 422 the form maps onto a field. `resetMockState()` runs
+ * after each test, so mutating `db` here stays local.
+ */
+describe('references the server refuses', () => {
+  it('rejects a create naming an archived category with INVALID_TYPE', async () => {
+    const archived = db.categories[0]
+    archived.archivedAt = '2026-08-30'
+
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({
+        name: 'Kopi',
+        value: 23000,
+        typeId: archived.id,
+        sourceId: db.accounts[0].id,
+        datePaid: '2026-09-04',
+        paidByUserId: db.members[0].id,
+      }),
+    ).rejects.toBeDefined()
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('INVALID_TYPE')
+  })
+
+  it('rejects a create attributed to a tombstoned member with INVALID_USER', async () => {
+    const member = db.members[db.members.length - 1]
+    member.deletedAt = '2026-08-30'
+
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({
+        name: 'Kopi',
+        value: 23000,
+        typeId: db.categories[1].id,
+        sourceId: db.accounts[0].id,
+        datePaid: '2026-09-04',
+        paidByUserId: member.id,
+      }),
+    ).rejects.toBeDefined()
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('INVALID_USER')
+  })
+
+  // Fixing a typo on a row whose category was since archived must still work.
+  it('lets an admin edit a row whose category is archived, as long as the body does not name it', async () => {
+    const archived = db.categories[0]
+    archived.archivedAt = '2026-08-30'
+    const row = db.expenses.find((expense) => expense.typeId === archived.id)!
+
+    const { result } = renderHook(() => useUpdateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    const updated = await result.current.mutateAsync({
+      id: row.id,
+      name: 'Nama yang diperbaiki',
+    })
+    expect(updated.name).toBe('Nama yang diperbaiki')
+  })
+
+  it('still refuses a PATCH that names the archived category itself', async () => {
+    const archived = db.categories[0]
+    archived.archivedAt = '2026-08-30'
+    const row = db.expenses.find((expense) => expense.typeId !== archived.id)!
+
+    const { result } = renderHook(() => useUpdateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({ id: row.id, typeId: archived.id }),
+    ).rejects.toBeDefined()
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('INVALID_TYPE')
+  })
+})
+
+describe('the body the server refuses', () => {
+  it('rejects a date beyond tomorrow UTC with FUTURE_DATE', async () => {
+    const dayAfterTomorrow = new Date(Date.now() + 2 * 86_400_000)
+      .toISOString()
+      .slice(0, 10)
+
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({
+        name: 'Kopi',
+        value: 23000,
+        typeId: db.categories[1].id,
+        sourceId: db.accounts[0].id,
+        datePaid: dayAfterTomorrow,
+        paidByUserId: db.members[0].id,
+      }),
+    ).rejects.toBeDefined()
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('FUTURE_DATE')
+  })
+
+  it('rejects a third decimal place with a field error on value', async () => {
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({
+        name: 'Kopi',
+        value: 10.999,
+        typeId: db.categories[1].id,
+        sourceId: db.accounts[0].id,
+        datePaid: '2026-09-04',
+        paidByUserId: db.members[0].id,
+      }),
+    ).rejects.toBeDefined()
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('VALIDATION_ERROR')
+    expect(getFieldErrors(result.current.error)).toEqual([
+      expect.objectContaining({ field: 'value' }),
+    ])
   })
 })
