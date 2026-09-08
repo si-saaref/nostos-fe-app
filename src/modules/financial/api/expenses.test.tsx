@@ -11,7 +11,10 @@ import {
   useCreateExpense,
   useDeleteExpense,
   useExpenses,
+  useUpdateExpense,
 } from '@/modules/financial/api/expenses'
+import { db } from '@/mocks/db'
+import { getErrorCode, getFieldErrors } from '@/utils/errors'
 import type { Paginated } from '@/types/api'
 import type { Expense, ExpenseFilters } from '@/types/expense'
 
@@ -322,5 +325,254 @@ describe('useDeleteExpense', () => {
         expenseKeys.list(HOUSEHOLD_ID, AUGUST),
       )?.items,
     ).toHaveLength(1)
+  })
+})
+
+describe('useUpdateExpense', () => {
+  const setup = () =>
+    renderHook(
+      () => ({
+        list: useExpenses(HOUSEHOLD_ID, BASE),
+        update: useUpdateExpense(HOUSEHOLD_ID),
+      }),
+      { wrapper: createWrapper() },
+    )
+
+  it('sends only the fields the admin touched', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.patch('*/api/v1/expenses/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({
+          success: true,
+          data: { ...body, id: target.id },
+        })
+      }),
+    )
+
+    await act(async () => {
+      await result.current.update.mutateAsync({ id: target.id, value: 12345 })
+    })
+
+    // Under PATCH an absent key means "leave it alone", so a fixed body shape
+    // would blank the five fields the admin never opened.
+    expect(body).toEqual({ value: 12345 })
+    expect(body).not.toHaveProperty('name')
+  })
+
+  it('writes the corrected row back to the list, decimals intact', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        id: target.id,
+        name: 'Belanja mingguan',
+        value: 180000.5,
+      })
+    })
+
+    await waitFor(() => {
+      const row = result.current.list.data?.items.find(
+        (r) => r.id === target.id,
+      )
+      expect(row?.name).toBe('Belanja mingguan')
+      expect(row?.value).toBe(180000.5)
+    })
+  })
+
+  it('records which admin last edited it, apart from who recorded it', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    const updated = await act(async () =>
+      result.current.update.mutateAsync({ id: target.id, value: 99000 }),
+    )
+
+    // Only an admin can reach this route, so "who logged it" and "who last
+    // changed it" are different questions and both get answered.
+    expect(updated!.updatedByAdminId).toBeTruthy()
+    expect(updated!.updatedAt).toBeTruthy()
+  })
+
+  it('rejects a third decimal place rather than letting it be truncated', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    await act(async () => {
+      await result.current.update
+        .mutateAsync({ id: target.id, value: 10.999 })
+        .catch(() => undefined)
+    })
+
+    // The client does not round on the way out, so this check is reachable
+    // rather than decorative.
+    await waitFor(() => expect(result.current.update.isError).toBe(true))
+  })
+
+  it('404s on a soft-deleted row', async () => {
+    const { result } = renderHook(
+      () => ({
+        list: useExpenses(HOUSEHOLD_ID, BASE),
+        remove: useDeleteExpense(HOUSEHOLD_ID),
+        update: useUpdateExpense(HOUSEHOLD_ID),
+      }),
+      { wrapper: createWrapper() },
+    )
+    await waitFor(() => expect(result.current.list.isSuccess).toBe(true))
+    const target = result.current.list.data!.items[0]
+
+    await act(async () => {
+      await result.current.remove.mutateAsync(target.id)
+    })
+    await act(async () => {
+      await result.current.update
+        .mutateAsync({ id: target.id, value: 1000 })
+        .catch(() => undefined)
+    })
+
+    // A tombstone is indistinguishable from an id that never existed.
+    await waitFor(() => expect(result.current.update.isError).toBe(true))
+  })
+})
+
+/**
+ * A retired ref is a 422 the form maps onto a field. `resetMockState()` runs
+ * after each test, so mutating `db` here stays local.
+ */
+describe('references the server refuses', () => {
+  it('rejects a create naming an archived category with INVALID_TYPE', async () => {
+    const archived = db.categories[0]
+    archived.archivedAt = '2026-08-30'
+
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({
+        name: 'Kopi',
+        value: 23000,
+        typeId: archived.id,
+        sourceId: db.accounts[0].id,
+        datePaid: '2026-09-04',
+        paidByUserId: db.members[0].id,
+      }),
+    ).rejects.toBeDefined()
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('INVALID_TYPE')
+  })
+
+  it('rejects a create attributed to a tombstoned member with INVALID_USER', async () => {
+    const member = db.members[db.members.length - 1]
+    member.deletedAt = '2026-08-30'
+
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({
+        name: 'Kopi',
+        value: 23000,
+        typeId: db.categories[1].id,
+        sourceId: db.accounts[0].id,
+        datePaid: '2026-09-04',
+        paidByUserId: member.id,
+      }),
+    ).rejects.toBeDefined()
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('INVALID_USER')
+  })
+
+  // Fixing a typo on a row whose category was since archived must still work.
+  it('lets an admin edit a row whose category is archived, as long as the body does not name it', async () => {
+    const archived = db.categories[0]
+    archived.archivedAt = '2026-08-30'
+    const row = db.expenses.find((expense) => expense.typeId === archived.id)!
+
+    const { result } = renderHook(() => useUpdateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    const updated = await result.current.mutateAsync({
+      id: row.id,
+      name: 'Nama yang diperbaiki',
+    })
+    expect(updated.name).toBe('Nama yang diperbaiki')
+  })
+
+  it('still refuses a PATCH that names the archived category itself', async () => {
+    const archived = db.categories[0]
+    archived.archivedAt = '2026-08-30'
+    const row = db.expenses.find((expense) => expense.typeId !== archived.id)!
+
+    const { result } = renderHook(() => useUpdateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({ id: row.id, typeId: archived.id }),
+    ).rejects.toBeDefined()
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('INVALID_TYPE')
+  })
+})
+
+describe('the body the server refuses', () => {
+  it('rejects a date beyond tomorrow UTC with FUTURE_DATE', async () => {
+    const dayAfterTomorrow = new Date(Date.now() + 2 * 86_400_000)
+      .toISOString()
+      .slice(0, 10)
+
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({
+        name: 'Kopi',
+        value: 23000,
+        typeId: db.categories[1].id,
+        sourceId: db.accounts[0].id,
+        datePaid: dayAfterTomorrow,
+        paidByUserId: db.members[0].id,
+      }),
+    ).rejects.toBeDefined()
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('FUTURE_DATE')
+  })
+
+  it('rejects a third decimal place with a field error on value', async () => {
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+
+    await expect(
+      result.current.mutateAsync({
+        name: 'Kopi',
+        value: 10.999,
+        typeId: db.categories[1].id,
+        sourceId: db.accounts[0].id,
+        datePaid: '2026-09-04',
+        paidByUserId: db.members[0].id,
+      }),
+    ).rejects.toBeDefined()
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('VALIDATION_ERROR')
+    expect(getFieldErrors(result.current.error)).toEqual([
+      expect.objectContaining({ field: 'value' }),
+    ])
   })
 })

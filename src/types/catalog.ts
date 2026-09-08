@@ -18,6 +18,18 @@ export interface Category {
   householdId: string
 }
 
+/**
+ * What the API sends. Uppercase, matching `role` and `household_status` —
+ * BE `API-SPEC-DEVIATIONS.md` #2 settles the open decision in §6 of the FE
+ * spec, which had assumed lowercase.
+ */
+export type WireAccountKind = 'CASH' | 'BANK' | 'EWALLET'
+
+/**
+ * What the app uses. Lowercase, like every other domain enum here, and what
+ * the Settings radio group binds to — which is why this is a mapping and not
+ * a rename.
+ */
 export type AccountKind = 'cash' | 'bank' | 'ewallet'
 
 /**
@@ -53,7 +65,7 @@ export interface WireCategory {
 export interface WireAccount {
   id: string
   name: string
-  kind: AccountKind
+  kind: WireAccountKind
   opening_balance: number
   as_of: string
   order: number

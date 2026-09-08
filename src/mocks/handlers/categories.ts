@@ -4,6 +4,7 @@ import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
 import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
+  errorBody,
   notFound,
   ok,
   pause,
@@ -32,6 +33,17 @@ const toWire = (category: Category): WireCategory => ({
  * colour from it, so a value that shifted when a sibling was archived would
  * repaint half the ledger.
  */
+/** Uniqueness per household, as the API enforces it. Trimmed, case-insensitive. */
+const nameTaken = (name: string, exceptId?: string): boolean =>
+  db.categories.some(
+    (row) =>
+      row.id !== exceptId &&
+      row.name.trim().toLowerCase() === name.trim().toLowerCase(),
+  )
+
+const conflict = (name: string) =>
+  errorBody(409, 'CONFLICT', `Kategori "${name}" sudah ada`)
+
 export const categoryHandlers = [
   http.get('*/api/v1/expense-types', async () => {
     await pause(READ_LATENCY_MS)
@@ -41,9 +53,11 @@ export const categoryHandlers = [
   http.post('*/api/v1/expense-types', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const body = (await request.json()) as { name?: string }
+    const name = (body.name ?? '').trim()
+    if (nameTaken(name)) return conflict(name)
     const created: Category = {
       id: nextId('type'),
-      name: body.name ?? '',
+      name,
       // Highest existing order plus one, never the array length: archiving
       // does not renumber, so length would eventually collide.
       order:
@@ -60,6 +74,9 @@ export const categoryHandlers = [
     const body = (await request.json()) as Partial<WireCategory>
     const index = db.categories.findIndex((row) => row.id === params.id)
     if (index === -1) return notFound('Category')
+    if (body.name !== undefined && nameTaken(body.name, String(params.id))) {
+      return conflict(body.name)
+    }
     db.categories[index] = {
       ...db.categories[index],
       ...(body.name !== undefined && { name: body.name }),

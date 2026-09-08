@@ -5,6 +5,7 @@ import { Select } from '@/components/Select'
 import { useHouseholdPrefs, useUpdatePrefs } from '@/modules/settings/api/prefs'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { LANGS, isLang } from '@/i18n/locales'
+import { getErrorStatus } from '@/utils/errors'
 import { THEMES, isThemeId } from '@/theme/themes'
 
 interface Props {
@@ -26,9 +27,13 @@ export const PreferencesSection = ({ householdId, canManage }: Props) => {
     data: prefs,
     isLoading,
     isError,
+    error,
     refetch,
   } = useHouseholdPrefs(householdId)
   const { mutate: update, error: updateError } = useUpdatePrefs(householdId)
+
+  // Unbuilt, not broken: a retry cannot help, so don't offer one.
+  const notShipped = isError && getErrorStatus(error) === 404
 
   return (
     <SectionShell
@@ -37,9 +42,9 @@ export const PreferencesSection = ({ householdId, canManage }: Props) => {
       description={m.settings_intro()}
       canManage={canManage}
       isLoading={isLoading}
-      isError={isError}
+      isError={isError && !notShipped}
       onRetry={refetch}
-      actionError={updateError}
+      actionError={notShipped ? undefined : updateError}
     >
       <div className="flex flex-col gap-3">
         <div className="bg-card plate-shadow rounded-xl p-4">
@@ -50,11 +55,17 @@ export const PreferencesSection = ({ householdId, canManage }: Props) => {
             {m.pref_household_note()}
           </p>
 
+          {notShipped && (
+            <p className="bg-chip text-muted mt-3 rounded-lg px-3 py-2 text-[11px]">
+              {m.pref_unavailable()}
+            </p>
+          )}
+
           <div className="mt-3 flex flex-wrap gap-3">
             <Select
               label={m.pref_currency()}
               value={prefs?.currency ?? 'IDR'}
-              disabled={!canManage}
+              disabled={!canManage || notShipped}
               onChange={(value) => update({ currency: value })}
               options={CURRENCIES.map((code) => ({ value: code, label: code }))}
             />
@@ -62,7 +73,7 @@ export const PreferencesSection = ({ householdId, canManage }: Props) => {
             <Select
               label={m.pref_month_start()}
               value={String(prefs?.monthStartDay ?? 1)}
-              disabled={!canManage}
+              disabled={!canManage || notShipped}
               onChange={(value) => update({ monthStartDay: Number(value) })}
               options={Array.from({ length: 28 }, (_, i) => ({
                 value: String(i + 1),

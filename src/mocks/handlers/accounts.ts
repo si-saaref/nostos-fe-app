@@ -4,22 +4,52 @@ import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
 import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
+  errorBody,
   notFound,
   ok,
   pause,
 } from '@/mocks/handlers/shared'
-import type { Account, AccountKind, WireAccount } from '@/types/catalog'
+import type {
+  Account,
+  AccountKind,
+  WireAccount,
+  WireAccountKind,
+} from '@/types/catalog'
+
+/** The mock's store holds domain rows; only the wire is uppercase. */
+const KIND_TO_WIRE: Record<AccountKind, WireAccountKind> = {
+  cash: 'CASH',
+  bank: 'BANK',
+  ewallet: 'EWALLET',
+}
+
+const KIND_FROM_WIRE: Record<string, AccountKind | undefined> = {
+  CASH: 'cash',
+  BANK: 'bank',
+  EWALLET: 'ewallet',
+}
 
 const toWire = (account: Account): WireAccount => ({
   id: account.id,
   name: account.name,
-  kind: account.kind,
+  kind: KIND_TO_WIRE[account.kind],
   opening_balance: account.openingBalance,
   as_of: account.asOf,
   order: account.order,
   archived_at: account.archivedAt,
   household_id: account.householdId,
 })
+
+/** Name uniqueness, enforced exactly as it is for categories. */
+const nameTaken = (name: string, exceptId?: string): boolean =>
+  db.accounts.some(
+    (row) =>
+      row.id !== exceptId &&
+      row.name.trim().toLowerCase() === name.trim().toLowerCase(),
+  )
+
+const conflict = (name: string) =>
+  errorBody(409, 'CONFLICT', `Akun "${name}" sudah ada`)
 
 /** Archived rows and stable `order` for the same reasons as categories. */
 export const accountHandlers = [
@@ -31,10 +61,12 @@ export const accountHandlers = [
   http.post('*/api/v1/payment-sources', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
     const body = (await request.json()) as Partial<WireAccount>
+    const name = (body.name ?? '').trim()
+    if (nameTaken(name)) return conflict(name)
     const created: Account = {
       id: nextId('source'),
-      name: body.name ?? '',
-      kind: (body.kind ?? 'cash') as AccountKind,
+      name,
+      kind: KIND_FROM_WIRE[body.kind ?? 'CASH'] ?? 'cash',
       openingBalance: body.opening_balance ?? 0,
       asOf: body.as_of ?? '',
       order: db.accounts.reduce((max, row) => Math.max(max, row.order), -1) + 1,
@@ -50,10 +82,15 @@ export const accountHandlers = [
     const body = (await request.json()) as Partial<WireAccount>
     const index = db.accounts.findIndex((row) => row.id === params.id)
     if (index === -1) return notFound('Account')
+    if (body.name !== undefined && nameTaken(body.name, String(params.id))) {
+      return conflict(body.name)
+    }
     db.accounts[index] = {
       ...db.accounts[index],
       ...(body.name !== undefined && { name: body.name }),
-      ...(body.kind !== undefined && { kind: body.kind }),
+      ...(body.kind !== undefined && {
+        kind: KIND_FROM_WIRE[body.kind] ?? 'cash',
+      }),
       ...(body.opening_balance !== undefined && {
         openingBalance: body.opening_balance,
       }),

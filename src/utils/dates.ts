@@ -27,3 +27,26 @@ export const fromIsoDay = (iso: string): Date => {
   const [year, month, day] = iso.slice(0, 10).split('-').map(Number)
   return new Date(year, (month ?? 1) - 1, day ?? 1)
 }
+
+/**
+ * Every day from `from` to `to` inclusive, newest first, as ISO days.
+ *
+ * `max` is a guard rather than a preference: the month rail draws one row per
+ * returned day, and a hand-edited `?dateFrom=2019-01-01` in the URL would
+ * otherwise ask it to lay out two thousand of them. Past the cap the caller
+ * gets nothing and falls back to the days it actually has data for.
+ */
+export const eachDayDescending = (
+  from: string,
+  to: string,
+  max = 62,
+): string[] => {
+  const start = fromIsoDay(from)
+  const end = fromIsoDay(to)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return []
+  const span = Math.round((end.getTime() - start.getTime()) / 86_400_000)
+  if (span < 0 || span + 1 > max) return []
+  return Array.from({ length: span + 1 }, (_, index) =>
+    isoDay(shiftDays(end, -index)),
+  )
+}

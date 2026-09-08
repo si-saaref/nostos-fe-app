@@ -11,8 +11,6 @@ interface Props {
   householdId: string
   filters: ExpenseFilters
   onChange: (next: Partial<ExpenseFilters>) => void
-  onClear: () => void
-  isNarrowed: boolean
 }
 
 /** Long enough to finish a word, short enough to feel like typing. */
@@ -21,14 +19,13 @@ const SEARCH_DEBOUNCE_MS = 300
 /**
  * Filter fields are the one place a pressed-in shadow is semantically honest:
  * a well you type into. Everything else in the app lifts; these sink.
+ *
+ * Each control names the width it currently has — "All categories", not
+ * "Category". A field label states what the control is about; this states what
+ * the ledger below is showing, which is the thing you actually need to read
+ * back. Clearing happens on the count strip, where the scope is declared.
  */
-export const ExpenseFilter = ({
-  householdId,
-  filters,
-  onChange,
-  onClear,
-  isNarrowed,
-}: Props) => {
+export const ExpenseFilter = ({ householdId, filters, onChange }: Props) => {
   const m = useMessages()
   const { data: categories } = useActiveCategories(householdId)
   const { data: accounts } = useActiveAccounts(householdId)
@@ -62,9 +59,32 @@ export const ExpenseFilter = ({
   useEffect(() => () => window.clearTimeout(debounceRef.current), [])
 
   return (
-    <div className="flex flex-wrap items-end gap-2">
-      <label className="well-shadow bg-chip flex min-w-[180px] flex-1 items-center rounded-lg px-3 py-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="well-shadow bg-chip focus-within:ring-accent/45 flex min-w-[180px] flex-1 items-center gap-2 rounded-lg px-3 py-2 focus-within:ring-1">
         <span className="sr-only">{m.filter_search()}</span>
+        <svg
+          aria-hidden="true"
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          className="text-muted shrink-0"
+        >
+          <circle
+            cx="5"
+            cy="5"
+            r="3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+          />
+          <path
+            d="M7.7 7.7L11 11"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
         <input
           type="search"
           value={searchDraft}
@@ -77,7 +97,7 @@ export const ExpenseFilter = ({
       <Select
         hideLabel
         label={m.filter_category()}
-        placeholder={m.filter_category()}
+        placeholder={m.count_scope_all({ what: m.count_categories() })}
         value={filters.typeId ?? ''}
         onChange={(value) => onChange({ typeId: value || undefined, page: 1 })}
         // Rim comes from the category's own order, never its index in this
@@ -95,7 +115,7 @@ export const ExpenseFilter = ({
       <Select
         hideLabel
         label={m.filter_method()}
-        placeholder={m.filter_method()}
+        placeholder={m.count_scope_all({ what: m.count_methods() })}
         value={filters.sourceId ?? ''}
         onChange={(value) =>
           onChange({ sourceId: value || undefined, page: 1 })
@@ -111,7 +131,7 @@ export const ExpenseFilter = ({
       <Select
         hideLabel
         label={m.filter_paid_by()}
-        placeholder={m.filter_paid_by()}
+        placeholder={m.count_scope_all({ what: m.count_members() })}
         value={filters.paidByUserId ?? ''}
         onChange={(value) =>
           onChange({ paidByUserId: value || undefined, page: 1 })
@@ -120,16 +140,6 @@ export const ExpenseFilter = ({
           users?.map((user) => ({ value: user.id, label: user.name })) ?? []
         }
       />
-
-      {isNarrowed && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="border-hair text-muted rounded-lg border px-3 py-2 text-[11px] font-semibold"
-        >
-          {m.filter_clear()}
-        </button>
-      )}
     </div>
   )
 }

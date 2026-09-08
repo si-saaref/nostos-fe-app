@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import { useExpenses } from '@/modules/financial/api/expenses'
+import { MAX_PAGE_SIZE, useExpenses } from '@/modules/financial/api/expenses'
 import { isoDay, shiftDays } from '@/utils/dates'
 import type { Expense } from '@/types/expense'
 import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
@@ -82,7 +82,7 @@ export const useItemBaselines = (householdId: string) => {
     dateFrom: isoDay(shiftDays(today, -BASELINE_WINDOW_DAYS)),
     dateTo: isoDay(today),
     page: 1,
-    limit: 1000,
+    limit: MAX_PAGE_SIZE,
     sortBy: 'datePaid',
     sortOrder: 'desc',
   })

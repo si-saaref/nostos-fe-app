@@ -1,5 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/mocks/server'
 import { renderWithProviders } from '@/test/test-utils'
 import { MemberSection } from '@/modules/settings/components/MemberSection'
 
@@ -99,5 +101,38 @@ describe('MemberSection', () => {
       // Dewi, who is already tombstoned.
       expect(removes).toHaveLength(4)
     })
+  })
+
+  it('names the deletion date when an invite is refused for a pending deletion', async () => {
+    server.use(
+      http.post('*/api/v1/households/:id/members', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'HOUSEHOLD_DELETION_PENDING',
+              message: 'Rumah tangga ini sedang dihapus.',
+              status_code: 403,
+              details: { deletion_scheduled_for: '2026-09-26' },
+            },
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+    setup()
+    await screen.findByText('Sari')
+
+    await userEvent.type(screen.getByLabelText(/nama/i), 'Baru')
+    await userEvent.type(screen.getByLabelText(/email/i), 'baru@example.com')
+    await userEvent.click(
+      screen.getByRole('button', { name: /kirim undangan/i }),
+    )
+
+    // The server's wording verbatim, plus the date it does not carry.
+    // `formatDate` at `id-ID` with month: 'short' renders "26 Sep 2026".
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Rumah tangga ini sedang dihapus.')
+    expect(alert).toHaveTextContent('26 Sep 2026')
   })
 })

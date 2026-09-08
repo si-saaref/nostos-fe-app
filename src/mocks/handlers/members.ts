@@ -117,11 +117,21 @@ export const memberHandlers = [
       await pause(WRITE_LATENCY_MS)
       const member = db.members.find((row) => row.id === params.memberId)
       if (!member) return notFound('Member')
-      if (member.deletedAt || !member.inviteExpiresAt) {
+      // Two different 409s, deliberately worded apart: "they are gone" and
+      // "they are already in" call for different next actions, and this copy
+      // is rendered verbatim.
+      if (member.deletedAt) {
         return errorBody(
           409,
           'CONFLICT',
-          'This member has no invite to resend.',
+          'Anggota ini sudah tidak ada di rumah tangga.',
+        )
+      }
+      if (!member.inviteExpiresAt) {
+        return errorBody(
+          409,
+          'CONFLICT',
+          'Undangan ini sudah diterima — tidak perlu dikirim ulang.',
         )
       }
       // 429, not 409: the ration is a throttle, and the FE's retry predicate

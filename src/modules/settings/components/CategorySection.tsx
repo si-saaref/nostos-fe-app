@@ -10,7 +10,7 @@ import {
   useCreateCategory,
   useUpdateCategory,
 } from '@/modules/settings/api/categories'
-import { useExpenses } from '@/modules/financial/api/expenses'
+import { MAX_PAGE_SIZE, useExpenses } from '@/modules/financial/api/expenses'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { rimFor } from '@/theme/rims'
 import { isoDay } from '@/utils/dates'
@@ -37,9 +37,11 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
   const { mutate: update, error: updateError } = useUpdateCategory(householdId)
 
   // Usage count so archiving can state its consequence instead of implying one.
+  // Capped at the route's own ceiling: 1000 is a 400, and a rejected count
+  // renders as "used by nobody", which is the one wrong answer here.
   const { data: expenses } = useExpenses(householdId, {
     page: 1,
-    limit: 1000,
+    limit: MAX_PAGE_SIZE,
     sortBy: 'datePaid',
     sortOrder: 'desc',
   })

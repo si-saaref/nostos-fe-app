@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { LandingReason, SigninError } from '@/modules/auth/types/auth'
+import { getErrorDetails } from '@/utils/errors'
 import type { Landing } from '@/modules/auth/types/auth'
 
 /**
@@ -59,9 +60,7 @@ export const signinErrorFromResponse = (error: unknown): SigninError => {
  */
 export const deletionDeadlineFromResponse = (error: unknown): string | null => {
   if (statusOf(error) !== 403) return null
-  const data = axios.isAxiosError(error)
-    ? (error.response?.data as
-        { details?: { deletion_scheduled_for?: string } } | undefined)
-    : undefined
-  return data?.details?.deletion_scheduled_for ?? null
+  const details = getErrorDetails(error) as
+    { deletion_scheduled_for?: string } | undefined
+  return details?.deletion_scheduled_for ?? null
 }

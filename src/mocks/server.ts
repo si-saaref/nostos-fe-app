@@ -1,4 +1,5 @@
 import { setupServer } from 'msw/node'
-import { handlers } from '@/mocks/handlers'
+import { testHandlers } from '@/mocks/handlers'
 
-export const server = setupServer(...handlers)
+/** Fully mocked, never a network. `testHandlers` so `MOCKED` cannot empty it. */
+export const server = setupServer(...testHandlers)

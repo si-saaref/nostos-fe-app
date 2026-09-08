@@ -3,7 +3,12 @@ import { apiClient, unwrap } from '@/api/client'
 import { entityKey } from '@/api/keys'
 import { useInvalidatingMutation } from '@/api/useInvalidatingMutation'
 import type { ApiEnvelope } from '@/types/api'
-import type { Account, WireAccount } from '@/types/catalog'
+import type {
+  Account,
+  AccountKind,
+  WireAccount,
+  WireAccountKind,
+} from '@/types/catalog'
 import type { AccountInput } from '@/modules/settings/types/settings'
 
 /** `/payment-sources` — one key, one type, one hook. See `categories.ts`. */
@@ -11,10 +16,35 @@ export const accountKeys = {
   all: (householdId: string) => entityKey(householdId, 'accounts'),
 }
 
+/**
+ * `kind` is the one field whose casing differs across the wire. Two records
+ * rather than `toLowerCase()`, for the reason `SORT_COLUMN` is a record: a
+ * cast would let a value the union does not contain reach the radio group,
+ * which then renders with nothing selected and no error anywhere.
+ *
+ * Inbound falls back to its input: until the API ships uppercase it still
+ * sends lowercase, and a `kind` of `undefined` is exactly that unselected
+ * group. Outbound needs no fallback — the domain union is closed.
+ */
+const KIND_FROM_WIRE: Record<string, AccountKind | undefined> = {
+  CASH: 'cash',
+  BANK: 'bank',
+  EWALLET: 'ewallet',
+}
+
+const KIND_TO_WIRE: Record<AccountKind, WireAccountKind> = {
+  cash: 'CASH',
+  bank: 'BANK',
+  ewallet: 'EWALLET',
+}
+
+const toDomainKind = (kind: string): AccountKind =>
+  KIND_FROM_WIRE[kind] ?? (kind as AccountKind)
+
 export const toAccount = (row: WireAccount): Account => ({
   id: row.id,
   name: row.name,
-  kind: row.kind,
+  kind: toDomainKind(row.kind),
   openingBalance: row.opening_balance,
   asOf: row.as_of,
   order: row.order,
@@ -26,7 +56,7 @@ export const toAccount = (row: WireAccount): Account => ({
 const toAccountBody = (patch: Partial<Account>) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
-  if (patch.kind !== undefined) body.kind = patch.kind
+  if (patch.kind !== undefined) body.kind = KIND_TO_WIRE[patch.kind]
   if (patch.openingBalance !== undefined) {
     body.opening_balance = patch.openingBalance
   }
@@ -66,7 +96,7 @@ export const useCreateAccount = (householdId: string) =>
         unwrap(
           await apiClient.post<ApiEnvelope<WireAccount>>('/payment-sources', {
             name: input.name,
-            kind: input.kind,
+            kind: KIND_TO_WIRE[input.kind],
             opening_balance: input.openingBalance,
             as_of: input.asOf,
           }),

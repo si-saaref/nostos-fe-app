@@ -34,6 +34,37 @@ npm run dev        # runs with the MSW mock backend (VITE_ENABLE_MOCKS=true)
 Copy `.env.example` to `.env.local` and set `VITE_API_URL` to point at a real
 backend; set `VITE_ENABLE_MOCKS=false` to disable mocks.
 
+### Running against the real backend
+
+The app talks to `${VITE_API_URL}/api/v1` and authenticates with the
+`household.sid` session cookie.
+
+`VITE_ENABLE_MOCKS` is the only mock-related environment variable, and it is a
+kill switch: `false` turns the MSW worker off entirely.
+
+**Which modules are mocked is declared in code**, in the `MOCKED` map at the
+top of `src/mocks/handlers/index.ts`:
+
+```ts
+export const MOCKED: MockedDomains = {
+  auth: false, // shipped
+  expense: false, // shipped
+  prefs: true, // route not built — the live API answers 404
+}
+```
+
+A module goes live in the same diff that integrates it, which is where that
+decision belongs: it is a fact about the commit, not about the machine running
+it. Flip an entry to `true` locally to work offline or against an unfinished
+endpoint — just do not commit it. Adding a module means one row here and one in
+`DOMAIN_PATHS` below it, not another environment variable.
+
+Start the backend (the Postman collection defaults to `http://localhost:3073`;
+point `VITE_API_URL` at whichever port yours serves), then `npm run dev`. The
+console prints the state of every domain on startup. If the browser drops the
+session cookie across origins, uncomment the `/api` proxy in `vite.config.ts`
+to make the requests same-origin.
+
 ## Scripts
 
 | Script                  | Purpose                       |

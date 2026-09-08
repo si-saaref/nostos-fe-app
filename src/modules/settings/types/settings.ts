@@ -74,3 +74,14 @@ export interface InviteInput {
   name: string
   email: string
 }
+
+/**
+ * `GET|PATCH /households/:id/prefs` on the wire, snake_case like every other
+ * route. The endpoint is unshipped — `API-SPEC-EXPENSE.md` §6 still lists it —
+ * so this shape is what the FE will accept when it arrives, and what the mock
+ * answers meanwhile.
+ */
+export interface WireHouseholdPrefs {
+  currency: string
+  month_start_day: number
+}
