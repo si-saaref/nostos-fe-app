@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useMessages } from '@/i18n/useMessages'
 import { useHousehold } from '@/contexts/useHousehold'
 import { CategorySection } from '@/modules/settings/components/CategorySection'
+import { IncomeTypeSection } from '@/modules/settings/components/IncomeTypeSection'
 import { AccountSection } from '@/modules/settings/components/AccountSection'
 import { MemberSection } from '@/modules/settings/components/MemberSection'
 import { PreferencesSection } from '@/modules/settings/components/PreferencesSection'
@@ -14,7 +15,7 @@ interface IndexEntry {
   label: string
 }
 
-type GroupId = 'expense' | 'household'
+type GroupId = 'expense' | 'income' | 'household'
 
 interface SettingsGroup {
   id: GroupId
@@ -52,6 +53,11 @@ export const SettingsPage = () => {
       sections: [
         { id: SETTINGS_ANCHORS.expenseCategories, label: m.cat_title() },
       ],
+    },
+    {
+      id: 'income',
+      label: m.group_income(),
+      sections: [{ id: SETTINGS_ANCHORS.incomeTypes, label: m.itype_title() }],
     },
     {
       id: 'household',
@@ -233,6 +239,13 @@ export const SettingsPage = () => {
           >
             {activeGroup.id === 'expense' && (
               <CategorySection
+                householdId={householdId}
+                canManage={canManage}
+              />
+            )}
+
+            {activeGroup.id === 'income' && (
+              <IncomeTypeSection
                 householdId={householdId}
                 canManage={canManage}
               />

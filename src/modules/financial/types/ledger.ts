@@ -1,5 +1,6 @@
 import type { RimIndex } from '@/theme/rims'
 import type { Expense } from '@/types/expense'
+import type { Income } from '@/types/income'
 
 /**
  * The tape's view model. Built by the page and handed down, so it lives above
@@ -9,6 +10,24 @@ export interface DayGroup {
   date: string
   total: number
   expenses: Expense[]
+}
+
+/**
+ * One day of the income statement.
+ *
+ * Two figures, never one. A day holding a salary and a cash withdrawal has no
+ * honest single total: adding them reports money the household never gained,
+ * and dropping either loses half the day. So the shelf states them apart, the
+ * same split the month strip makes — `inflow` is what arrived from outside,
+ * `moved` is what only changed pockets.
+ */
+export interface DayIncomeGroup {
+  date: string
+  /** Arrived from outside the household. Raises what it holds. */
+  inflow: number
+  /** Moved between its own sources. Changes nothing. */
+  moved: number
+  income: Income[]
 }
 
 /** One day's bar on the month rail. */
