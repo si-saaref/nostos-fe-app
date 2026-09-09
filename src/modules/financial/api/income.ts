@@ -15,10 +15,9 @@ import type {
  * Everything Income knows about the server, in one file — see `expenses.ts`
  * for why the key factory and all four writes are colocated.
  *
- * Income is household-scoped in the *path* rather than only in the header
- * (`PATCH /households/:id/income/:incomeId`, PRD AC3.4), unlike `/expenses`.
- * The header still goes out, because tenant scoping is not the client's to
- * decide — this is just the shape the income routes were specified in.
+ * Routes are flat; tenancy travels in `X-Household-ID`. The query keys stay
+ * household-scoped regardless, because two households must never share a
+ * cache entry even when they share a URL.
  */
 export const incomeKeys = {
   all: (householdId: string) => entityKey(householdId, 'income'),
@@ -34,7 +33,8 @@ export const MAX_PAGE_SIZE = 500
 /** Index of the filters object inside a `list` key, used to match cache writes. */
 const FILTERS_IN_KEY = 4
 
-const basePath = (householdId: string) => `/households/${householdId}/income`
+/** Flat, with tenancy in `X-Household-ID` — the same shape as `/expenses`. */
+const BASE_PATH = '/income'
 
 const toRequestParams = (filters?: IncomeFilters) => {
   if (!filters) return undefined
@@ -52,7 +52,7 @@ export const toIncome = (row: WireIncome): Income => ({
   id: row.id,
   name: row.name,
   amount: row.amount,
-  type: row.type,
+  typeId: row.type_id,
   fromSourceId: row.from_source_id,
   toSourceId: row.to_source_id,
   date: row.date,
@@ -73,7 +73,7 @@ export const toIncome = (row: WireIncome): Income => ({
 const toIncomeBody = (input: CreateIncomeInput) => ({
   name: input.name,
   amount: input.amount,
-  type: input.type,
+  type_id: input.typeId,
   from_source_id: input.fromSourceId,
   to_source_id: input.toSourceId,
   date: input.date,
@@ -96,7 +96,7 @@ const toIncomePatch = (patch: UpdateIncomeInput) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
   if (patch.amount !== undefined) body.amount = patch.amount
-  if (patch.type !== undefined) body.type = patch.type
+  if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.fromSourceId !== undefined) {
     body.from_source_id = patch.fromSourceId
   }
@@ -171,7 +171,7 @@ export const useIncome = (householdId: string, filters?: IncomeFilters) =>
     queryKey: incomeKeys.list(householdId, filters),
     queryFn: async () =>
       unwrapPage(
-        await apiClient.get<ApiEnvelope<WireIncome[]>>(basePath(householdId), {
+        await apiClient.get<ApiEnvelope<WireIncome[]>>(BASE_PATH, {
           params: toRequestParams(filters),
         }),
         toIncome,
@@ -194,7 +194,7 @@ export const useCreateIncome = (householdId: string) => {
       toIncome(
         unwrap(
           await apiClient.post<ApiEnvelope<WireIncome>>(
-            basePath(householdId),
+            BASE_PATH,
             toIncomeBody(input),
           ),
         ),
@@ -253,7 +253,7 @@ export const useUpdateIncome = (householdId: string) => {
       toIncome(
         unwrap(
           await apiClient.patch<ApiEnvelope<WireIncome>>(
-            `${basePath(householdId)}/${id}`,
+            `${BASE_PATH}/${id}`,
             toIncomePatch(patch),
           ),
         ),
@@ -271,7 +271,7 @@ export const useDeleteIncome = (householdId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete(`${basePath(householdId)}/${id}`)
+      await apiClient.delete(`${BASE_PATH}/${id}`)
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({

@@ -15,15 +15,15 @@ import type { Positions, WirePosition } from '@/types/income'
  * wrong for an old one, which is the worst way for a money figure to fail.
  * The contract is in `docs/SURFACE-INCOME.md` §7.
  *
- * `isError` is a designed state here, not an edge case: this endpoint is not
- * built yet, so the position card is written to say so plainly rather than
- * render a zero that reads as "you have nothing".
+ * `isError` is a designed state, not an edge case: a balance the client cannot
+ * compute must degrade to a stated sentence rather than a zero that reads as
+ * "you have nothing".
  */
 export interface PositionScope {
   /** The day the balance is true as of. */
   asOf: string
-  /** First day of the period whose opening balance is wanted. */
-  from?: string
+  /** First day of the period whose opening balance is wanted. Required by the route. */
+  from: string
 }
 
 export const positionKeys = {
@@ -43,15 +43,9 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
     queryKey: positionKeys.scoped(householdId, scope),
     queryFn: async (): Promise<Positions> => {
       const rows = unwrap(
-        await apiClient.get<ApiEnvelope<WirePosition[]>>(
-          `/households/${householdId}/positions`,
-          {
-            params: {
-              as_of: scope.asOf,
-              ...(scope.from && { from: scope.from }),
-            },
-          },
-        ),
+        await apiClient.get<ApiEnvelope<WirePosition[]>>('/positions', {
+          params: { as_of: scope.asOf, from: scope.from },
+        }),
       ).map(toPosition)
 
       // Summed here rather than read from `meta`, and this is the one

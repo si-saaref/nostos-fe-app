@@ -46,7 +46,7 @@ export const incomeTypeHandlers = [
       (row) => row.name.toLowerCase() === name.toLowerCase(),
     )
     if (clash) {
-      return errorBody(409, 'DUPLICATE_NAME', `"${clash.name}" sudah ada`)
+      return errorBody(409, 'CONFLICT', `"${clash.name}" sudah ada`)
     }
     const created: IncomeType = {
       id: nextId('itype'),

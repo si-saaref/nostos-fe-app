@@ -142,11 +142,13 @@ const tomorrowUtc = (): string =>
 /** The server's own order: whitelist first, then field constraints. */
 const badBody = (body: Partial<WireExpense> & Record<string, unknown>) => {
   if ('household_id' in body) {
-    return errorBody(
-      400,
-      'WHITELIST_VALIDATION',
-      'property household_id should not exist',
-    )
+    return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
+      {
+        field: 'household_id',
+        code: 'WHITELIST',
+        message: 'property household_id should not exist',
+      },
+    ])
   }
   if (body.value !== undefined && !isValidMoney(body.value)) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [

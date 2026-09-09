@@ -171,7 +171,7 @@ describe('IncomePage', () => {
 
   it('says balances are unavailable rather than showing a zero, when the route is missing', async () => {
     server.use(
-      http.get('*/api/v1/households/:householdId/positions', () =>
+      http.get('*/api/v1/positions', () =>
         errorBody(404, 'NOT_FOUND', 'Not found'),
       ),
     )
@@ -254,9 +254,7 @@ describe('IncomePage', () => {
 
   it('surfaces a failed read with a retry rather than an empty month', async () => {
     server.use(
-      http.get('*/api/v1/households/:householdId/income', () =>
-        errorBody(500, 'SERVER_ERROR', 'boom'),
-      ),
+      http.get('*/api/v1/income', () => errorBody(500, 'SERVER_ERROR', 'boom')),
     )
     renderPage()
 

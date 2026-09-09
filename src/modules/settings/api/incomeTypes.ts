@@ -47,15 +47,6 @@ export const useIncomeTypes = (householdId: string) =>
     enabled: Boolean(householdId),
   })
 
-/** What the picker should offer: an archived type is history, not a choice. */
-export const useActiveIncomeTypes = (householdId: string) =>
-  useQuery({
-    queryKey: incomeTypeKeys.all(householdId),
-    queryFn: fetchIncomeTypes,
-    enabled: Boolean(householdId),
-    select: (types: IncomeType[]) => types.filter((type) => !type.archivedAt),
-  })
-
 export const useCreateIncomeType = (householdId: string) =>
   useInvalidatingMutation(
     [incomeTypeKeys.all(householdId)],

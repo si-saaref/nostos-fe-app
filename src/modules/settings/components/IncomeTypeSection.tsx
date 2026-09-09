@@ -62,15 +62,16 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
   const [newName, setNewName] = useState('')
   const [toArchive, setToArchive] = useState<IncomeType | null>(null)
 
-  // Counted once per fetch rather than filtered per row.
-  const usageByName = useMemo(() => {
+  // Counted once per fetch rather than filtered per row, and keyed by id
+  // rather than by name — a renamed type keeps the history it earned.
+  const usageById = useMemo(() => {
     const counts = new Map<string, number>()
     income?.items.forEach((row) => {
-      counts.set(row.type, (counts.get(row.type) ?? 0) + 1)
+      counts.set(row.typeId, (counts.get(row.typeId) ?? 0) + 1)
     })
     return counts
   }, [income])
-  const usageOf = (type: IncomeType) => usageByName.get(type.name) ?? 0
+  const usageOf = (type: IncomeType) => usageById.get(type.id) ?? 0
 
   const hasNone = (types?.length ?? 0) === 0
   const addType = (name: string, then?: () => void) => {

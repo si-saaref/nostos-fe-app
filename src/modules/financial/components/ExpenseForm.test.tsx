@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
+import { db } from '@/mocks/db'
 import { chooseOption, renderWithProviders } from '@/test/test-utils'
 import { Role } from '@/types/household'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
@@ -280,5 +281,52 @@ describe('ExpenseForm — edit mode', () => {
     renderWithProviders(<ExpenseForm />)
     await screen.findByLabelText(/nama pengeluaran/i)
     expect(screen.queryByText('Dewi')).not.toBeInTheDocument()
+  })
+})
+
+describe('ExpenseForm when the household is not set up', () => {
+  // Previously the form let this through and answered "kategori wajib", which
+  // is true and useless: there was no category to pick and the fix lived in
+  // Settings. Matches income's treatment — the household's gap is stated, not
+  // blamed on the member's input.
+  it('names the missing categories and sends nothing when submitted', async () => {
+    db.categories.length = 0
+    const posts: string[] = []
+    const record = ({ request }: { request: Request }) => {
+      if (request.method === 'POST') posts.push(request.url)
+    }
+    server.events.on('request:start', record)
+
+    const onSuccess = vi.fn()
+    renderWithProviders(<ExpenseForm onSuccess={onSuccess} />)
+
+    const submit = await screen.findByRole('button', { name: /catat/i })
+    await waitFor(() => expect(submit).toHaveAttribute('aria-disabled', 'true'))
+    expect(submit).not.toBeDisabled()
+
+    const reason = document.getElementById(
+      submit.getAttribute('aria-describedby') ?? '',
+    )
+    expect(reason).toHaveTextContent(/kategori pengeluaran/i)
+
+    await userEvent.click(submit)
+    server.events.removeListener('request:start', record)
+
+    expect(posts).toHaveLength(0)
+    expect(onSuccess).not.toHaveBeenCalled()
+    expect(screen.queryByText(/wajib/i)).not.toBeInTheDocument()
+  })
+
+  // The other half of the rule: ordinary incomplete input still submits and
+  // still answers on the field.
+  it('still submits an incomplete form and answers on the fields', async () => {
+    renderWithProviders(<ExpenseForm />)
+
+    const submit = await screen.findByRole('button', { name: /catat/i })
+    expect(submit).not.toHaveAttribute('aria-disabled', 'true')
+
+    await userEvent.click(submit)
+    const alerts = await screen.findAllByRole('alert')
+    expect(alerts.map((a) => a.textContent).join(' ')).toMatch(/wajib/i)
   })
 })

@@ -111,13 +111,19 @@ give it a sign. Meaning lives in the route pill — solid `BNI → Cash` versus 
 `External → BNI` — never in a bare amount. The row disclosure spells out both sides in words
 and says _"Household total unchanged — a transfer, not income."_
 
-## 6. Client-derived figures are guarded
+## 6. The month's three extra figures come from the server
 
-`meta.totals` gives `sum`, `count`, `average` and nothing else. "Moved between sources",
-"entries from outside" and the transfer count are summed from the rows the page is holding.
-That is honest **only while it holds all of them**, so each is guarded against
-`pagination.total` and renders `—` rather than a partial sum. Same constraint the expenses
-page's top-slice already lives under.
+`meta.totals` carries six keys, not three: `sum`, `count` and `average`, plus `moved`,
+`external_count` and `transfer_count` — all computed over the whole filtered set. So "moved
+between sources", "entries from outside" and the transfer count are simply true, on a partial
+page as much as a complete one.
+
+`incomeMonthFigures` keeps its old derivation as a **fallback**, guarded against
+`pagination.total` and rendering `—` rather than a partial sum. That path is not dead code:
+`meta.totals` is absent from the API's own OpenAPI schema, so a deployment that does not send
+it is a real case, and three cells rendering `undefined` is a worse failure than a dash.
+
+The guard is still right for anything the server does not answer. It simply has less to cover.
 
 ## 7. Position is a backend dependency
 
@@ -125,10 +131,13 @@ Position is not computable in the browser: it needs every income and expense the
 ever recorded, across all months.
 
 ```
-GET /api/v1/households/:id/positions?as_of=YYYY-MM-DD&from=YYYY-MM-DD
+GET /api/v1/positions?from=YYYY-MM-DD&as_of=YYYY-MM-DD
 
 data: [{ source_id, opening_balance, balance }]
 ```
+
+**Both parameters are required.** An omitted `from` is a `400`, never a defaulted window: a
+silently-widened period would answer a plausible balance for a question nobody asked.
 
 - `opening_balance` — what the source held at the close of `from − 1 day`, which is what
   makes "opened September at" and "closed August at" one number rather than two a day apart.
@@ -144,12 +153,13 @@ data: [{ source_id, opening_balance, balance }]
   property.
 - Balances are **not** clamped at zero. A source can genuinely be short.
 
-The full inventory of what the BE already serves and what it owes is in
-`docs/API-CONTRACT-INCOME.md`, derived from the Postman collection and the live probes.
+The full inventory of what the BE serves is in `docs/API-SPEC-INCOME.md`, superseded in part
+by `notes/BE/API-SPEC-DEVIATIONS-INCOME.md` and §10 of `notes/FE-App/prd-income-fe.md`.
 
-**Until it is live**, `PositionCard` renders a stated degraded band: no number, a plain
-sentence, and the statement below still complete and correct. Never a guessed balance, never
-a zero standing in for an unknown.
+`PositionCard` renders a **stated degraded band on error**: no number, a plain sentence, and
+the statement below still complete and correct. Never a guessed balance, never a zero standing
+in for an unknown. The endpoint shipped on 2026-09-09; the band remains the designed failure
+state, not a placeholder.
 
 ## 8. States
 

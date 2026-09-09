@@ -24,9 +24,9 @@ import { prefsHandlers } from '@/mocks/handlers/prefs'
  *     a live-expense / mock-income world cannot produce a correct balance for
  *     any source. Not "slightly off" — structurally unanswerable.
  *
- * So it is one flag, and flipping it moves the whole financial world at once.
- * Income has no backend yet (§ `docs/API-CONTRACT-INCOME.md`), which is why it
- * currently sits at `true`.
+ * So it is one flag, and flipping it moves the whole financial world at once —
+ * which is what happened on 2026-09-09, when `/income`, `/income-types` and
+ * `/positions` shipped and expenses came off mocks with them.
  */
 export type MockDomain = 'auth' | 'financial' | 'prefs'
 
@@ -39,11 +39,7 @@ export type MockedDomains = Record<MockDomain, boolean>
  */
 export const MOCKED: MockedDomains = {
   auth: false, // shipped 2026-09-01
-  // Expenses cut over to the live API on 2026-09-07 and would run live on
-  // their own — but income has no backend at all, and the two share a
-  // catalogue and a balance, so the pair rides together until `/income`,
-  // `/income-types` and `/positions` exist. See the type above.
-  financial: true,
+  financial: false, // shipped 2026-09-09 — both ledgers, catalogue and positions
   prefs: true, // route not built: the live API 404s
 }
 
@@ -69,9 +65,9 @@ const DOMAIN_PATHS: Record<MockDomain, (string | RegExp)[]> = {
     '/api/v1/expense-types',
     '/api/v1/payment-sources',
     '/api/v1/income-types',
+    '/api/v1/income',
+    '/api/v1/positions',
     /\/api\/v1\/households\/[^/]+\/members(\/|$)/,
-    /\/api\/v1\/households\/[^/]+\/income(\/|$)/,
-    /\/api\/v1\/households\/[^/]+\/positions$/,
   ],
   prefs: [/\/api\/v1\/households\/[^/]+\/prefs$/],
 }

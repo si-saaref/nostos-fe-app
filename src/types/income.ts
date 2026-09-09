@@ -16,13 +16,11 @@ export interface Income {
   name: string
   amount: number
   /**
-   * The household's own word for this kind of money — a *name*, not a foreign
-   * key. The column is `VARCHAR(100)` (PRD §5) and `income_types` is a
-   * separate curated list the picker reads; the row stores what was chosen.
-   * Modelled as the string it is, so nothing here implies a join the API
-   * does not have.
+   * Foreign key into the household's `income_types`. The row stores the key,
+   * not the word — so an archived type keeps naming the entries that used it,
+   * and a renamed one renames its history with it.
    */
-  type: string
+  typeId: string
   /** `null` means the money came from outside the household. */
   fromSourceId: string | null
   toSourceId: string
@@ -40,7 +38,7 @@ export interface Income {
 export interface CreateIncomeInput {
   name: string
   amount: number
-  type: string
+  typeId: string
   fromSourceId: string | null
   toSourceId: string
   date: string
@@ -78,7 +76,7 @@ export interface WireIncome {
   id: string
   name: string
   amount: number
-  type: string
+  type_id: string
   from_source_id: string | null
   to_source_id: string
   date: string
@@ -116,9 +114,9 @@ export interface WireIncomeType {
  *
  * Not computable in the browser: a balance is `opening_balance ± income ∓
  * expense` over *all* history, so deriving it from a page of rows would be
- * silently wrong the moment the household outgrows one page. This is the shape
- * of the endpoint that owes us the answer (`docs/SURFACE-INCOME.md` §7); until
- * it exists the position card says so rather than guessing.
+ * silently wrong the moment the household outgrows one page. `/positions`
+ * answers it (`docs/SURFACE-INCOME.md` §7); on failure the position card says
+ * so rather than guessing.
  */
 export interface Position {
   sourceId: string

@@ -7,7 +7,7 @@ const row = (id: string, amount: number, from: string | null): Income => ({
   id,
   name: id,
   amount,
-  type: 'gaji',
+  typeId: 'itype-0',
   fromSourceId: from,
   toSourceId: 'source-bni',
   date: '2026-09-04',
@@ -17,7 +17,7 @@ const row = (id: string, amount: number, from: string | null): Income => ({
 const page = (
   items: Income[],
   total = items.length,
-  totals?: { sum: number; count: number; average: number },
+  totals?: Paginated<Income>['totals'],
 ): Paginated<Income> => ({
   items,
   pagination: { page: 1, limit: 400, total, totalPages: 1 },
@@ -72,5 +72,61 @@ describe('incomeMonthFigures', () => {
       page([row('a', 0.1, 'source-bni'), row('b', 0.2, 'source-bni')]),
     )
     expect(figures.moved).toBe(0.3)
+  })
+})
+
+describe('incomeMonthFigures, once the server answers them', () => {
+  // The whole point of the server answering these: the guard could only ever
+  // render a dash here, and the server has every row.
+  it('uses the server figures even when the page holds only part of the set', () => {
+    const figures = incomeMonthFigures(
+      page([row('salary', 5000000, null)], 40, {
+        sum: 5000000,
+        count: 40,
+        average: 125000,
+        moved: 1685000,
+        external_count: 1,
+        transfer_count: 39,
+      }),
+    )
+
+    expect(figures.isComplete).toBe(true)
+    expect(figures.moved).toBe(1685000)
+    expect(figures.externalCount).toBe(1)
+    expect(figures.transferCount).toBe(39)
+  })
+
+  it('prefers the server figures over its own derivation', () => {
+    const figures = incomeMonthFigures(
+      page([row('withdraw', 400000, 'source-bni')], 1, {
+        sum: 0,
+        count: 1,
+        average: 0,
+        moved: 999000,
+        external_count: 0,
+        transfer_count: 1,
+      }),
+    )
+
+    expect(figures.moved).toBe(999000)
+  })
+
+  // The fallback: the schema does not model `totals`, so absence is a real case.
+  it('falls back to the guarded derivation when the server sends no figures', () => {
+    const complete = incomeMonthFigures({
+      items: [row('withdraw', 400000, 'source-bni')],
+      pagination: { page: 1, limit: 400, total: 1, totalPages: 1 },
+      totals: undefined,
+    })
+    expect(complete.moved).toBe(400000)
+    expect(complete.isComplete).toBe(true)
+
+    const partial = incomeMonthFigures({
+      items: [row('withdraw', 400000, 'source-bni')],
+      pagination: { page: 1, limit: 400, total: 40, totalPages: 1 },
+      totals: undefined,
+    })
+    expect(partial.moved).toBeNull()
+    expect(partial.isComplete).toBe(false)
   })
 })

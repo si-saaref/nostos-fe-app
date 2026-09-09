@@ -30,10 +30,19 @@ export interface WirePagination {
   total_pages: number
 }
 
+/**
+ * `moved`, `external_count` and `transfer_count` are income-only and therefore
+ * optional: expenses answer three keys, income six, and one shape holds both.
+ * Absent is not zero — a zero here would be a claim about the household's
+ * money that the server never made.
+ */
 export interface WireTotals {
   sum: number
   count: number
   average: number
+  moved?: number
+  external_count?: number
+  transfer_count?: number
 }
 
 /**
@@ -93,4 +102,13 @@ export interface Totals {
   sum: number
   count: number
   average: number
+  /**
+   * Income only, and spelled as they arrive on the wire: `unwrapPage` spreads
+   * `meta.totals` rather than mapping it key by key, so keeping the two shapes
+   * identical is what makes that spread honest. A mapper here that silently
+   * dropped a key is the failure this contract is arranged to avoid.
+   */
+  moved?: number
+  external_count?: number
+  transfer_count?: number
 }

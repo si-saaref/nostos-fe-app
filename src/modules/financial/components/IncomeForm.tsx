@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import type { FormEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMessages } from '@/i18n/useMessages'
 import {
@@ -8,15 +8,17 @@ import {
 } from '@/modules/financial/api/income'
 import { incomeFieldErrors } from '@/modules/financial/lib/incomeErrors'
 import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useActiveIncomeTypes } from '@/modules/settings/api/incomeTypes'
+import { useIncomeTypes } from '@/modules/settings/api/incomeTypes'
 import { useHousehold } from '@/contexts/useHousehold'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
+import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
 import { FormField } from '@/components/FormField'
 import { Select } from '@/components/Select'
 import { getErrorMessage } from '@/utils/errors'
 import { MONEY_MIN, MONEY_STEP, isValidMoney } from '@/utils/money'
 import { isoDay } from '@/utils/dates'
 import { rimFor } from '@/theme/rims'
+import type { Blocker } from '@/components/FormBlockers'
 import type { IncomeField } from '@/modules/financial/lib/incomeErrors'
 import type { CreateIncomeInput, Income } from '@/types/income'
 
@@ -48,24 +50,28 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
   const update = useUpdateIncome(householdId)
   const { isPending, error } = isEdit ? update : create
   const { data: accounts } = useActiveAccounts(householdId)
-  const { data: types } = useActiveIncomeTypes(householdId)
+  const { data: types } = useIncomeTypes(householdId)
 
   const today = isoDay(new Date())
 
   /**
-   * The type this row already carries, even if it has since been archived.
+   * Live types to choose from, plus the one this row already carries even if
+   * the household has since archived it.
    *
    * An admin correcting an amount must not silently retype the entry as
-   * something else just because the household stopped offering that word.
+   * something else. That is why the whole list is fetched and filtered here
+   * rather than asked for pre-filtered: an archived type is absent from a live
+   * list, and its option would have to be labelled with its own uuid.
    */
   const typeOptions = useMemo(() => {
-    const live = (types ?? []).map((type) => ({
-      value: type.name,
-      label: type.name,
-    }))
-    const current = income?.type
+    const all = types ?? []
+    const live = all
+      .filter((type) => !type.archivedAt)
+      .map((type) => ({ value: type.id, label: type.name }))
+    const current = income?.typeId
     if (!current || live.some((option) => option.value === current)) return live
-    return [...live, { value: current, label: current }]
+    const archived = all.find((type) => type.id === current)
+    return [...live, { value: current, label: archived?.name ?? current }]
   }, [types, income])
 
   const {
@@ -80,7 +86,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     defaultValues: {
       name: income?.name ?? '',
       amount: income?.amount ?? 0,
-      type: income?.type ?? '',
+      typeId: income?.typeId ?? '',
       fromSourceId: income?.fromSourceId ?? null,
       toSourceId: income?.toSourceId ?? '',
       date: income?.date ?? today,
@@ -153,51 +159,51 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
   }))
 
   /**
-   * Two ways the household is not ready, handled identically.
-   *
-   * The PRD blocks the form outright when no income types exist but shows it
-   * with a disabled submit when no payment sources do. Same problem, so same
-   * behaviour: the form renders, submit is off, and the fix is named with a
-   * link. A form that cannot be used and will not say why is the one outcome
-   * worse than either.
+   * Two ways the household is not ready, handled identically — see
+   * `FormBlockers`. Both wait for the list to arrive before claiming it is
+   * empty: an unresolved query is not the same fact as a household with no
+   * income types, and the banner would otherwise flash on every open.
    */
-  const blockers = [
-    typeOptions.length === 0 && {
-      id: 'types',
-      text: m.inc_blocked_types(),
-      fix: m.inc_blocked_types_fix(),
-      href: settingsHref(SETTINGS_ANCHORS.incomeTypes),
-    },
-    sourceOptions.length === 0 && {
-      id: 'sources',
-      text: m.inc_blocked_sources(),
-      fix: m.inc_blocked_sources_fix(),
-      href: settingsHref(SETTINGS_ANCHORS.accounts),
-    },
-  ].filter((blocker): blocker is Exclude<typeof blocker, false> =>
-    Boolean(blocker),
-  )
+  const candidates: (Blocker | false)[] = [
+    types !== undefined &&
+      typeOptions.length === 0 && {
+        id: 'types',
+        text: m.inc_blocked_types(),
+        fix: m.inc_blocked_types_fix(),
+        href: settingsHref(SETTINGS_ANCHORS.incomeTypes),
+      },
+    accounts !== undefined &&
+      sourceOptions.length === 0 && {
+        id: 'sources',
+        text: m.inc_blocked_sources(),
+        fix: m.inc_blocked_sources_fix(),
+        href: settingsHref(SETTINGS_ANCHORS.accounts),
+      },
+  ]
+  const blockers = candidates.filter((b): b is Blocker => b !== false)
+
+  const isBlocked = blockers.length > 0
+
+  /**
+   * Swallowed before validation runs, not after. Letting `handleSubmit` fire
+   * would mark the empty type field "required" — the wrong problem, since
+   * there is nothing to require.
+   */
+  const guardedSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (isBlocked) {
+      event.preventDefault()
+      return
+    }
+    void handleSubmit(onSubmit)(event)
+  }
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={guardedSubmit}
       noValidate
       className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
     >
-      {blockers.map((blocker) => (
-        <p
-          key={blocker.id}
-          className="bg-chip text-muted rounded-lg px-3 py-2 text-[11px] sm:col-span-2 lg:col-span-3"
-        >
-          {blocker.text}{' '}
-          <Link
-            to={blocker.href}
-            className="text-accent font-semibold underline underline-offset-2"
-          >
-            {blocker.fix}
-          </Link>
-        </p>
-      ))}
+      <FormBlockers blockers={blockers} />
 
       <FormField label={m.inc_form_name()} error={errors.name?.message}>
         <input
@@ -243,14 +249,14 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
 
       <Controller
         control={control}
-        name="type"
+        name="typeId"
         rules={{ required: m.inc_err_type() }}
         render={({ field, fieldState }) => (
           <Select
             label={m.inc_form_type()}
             placeholder={m.form_choose()}
             value={field.value}
-            onChange={changeAndClear('type', field.onChange)}
+            onChange={changeAndClear('typeId', field.onChange)}
             error={fieldState.error?.message}
             disabled={typeOptions.length === 0}
             options={typeOptions}
@@ -271,6 +277,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
             value={field.value ?? ''}
             onChange={changeAndClear('fromSourceId', field.onChange)}
             error={fieldState.error?.message}
+            hint={m.inc_form_from_hint()}
             disabled={sourceOptions.length === 0}
             options={sourceOptions}
           />
@@ -316,18 +323,10 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
         </p>
       )}
 
-      <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-3">
-        <button
-          type="submit"
-          disabled={isPending || blockers.length > 0}
-          className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
-        >
-          {isPending
-            ? m.form_saving()
-            : isEdit
-              ? m.form_submit_edit()
-              : m.form_submit()}
-        </button>
+      {/* Right-aligned, and the submit is last: the member's eye leaves the
+          final field at the right edge of the grid, so an action group at the
+          far left is a journey back across the form to finish. */}
+      <div className="flex items-center justify-end gap-2 sm:col-span-2 lg:col-span-3">
         {onCancel && (
           <button
             type="button"
@@ -337,7 +336,23 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
             {m.form_cancel()}
           </button>
         )}
-        <p className="text-muted text-[10px]">{m.inc_form_from_hint()}</p>
+        {/* `aria-disabled` rather than `disabled`: a blocked submit is the
+            one control on screen that owes an explanation, and a truly
+            disabled button drops out of the tab order before it can give
+            one. It stays reachable, names its reason, and does nothing. */}
+        <button
+          type="submit"
+          disabled={isPending}
+          aria-disabled={isBlocked}
+          aria-describedby={isBlocked ? BLOCKERS_ID : undefined}
+          className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50 aria-disabled:opacity-50"
+        >
+          {isPending
+            ? m.form_saving()
+            : isEdit
+              ? m.form_submit_edit()
+              : m.form_submit()}
+        </button>
       </div>
     </form>
   )

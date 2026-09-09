@@ -13,6 +13,7 @@ interface Props {
   groups: DayIncomeGroup[]
   rimOf: (sourceId: string) => RimIndex
   nameOfSource: (sourceId: string) => string
+  nameOfType: (typeId: string) => string
   nameOfUser: (userId: string) => string
   openId: string | null
   onToggle: (id: string) => void
@@ -37,6 +38,7 @@ export const IncomeStatement = ({
   groups,
   rimOf,
   nameOfSource,
+  nameOfType,
   nameOfUser,
   openId,
   onToggle,
@@ -141,6 +143,7 @@ export const IncomeStatement = ({
                       : nameOfSource(income.fromSourceId)
                   }
                   toName={nameOfSource(income.toSourceId)}
+                  typeName={nameOfType(income.typeId)}
                   recorderName={nameOfUser(income.createdByUserId ?? '')}
                   isOpen={openId === income.id}
                   onToggle={onToggle}

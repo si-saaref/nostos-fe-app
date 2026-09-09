@@ -1,10 +1,13 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { createWrapper } from '@/test/test-utils'
+import { apiClient } from '@/api/client'
 import { resetMockState } from '@/mocks/db'
+import { server } from '@/mocks/server'
 import { MOCK_ME } from '@/mocks/fixtures/household'
-import { INCOME_TYPE_NAMES } from '@/mocks/fixtures/incomeTypes'
+import { INCOME_TYPE_IDS } from '@/mocks/fixtures/incomeTypes'
 import { ACCOUNT_IDS } from '@/mocks/fixtures/accounts'
+import { getErrorCode } from '@/utils/errors'
 import {
   toIncome,
   useCreateIncome,
@@ -29,7 +32,7 @@ describe('toIncome', () => {
       id: 'inc-1',
       name: 'Salary Sep',
       amount: 5000000,
-      type: 'salary',
+      type_id: 'itype-0',
       from_source_id: null,
       to_source_id: 'source-bni',
       date: '2026-09-04',
@@ -44,7 +47,7 @@ describe('toIncome', () => {
       id: 'inc-1',
       name: 'Salary Sep',
       amount: 5000000,
-      type: 'salary',
+      typeId: 'itype-0',
       fromSourceId: null,
       toSourceId: 'source-bni',
       date: '2026-09-04',
@@ -83,6 +86,40 @@ describe('useIncome', () => {
     expect(result.current.data?.totals?.sum).toBe(external)
   })
 
+  it('calls the flat /income route, with tenancy in the header not the path', async () => {
+    const seen: string[] = []
+    const record = ({ request }: { request: Request }) => {
+      seen.push(new URL(request.url).pathname)
+    }
+    server.events.on('request:start', record)
+
+    const { result } = renderHook(() => useIncome(HOUSEHOLD, FILTERS), {
+      wrapper: createWrapper(),
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    server.events.removeListener('request:start', record)
+
+    expect(seen.some((path) => path.endsWith('/api/v1/income'))).toBe(true)
+    expect(seen.some((path) => path.includes('/households/'))).toBe(false)
+  })
+
+  it('surfaces the three figures the server computes over the whole set', async () => {
+    const { result } = renderHook(() => useIncome(HOUSEHOLD, FILTERS), {
+      wrapper: createWrapper(),
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const items = result.current.data?.items ?? []
+    const transfers = items.filter((row) => row.fromSourceId !== null)
+    const totals = result.current.data?.totals
+
+    expect(totals?.transfer_count).toBe(transfers.length)
+    expect(totals?.external_count).toBe(items.length - transfers.length)
+    expect(totals?.moved).toBe(
+      transfers.reduce((sum, row) => sum + row.amount, 0),
+    )
+  })
+
   it('orders newest first', async () => {
     const { result } = renderHook(() => useIncome(HOUSEHOLD, FILTERS), {
       wrapper: createWrapper(),
@@ -103,7 +140,7 @@ describe('useCreateIncome', () => {
     result.current.mutate({
       name: 'Salary Sep',
       amount: 5000000,
-      type: INCOME_TYPE_NAMES[0],
+      typeId: INCOME_TYPE_IDS[0],
       fromSourceId: null,
       toSourceId: ACCOUNT_IDS[0],
       date: thisMonth.from,
@@ -114,6 +151,53 @@ describe('useCreateIncome', () => {
     expect(result.current.data?.createdByUserId).toBeTruthy()
   })
 
+  it('sends the type as an id, not a name', async () => {
+    const bodies: Record<string, unknown>[] = []
+    const record = async ({ request }: { request: Request }) => {
+      if (request.method === 'POST') {
+        bodies.push((await request.clone().json()) as Record<string, unknown>)
+      }
+    }
+    server.events.on('request:start', record)
+
+    const { result } = renderHook(() => useCreateIncome(HOUSEHOLD), {
+      wrapper: createWrapper(),
+    })
+    result.current.mutate({
+      name: 'Gaji',
+      amount: 5000000,
+      typeId: INCOME_TYPE_IDS[0],
+      fromSourceId: null,
+      toSourceId: ACCOUNT_IDS[0],
+      date: thisMonth.from,
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    server.events.removeListener('request:start', record)
+
+    expect(bodies[0]).toMatchObject({ type_id: INCOME_TYPE_IDS[0] })
+    expect(bodies[0]).not.toHaveProperty('type')
+    // null is a value on this field, not an omission — the key must be present.
+    expect(bodies[0]).toHaveProperty('from_source_id', null)
+    expect(result.current.data?.typeId).toBe(INCOME_TYPE_IDS[0])
+  })
+
+  it('refuses a type id the household does not have', async () => {
+    const { result } = renderHook(() => useCreateIncome(HOUSEHOLD), {
+      wrapper: createWrapper(),
+    })
+    result.current.mutate({
+      name: 'Mystery',
+      amount: 1000,
+      typeId: 'itype-does-not-exist',
+      fromSourceId: null,
+      toSourceId: ACCOUNT_IDS[0],
+      date: thisMonth.from,
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(getErrorCode(result.current.error)).toBe('INVALID_TYPE')
+  })
+
   it('rejects a transfer whose two sources are the same', async () => {
     const { result } = renderHook(() => useCreateIncome(HOUSEHOLD), {
       wrapper: createWrapper(),
@@ -122,7 +206,7 @@ describe('useCreateIncome', () => {
     result.current.mutate({
       name: 'Nowhere',
       amount: 1000,
-      type: INCOME_TYPE_NAMES[0],
+      typeId: INCOME_TYPE_IDS[0],
       fromSourceId: ACCOUNT_IDS[0],
       toSourceId: ACCOUNT_IDS[0],
       date: thisMonth.from,
@@ -139,7 +223,7 @@ describe('useCreateIncome', () => {
     result.current.mutate({
       name: 'Odd',
       amount: 10.999,
-      type: INCOME_TYPE_NAMES[0],
+      typeId: INCOME_TYPE_IDS[0],
       fromSourceId: null,
       toSourceId: ACCOUNT_IDS[0],
       date: thisMonth.from,
@@ -233,5 +317,25 @@ describe('useDeleteIncome', () => {
     })
     second.result.current.mutate(id)
     await waitFor(() => expect(second.result.current.isError).toBe(true))
+  })
+})
+
+describe('the income wire contract', () => {
+  // VALIDATION_ERROR, not WHITELIST_VALIDATION: forbidNonWhitelisted raises a
+  // standard validation failure, and WHITELIST_VALIDATION is not in the API's
+  // error enum at all.
+  it('refuses a body carrying household_id with a 400 VALIDATION_ERROR', async () => {
+    const failure = await apiClient
+      .post('/income', {
+        name: 'Smuggled',
+        amount: 1000,
+        household_id: HOUSEHOLD,
+        from_source_id: null,
+        to_source_id: ACCOUNT_IDS[0],
+        date: thisMonth.from,
+      })
+      .catch((error: unknown) => error)
+
+    expect(getErrorCode(failure)).toBe('VALIDATION_ERROR')
   })
 })

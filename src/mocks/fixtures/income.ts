@@ -1,4 +1,5 @@
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
+import { incomeTypeIdOf } from '@/mocks/fixtures/incomeTypes'
 import { isoDay } from '@/utils/dates'
 import type { StoredIncome } from '@/types/income'
 
@@ -13,7 +14,8 @@ interface Recipe {
    *  current month is never a single-entry month on the 1st or 2nd. */
   day: number
   name: string
-  type: string
+  /** Resolved to a type id at seed time — the ledger stores the key, not the word. */
+  typeName: string
   /** `null` is money from outside the household. */
   from: string | null
   to: string
@@ -26,7 +28,7 @@ const RECIPES: Recipe[] = [
   {
     day: 1,
     name: 'Gaji bulan ini',
-    type: 'gaji',
+    typeName: 'gaji',
     from: null,
     to: 'source-bni',
     amount: 8600000,
@@ -34,7 +36,7 @@ const RECIPES: Recipe[] = [
   {
     day: 1,
     name: 'Tarik tunai awal bulan',
-    type: 'tarik tunai',
+    typeName: 'tarik tunai',
     from: 'source-bni',
     to: 'source-tunai',
     amount: 1200000,
@@ -42,7 +44,7 @@ const RECIPES: Recipe[] = [
   {
     day: 2,
     name: 'Setor sisa QRIS',
-    type: 'setoran',
+    typeName: 'setoran',
     from: 'source-qris',
     to: 'source-bni',
     amount: 185000,
@@ -50,7 +52,7 @@ const RECIPES: Recipe[] = [
   {
     day: 4,
     name: 'Top up GoPay',
-    type: 'setoran',
+    typeName: 'setoran',
     from: 'source-debit',
     to: 'source-ewallet',
     amount: 300000,
@@ -58,7 +60,7 @@ const RECIPES: Recipe[] = [
   {
     day: 9,
     name: 'Tarik tunai',
-    type: 'tarik tunai',
+    typeName: 'tarik tunai',
     from: 'source-bni',
     to: 'source-tunai',
     amount: 500000,
@@ -66,7 +68,7 @@ const RECIPES: Recipe[] = [
   {
     day: 12,
     name: 'Bonus kuartal',
-    type: 'bonus',
+    typeName: 'bonus',
     from: null,
     to: 'source-bsi',
     amount: 4250000,
@@ -75,7 +77,7 @@ const RECIPES: Recipe[] = [
   {
     day: 16,
     name: 'Tarik tunai',
-    type: 'tarik tunai',
+    typeName: 'tarik tunai',
     from: 'source-bni',
     to: 'source-tunai',
     amount: 450000,
@@ -83,7 +85,7 @@ const RECIPES: Recipe[] = [
   {
     day: 20,
     name: 'Hadiah ulang tahun',
-    type: 'hadiah',
+    typeName: 'hadiah',
     from: null,
     to: 'source-tunai',
     amount: 600000,
@@ -92,7 +94,7 @@ const RECIPES: Recipe[] = [
   {
     day: 23,
     name: 'Top up GoPay',
-    type: 'setoran',
+    typeName: 'setoran',
     from: 'source-debit',
     to: 'source-ewallet',
     amount: 250000,
@@ -100,7 +102,7 @@ const RECIPES: Recipe[] = [
   {
     day: 27,
     name: 'Tarik tunai akhir bulan',
-    type: 'tarik tunai',
+    typeName: 'tarik tunai',
     from: 'source-bni',
     to: 'source-tunai',
     amount: 400000,
@@ -137,7 +139,7 @@ export const seedIncome = (): StoredIncome[] => {
         id: id(),
         name: recipe.name,
         amount: recipe.amount,
-        type: recipe.type,
+        typeId: incomeTypeIdOf(recipe.typeName),
         fromSourceId: recipe.from,
         toSourceId: recipe.to,
         date,

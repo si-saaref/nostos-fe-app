@@ -1,5 +1,22 @@
 # Income — API contract: what exists, what is missing
 
+> ## ⚠️ Superseded in part — read `notes/FE-App/prd-income-fe.md` §10 first
+>
+> **Updated 2026-09-09.** The income API shipped, and six things this document proposes are
+> not what it does. Where they disagree, **the shipped contract wins**:
+>
+> | Topic                    | This document                                         | Shipped                                                              |
+> | ------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------- |
+> | Routes                   | `/households/:id/income`, `/households/:id/positions` | **Flat**: `/income`, `/positions`. Tenancy in `X-Household-ID`       |
+> | Type field               | `type`, a `VARCHAR` holding the word                  | **`type_id`**, a uuid foreign key                                    |
+> | Duplicate type name      | `409 DUPLICATE_NAME`                                  | **`409 CONFLICT`** — `DUPLICATE_NAME` is not in the API's error enum |
+> | `household_id` in a body | `400 WHITELIST_VALIDATION`                            | **`400 VALIDATION_ERROR`** — likewise not in the enum                |
+> | `meta.totals`            | three keys                                            | **six**: plus `moved`, `external_count`, `transfer_count`            |
+> | `/positions` params      | `as_of` required, `from` optional                     | **both required**                                                    |
+>
+> §1 — what the BE already provided, and that income needs no change to any of it — remains
+> correct in full. §4's account of what is mocked is stale: `MOCKED.financial` is now `false`.
+
 **Derived, not guessed.** The provided column comes from
 `notes/Postman/nostos-api.postman_collection.json` (generated from the backend's own
 controllers and OpenAPI document — 35 requests, 16 member-facing) and from the live probes in

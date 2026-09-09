@@ -12,6 +12,18 @@ import type {
 } from '@/modules/financial/lib/positionGroups'
 import type { AccountKind } from '@/types/catalog'
 
+/**
+ * Column tracks by count, spelled out because Tailwind compiles class strings
+ * it can see — an interpolated `grid-cols-${n}` produces no CSS at all. Only
+ * three account kinds exist, so the map is complete rather than clamped.
+ */
+const TRACKS: Record<number, string> = {
+  0: '',
+  1: '',
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-2 lg:grid-cols-3',
+}
+
 interface Props {
   groups: PositionGroup[]
   /** Household total. Passed rather than re-summed, so it cannot disagree. */
@@ -136,11 +148,15 @@ export const PositionCard = ({
         </p>
       </header>
 
-      {/* One column per kind on a wide screen, stacked on a narrow one. Kinds
-          rather than sources, because three banks in a row of six equal plates
-          answers "how much is in BNI" and never answers "how much is in banks
-          at all" — which is the question the subtotal exists for. */}
-      <div className="bg-hair grid gap-px sm:grid-cols-2 lg:grid-cols-3">
+      {/* One column per kind on a wide screen, stacked on a narrow one, and
+          exactly as many columns as there are kinds — a fixed three left a
+          household that keeps only cash staring at two empty thirds of a card.
+          Kinds rather than sources, because three banks in a row of six equal
+          plates answers "how much is in BNI" and never answers "how much is in
+          banks at all" — which is the question the subtotal exists for. */}
+      <div
+        className={`bg-hair grid gap-px ${TRACKS[groups.length] ?? TRACKS[3]}`}
+      >
         {groups.map((group) => (
           <div key={group.kind} className="bg-card min-w-0 px-3.5 py-2.5">
             <div className="mb-1.5 flex items-baseline gap-2">
@@ -152,21 +168,37 @@ export const PositionCard = ({
               </h3>
               {/* A red minus sign at 11px is the whole distinction between
                   a kind that is up and a kind that is short, so the subtotal
-                  says which in a word too — colour never carries it alone. */}
-              <p
-                className={`ml-auto flex items-baseline gap-1 text-[11px] font-bold ${
-                  group.balance < 0 ? 'text-danger' : ''
-                }`}
-              >
-                {group.balance < 0 && (
-                  <span className="text-[8.5px] font-bold tracking-[0.09em] uppercase">
-                    {m.pos_short()}
-                  </span>
-                )}
-                <span className="tnum">{money(group.balance)}</span>
-              </p>
+                  says which in a word too — colour never carries it alone.
+
+                  Suppressed for a lone kind, whose subtotal is the household
+                  total the header already states: the same figure twice, one
+                  line apart, reads as a rendering fault. A shortfall still
+                  speaks, because that word is not a duplicate of anything. */}
+              {(groups.length > 1 || group.balance < 0) && (
+                <p
+                  className={`ml-auto flex items-baseline gap-1 text-[11px] font-bold ${
+                    group.balance < 0 ? 'text-danger' : ''
+                  }`}
+                >
+                  {group.balance < 0 && (
+                    <span className="text-[8.5px] font-bold tracking-[0.09em] uppercase">
+                      {m.pos_short()}
+                    </span>
+                  )}
+                  <span className="tnum">{money(group.balance)}</span>
+                </p>
+              )}
             </div>
-            <ul className="flex flex-col gap-0.5">
+            {/* A kind with the card to itself gets the width for its sources
+                rather than stretching each row across it: a name hard left and
+                a figure hard right, 1200px apart, is not a row anyone reads. */}
+            <ul
+              className={`grid gap-x-7 gap-y-0.5 ${
+                groups.length === 1
+                  ? (TRACKS[Math.min(group.sources.length, 3)] ?? TRACKS[3])
+                  : ''
+              }`}
+            >
               {group.sources.map((source) => (
                 <SourceRow key={source.id} source={source} money={money} />
               ))}

@@ -10,6 +10,8 @@ interface Props {
   income: Income
   /** Rim of the source the money landed in — where it now is. */
   rim: RimIndex
+  /** Resolved from `income.typeId` by the page, like `fromName` and `toName`. */
+  typeName: string
   fromName: string | null
   toName: string
   recorderName: string
@@ -47,6 +49,7 @@ const initials = (name: string) =>
 const IncomePlateBase = ({
   income,
   rim,
+  typeName,
   fromName,
   toName,
   recorderName,
@@ -107,7 +110,7 @@ const IncomePlateBase = ({
               {initials(recorderName)}
             </span>
             <span className="text-muted truncate text-[10px] sm:text-[11px]">
-              {income.type} · {recorderName}
+              {typeName} · {recorderName}
             </span>
           </span>
 
@@ -127,7 +130,7 @@ const IncomePlateBase = ({
         {isOpen && (
           <div id={panelId} className="border-hair border-t px-3 pt-3 pb-3">
             <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <DetailField label={m.inc_plate_type()} value={income.type} />
+              <DetailField label={m.inc_plate_type()} value={typeName} />
               <DetailField
                 label={m.inc_plate_from()}
                 value={fromName ?? m.inc_form_from_external()}

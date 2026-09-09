@@ -13,10 +13,12 @@ import { PositionCard } from '@/modules/financial/components/PositionCard'
 import { IncomeForm } from '@/modules/financial/components/IncomeForm'
 import { IncomeStatement } from '@/modules/financial/components/IncomeStatement'
 import { useAccounts } from '@/modules/settings/api/accounts'
+import { useIncomeTypes } from '@/modules/settings/api/incomeTypes'
 import { useRoster } from '@/modules/settings/api/members'
 import { canManageExpenses } from '@/utils/permissions'
 import { getErrorMessage } from '@/utils/errors'
 import { rimFor } from '@/theme/rims'
+import { monthRange } from '@/utils/dates'
 import { sumMoney } from '@/utils/money'
 import type { DayIncomeGroup } from '@/modules/financial/types/ledger'
 import type { Income } from '@/types/income'
@@ -56,11 +58,18 @@ export const IncomePage = () => {
 
   const positions = usePositions(householdId, {
     asOf,
-    from: filters.dateFrom,
+    // `useIncomeFilters` always resolves a month, so the fallback is
+    // unreachable — but the route rejects a missing `from` outright, so it
+    // must not depend on that being true.
+    from: filters.dateFrom ?? monthRange(month).from,
   })
   // Every source, not only the live ones: an archived source can still hold
   // money, and the position card has to be able to name what it renders.
   const { data: accounts } = useAccounts(householdId)
+  // Every type, not only the live ones: an archived type still names the
+  // entries recorded under it. Same query as the form's picker, so the page
+  // and the panel share one request.
+  const { data: incomeTypes } = useIncomeTypes(householdId)
   const { data: users } = useRoster(householdId)
   const { mutate: deleteIncome, error: deleteError } =
     useDeleteIncome(householdId)
@@ -118,6 +127,11 @@ export const IncomePage = () => {
     (sourceId: string) =>
       accounts?.find((account) => account.id === sourceId)?.name ?? '—',
     [accounts],
+  )
+  const nameOfType = useCallback(
+    (typeId: string) =>
+      incomeTypes?.find((type) => type.id === typeId)?.name ?? '—',
+    [incomeTypes],
   )
   const nameOfUser = useCallback(
     (userId: string) => users?.find((user) => user.id === userId)?.name ?? '—',
@@ -284,6 +298,7 @@ export const IncomePage = () => {
               groups={groups}
               rimOf={rimOf}
               nameOfSource={nameOfSource}
+              nameOfType={nameOfType}
               nameOfUser={nameOfUser}
               openId={openId}
               onToggle={toggleOpen}

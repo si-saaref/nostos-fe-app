@@ -60,46 +60,56 @@ const balanceAt = (sourceId: string, upTo: string): number => {
 }
 
 export const positionHandlers = [
-  http.get(
-    '*/api/v1/households/:householdId/positions',
-    async ({ request }) => {
-      await pause(READ_LATENCY_MS)
-      const params = new URL(request.url).searchParams
-      const asOf = params.get('as_of') ?? isoDay(new Date())
-      const from = params.get('from')
+  http.get('*/api/v1/positions', async ({ request }) => {
+    await pause(READ_LATENCY_MS)
+    const params = new URL(request.url).searchParams
+    const asOf = params.get('as_of')
+    const from = params.get('from')
 
-      if (Number.isNaN(fromIsoDay(asOf).getTime())) {
-        return errorBody(400, 'VALIDATION_ERROR', 'as_of must be YYYY-MM-DD')
-      }
+    // Both required by the shipped route. An omitted `from` is a rejection,
+    // never a defaulted window: a silently-widened period would answer a
+    // plausible balance for a question nobody asked.
+    if (!asOf || !from) {
+      return errorBody(
+        400,
+        'VALIDATION_ERROR',
+        'from and as_of are both required',
+      )
+    }
+    if (Number.isNaN(fromIsoDay(asOf).getTime())) {
+      return errorBody(400, 'VALIDATION_ERROR', 'as_of must be YYYY-MM-DD')
+    }
+    if (Number.isNaN(fromIsoDay(from).getTime())) {
+      return errorBody(400, 'VALIDATION_ERROR', 'from must be YYYY-MM-DD')
+    }
 
-      // The period opens at the close of the day before it starts, which is
-      // what makes "opened September at" and "closed August at" the same
-      // number rather than two figures a day apart.
-      const openingAt = from ? isoDay(shiftDays(fromIsoDay(from), -1)) : asOf
+    // The period opens at the close of the day before it starts, which is
+    // what makes "opened September at" and "closed August at" the same
+    // number rather than two figures a day apart.
+    const openingAt = isoDay(shiftDays(fromIsoDay(from), -1))
 
-      const rows: WirePosition[] = db.accounts
-        .map((account) => ({
-          source_id: account.id,
-          opening_balance: balanceAt(account.id, openingAt),
-          balance: balanceAt(account.id, asOf),
-        }))
-        // An archived source that still holds money is history with a balance,
-        // and dropping it would make the household total disagree with its own
-        // parts. An archived source at zero is just gone.
-        .filter((row) => {
-          const account = db.accounts.find((a) => a.id === row.source_id)
-          return (
-            account?.archivedAt === null ||
-            row.balance !== 0 ||
-            row.opening_balance !== 0
-          )
-        })
+    const rows: WirePosition[] = db.accounts
+      .map((account) => ({
+        source_id: account.id,
+        opening_balance: balanceAt(account.id, openingAt),
+        balance: balanceAt(account.id, asOf),
+      }))
+      // An archived source that still holds money is history with a balance,
+      // and dropping it would make the household total disagree with its own
+      // parts. An archived source at zero is just gone.
+      .filter((row) => {
+        const account = db.accounts.find((a) => a.id === row.source_id)
+        return (
+          account?.archivedAt === null ||
+          row.balance !== 0 ||
+          row.opening_balance !== 0
+        )
+      })
 
-      // A complete collection, not a page: one row per source, so it is
-      // shaped like `/payment-sources` rather than like a ledger list. That is
-      // also why the totals are summed on the client — the client provably
-      // holds every row, which is not true of any paginated aggregate.
-      return ok(rows)
-    },
-  ),
+    // A complete collection, not a page: one row per source, so it is
+    // shaped like `/payment-sources` rather than like a ledger list. That is
+    // also why the totals are summed on the client — the client provably
+    // holds every row, which is not true of any paginated aggregate.
+    return ok(rows)
+  }),
 ]

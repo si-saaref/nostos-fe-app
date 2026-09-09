@@ -18,7 +18,7 @@ const toWire = (income: StoredIncome): WireIncome => ({
   id: income.id,
   name: income.name,
   amount: income.amount,
-  type: income.type,
+  type_id: income.typeId,
   from_source_id: income.fromSourceId,
   to_source_id: income.toSourceId,
   date: income.date,
@@ -52,6 +52,7 @@ const metaFor = (
     items.filter((row) => row.fromSourceId !== null).map((row) => row.amount),
   )
   const sum = roundMoney(into - outOf)
+  const transfers = items.filter((row) => row.fromSourceId !== null)
   return {
     pagination: {
       page,
@@ -63,6 +64,9 @@ const metaFor = (
       sum,
       count: items.length,
       average: averageMoney(sum, items.length),
+      moved: outOf,
+      external_count: items.length - transfers.length,
+      transfer_count: transfers.length,
     },
   }
 }
@@ -76,6 +80,9 @@ const tomorrowUtc = (): string =>
 const liveSource = (id: string) =>
   db.accounts.some((row) => row.id === id && row.archivedAt === null)
 
+const liveType = (id: string) =>
+  db.incomeTypes.some((row) => row.id === id && row.archivedAt === null)
+
 /**
  * The server's own order: whitelist first, then field constraints, then refs.
  *
@@ -85,11 +92,13 @@ const liveSource = (id: string) =>
  */
 const badBody = (body: Partial<WireIncome> & Record<string, unknown>) => {
   if ('household_id' in body) {
-    return errorBody(
-      400,
-      'WHITELIST_VALIDATION',
-      'property household_id should not exist',
-    )
+    return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
+      {
+        field: 'household_id',
+        code: 'WHITELIST',
+        message: 'property household_id should not exist',
+      },
+    ])
   }
   if (body.amount !== undefined && !isValidMoney(body.amount)) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
@@ -103,11 +112,6 @@ const badBody = (body: Partial<WireIncome> & Record<string, unknown>) => {
   if (body.date !== undefined && body.date > tomorrowUtc()) {
     return errorBody(400, 'FUTURE_DATE', 'date cannot be in the future')
   }
-  if (body.type !== undefined && !String(body.type).trim()) {
-    return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
-      { field: 'type', code: 'IS_NOT_EMPTY', message: 'type is required' },
-    ])
-  }
   return null
 }
 
@@ -120,6 +124,9 @@ const badRef = (
   body: Partial<WireIncome>,
   current?: StoredIncome,
 ): ReturnType<typeof errorBody> | null => {
+  if (body.type_id !== undefined && !liveType(body.type_id)) {
+    return errorBody(422, 'INVALID_TYPE', 'Jenis pemasukan tidak tersedia')
+  }
   if (body.to_source_id !== undefined && !liveSource(body.to_source_id)) {
     return errorBody(422, 'INVALID_SOURCE', 'Sumber tujuan tidak tersedia')
   }
@@ -148,7 +155,7 @@ const badRef = (
   return null
 }
 
-const PATH = '*/api/v1/households/:householdId/income'
+const PATH = '*/api/v1/income'
 
 export const incomeHandlers = [
   http.get(PATH, async ({ request }) => {
@@ -203,6 +210,15 @@ export const incomeHandlers = [
         },
       ])
     }
+    if (body.type_id === undefined) {
+      return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
+        {
+          field: 'type_id',
+          code: 'IS_NOT_EMPTY',
+          message: 'type_id is required',
+        },
+      ])
+    }
     const rejected = badBody(body) ?? badRef(body)
     if (rejected) return rejected
 
@@ -210,7 +226,7 @@ export const incomeHandlers = [
       id: nextId('inc'),
       name: body.name ?? '',
       amount: body.amount ?? 0,
-      type: body.type ?? '',
+      typeId: body.type_id ?? '',
       fromSourceId: body.from_source_id ?? null,
       toSourceId: body.to_source_id,
       date: body.date ?? '',
@@ -259,7 +275,7 @@ export const incomeHandlers = [
       ...current,
       ...(body.name !== undefined && { name: body.name }),
       ...(body.amount !== undefined && { amount: body.amount }),
-      ...(body.type !== undefined && { type: body.type }),
+      ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.from_source_id !== undefined && {
         fromSourceId: body.from_source_id,
       }),

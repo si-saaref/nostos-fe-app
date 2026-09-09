@@ -60,7 +60,14 @@ export interface WireMeta {
     total: number
     total_pages: number
   }
-  totals?: { sum: number; count: number; average: number }
+  totals?: {
+    sum: number
+    count: number
+    average: number
+    moved?: number
+    external_count?: number
+    transfer_count?: number
+  }
 }
 
 /** A list page: rows in `data`, counts hoisted into `meta`. */

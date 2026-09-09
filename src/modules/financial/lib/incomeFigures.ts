@@ -3,20 +3,18 @@ import type { Paginated } from '@/types/api'
 import type { Income } from '@/types/income'
 
 /**
- * The two month figures the API does not send, and the flag that says whether
- * they may be shown.
+ * The three month figures that separate money which arrived from money which
+ * merely moved, and the flag that says whether they may be shown.
  *
- * `meta.totals` carries `sum`, `count` and `average` — nothing that separates
- * money which arrived from money which merely moved. Both are derivable from
- * the rows, and both are derivable *honestly* only while the page holds every
- * row in the filtered set. So each is `null` rather than a partial sum: the
- * strip renders a dash, which is a true statement about what is known, while a
- * partial total would be a false statement about the household's month.
+ * The server computes all three over the whole filtered set, so when
+ * `meta.totals` carries them they are simply true — a partial page included.
+ * When it does not, they are derived from the rows on hand, which is honest
+ * only while the page holds every row in the set: hence the guard, and hence
+ * `null` rather than a partial sum. A dash is a true statement about what is
+ * known; a partial total is a false statement about the household's month.
  *
- * The same guard the expenses page's top-slice lives under, for the same
- * reason. It costs nothing in practice — the statement asks for 400 rows and a
- * heavy month is thirty — and it is what makes the figure trustworthy when it
- * does appear.
+ * The fallback is not dead code. `meta.totals` is absent from the API's own
+ * OpenAPI schema, so a deployment that does not send it is a real case.
  */
 export interface IncomeMonthFigures {
   /** Entries that came from outside the household. */
@@ -39,13 +37,35 @@ export const incomeMonthFigures = (
   page: Paginated<Income> | undefined,
 ): IncomeMonthFigures => {
   if (!page) return UNKNOWN
+
+  const {
+    moved,
+    external_count: external,
+    transfer_count: transfers,
+  } = page.totals ?? {}
+  // All three together, never two of them: a response carrying part of the set
+  // is a contract this cannot read, and guessing the rest would put an
+  // invented figure on the strip.
+  if (
+    moved !== undefined &&
+    external !== undefined &&
+    transfers !== undefined
+  ) {
+    return {
+      externalCount: external,
+      transferCount: transfers,
+      moved,
+      isComplete: true,
+    }
+  }
+
   if (page.items.length < page.pagination.total) return UNKNOWN
 
-  const transfers = page.items.filter((row) => row.fromSourceId !== null)
+  const moving = page.items.filter((row) => row.fromSourceId !== null)
   return {
-    externalCount: page.items.length - transfers.length,
-    transferCount: transfers.length,
-    moved: sumMoney(transfers.map((row) => row.amount)),
+    externalCount: page.items.length - moving.length,
+    transferCount: moving.length,
+    moved: sumMoney(moving.map((row) => row.amount)),
     isComplete: true,
   }
 }

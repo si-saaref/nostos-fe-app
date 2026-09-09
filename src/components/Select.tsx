@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Select as RadixSelect } from 'radix-ui'
 import { RIM_CLASS } from '@/theme/rims'
 import type { RimIndex } from '@/theme/rims'
@@ -25,6 +26,13 @@ interface Props {
    * submit while explaining nothing, which reads as a broken button.
    */
   error?: string
+  /**
+   * Standing help for the control — what an unusual choice here *means*,
+   * not what went wrong. It belongs on the field: a sentence about one picker
+   * parked beside the submit button describes nothing the eye can connect it
+   * to, and a screen reader never reaches it at all.
+   */
+  hint?: string
 }
 
 /**
@@ -48,8 +56,13 @@ export const Select = ({
   disabled = false,
   hideLabel = false,
   error,
+  hint,
 }: Props) => {
   const selected = options.find((option) => option.value === value)
+  const hintId = useId()
+  // One line under the control, never two: a validation failure is the more
+  // urgent of the two and the hint keeps its place once the field is fixed.
+  const showHint = Boolean(hint) && !error
 
   return (
     <div className="flex flex-col gap-1">
@@ -75,6 +88,7 @@ export const Select = ({
           <RadixSelect.Trigger
             aria-label={label}
             aria-invalid={error ? true : undefined}
+            aria-describedby={showHint ? hintId : undefined}
             className={`well-shadow bg-chip ring-accent/45 group flex items-center gap-2 rounded-lg px-3 py-2 text-[11.5px] font-medium outline-none disabled:opacity-60 data-[state=open]:ring-1 ${
               error ? 'ring-danger ring-2' : ''
             }`}
@@ -143,6 +157,12 @@ export const Select = ({
       {error && (
         <span role="alert" className="text-danger text-[10.5px]">
           {error}
+        </span>
+      )}
+
+      {showHint && (
+        <span id={hintId} className="text-muted text-[10.5px]">
+          {hint}
         </span>
       )}
     </div>
