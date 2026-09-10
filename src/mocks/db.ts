@@ -1,10 +1,13 @@
 import { seedAccounts } from '@/mocks/fixtures/accounts'
 import { seedCategories } from '@/mocks/fixtures/categories'
 import { seedExpenses } from '@/mocks/fixtures/expenses'
+import { seedIncome } from '@/mocks/fixtures/income'
+import { seedIncomeTypes } from '@/mocks/fixtures/incomeTypes'
 import { seedMembers } from '@/mocks/fixtures/members'
 import { seedPrefs } from '@/mocks/fixtures/prefs'
 import type { Account, Category } from '@/types/catalog'
 import type { StoredExpense } from '@/types/expense'
+import type { IncomeType, StoredIncome } from '@/types/income'
 import type { HouseholdPrefs, Member } from '@/modules/settings/types/settings'
 
 /**
@@ -23,6 +26,8 @@ const seedAll = () => {
   const members = seedMembers()
   return {
     expenses: seedExpenses(activePayerIds(members)),
+    income: seedIncome(),
+    incomeTypes: seedIncomeTypes(),
     categories: seedCategories(),
     accounts: seedAccounts(),
     members,
@@ -32,6 +37,8 @@ const seedAll = () => {
 
 export const db: {
   expenses: StoredExpense[]
+  income: StoredIncome[]
+  incomeTypes: IncomeType[]
   categories: Category[]
   accounts: Account[]
   members: Member[]

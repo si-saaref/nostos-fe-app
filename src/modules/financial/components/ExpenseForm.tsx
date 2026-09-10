@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { Controller, useForm } from 'react-hook-form'
 import {
@@ -11,12 +12,15 @@ import { useActiveCategories } from '@/modules/settings/api/categories'
 import { useActiveAccounts } from '@/modules/settings/api/accounts'
 import { useActivePayers, useRoster } from '@/modules/settings/api/members'
 import { useHousehold } from '@/contexts/useHousehold'
+import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { getErrorMessage } from '@/utils/errors'
 import { MONEY_MIN, MONEY_STEP, isValidMoney } from '@/utils/money'
 import { isoDay } from '@/utils/dates'
 import { Select } from '@/components/Select'
+import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
 import { FormField } from '@/components/FormField'
 import { rimFor } from '@/theme/rims'
+import type { Blocker } from '@/components/FormBlockers'
 import type { CreateExpenseInput, Expense } from '@/types/expense'
 
 interface Props {
@@ -156,12 +160,51 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
       onChange(value)
     }
 
+  /**
+   * Two ways the household is not ready, handled the way income already
+   * handles them — see `FormBlockers`. Before this, an empty category list
+   * let the member submit and answered "category is required", which is true
+   * and useless: there was no category to pick and the fix was in Settings.
+   *
+   * `?.length === 0` and not `(?.length ?? 0) === 0`: while the catalogue is
+   * still loading there is no list yet, and announcing that the household has
+   * none is a claim nobody has checked.
+   */
+  const candidates: (Blocker | false)[] = [
+    categories?.length === 0 && {
+      id: 'categories',
+      text: m.exp_blocked_categories(),
+      fix: m.exp_blocked_categories_fix(),
+      href: settingsHref(SETTINGS_ANCHORS.expenseCategories),
+    },
+    accounts?.length === 0 && {
+      id: 'sources',
+      text: m.exp_blocked_sources(),
+      fix: m.exp_blocked_sources_fix(),
+      href: settingsHref(SETTINGS_ANCHORS.accounts),
+    },
+  ]
+  const blockers = candidates.filter((b): b is Blocker => b !== false)
+
+  const isBlocked = blockers.length > 0
+
+  /** Swallowed before validation runs — see `IncomeForm.guardedSubmit`. */
+  const guardedSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (isBlocked) {
+      event.preventDefault()
+      return
+    }
+    void handleSubmit(onSubmit)(event)
+  }
+
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={guardedSubmit}
       noValidate
       className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
     >
+      <FormBlockers blockers={blockers} />
+
       <FormField label={m.form_name()} error={errors.name?.message}>
         <input
           maxLength={NAME_MAX}
@@ -278,18 +321,9 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
         </p>
       )}
 
-      <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
-        >
-          {isPending
-            ? m.form_saving()
-            : isEdit
-              ? m.form_submit_edit()
-              : m.form_submit()}
-        </button>
+      {/* Right-aligned with the submit last, matching income — the eye leaves
+          the final field at the right edge, so the actions meet it there. */}
+      <div className="flex items-center justify-end gap-2 sm:col-span-2 lg:col-span-3">
         {onCancel && (
           <button
             type="button"
@@ -299,6 +333,19 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
             {m.form_cancel()}
           </button>
         )}
+        <button
+          type="submit"
+          disabled={isPending}
+          aria-disabled={isBlocked}
+          aria-describedby={isBlocked ? BLOCKERS_ID : undefined}
+          className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50 aria-disabled:opacity-50"
+        >
+          {isPending
+            ? m.form_saving()
+            : isEdit
+              ? m.form_submit_edit()
+              : m.form_submit()}
+        </button>
       </div>
     </form>
   )

@@ -4,8 +4,10 @@ import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay, isoDay, previousMonthRange } from '@/utils/dates'
-import { MonthPicker } from '@/modules/financial/components/MonthPicker'
+import { MonthStepper } from '@/modules/financial/components/MonthStepper'
+import { StripShell } from '@/modules/financial/components/StripShell'
 import { RIM_CLASS } from '@/theme/rims'
+import type { StripFigure } from '@/modules/financial/components/StripShell'
 import type { ScopeChip, TopSlice } from '@/modules/financial/types/ledger'
 import type { Totals } from '@/types/api'
 import type { ExpenseFilters } from '@/types/expense'
@@ -88,7 +90,7 @@ export const CountStrip = ({
   )
   const perDay = Math.round((count / days) * 10) / 10
 
-  const figures = [
+  const figures: StripFigure[] = [
     {
       id: 'total',
       key: m.count_total(),
@@ -152,131 +154,44 @@ export const CountStrip = ({
   ]
 
   return (
-    <section
-      aria-label={m.count_title()}
-      className="strip-shadow rounded-2xl p-4 sm:p-5"
-      style={{
-        background:
-          'linear-gradient(178deg, var(--strip-from), var(--strip-to))',
-      }}
-    >
-      <div className="mb-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-2">
-        <h2 className="font-display text-strip-key text-[10px] font-bold tracking-[0.15em] uppercase">
-          {m.count_title()}
-        </h2>
+    <StripShell label={m.count_title()} figures={figures}>
+      <MonthStepper
+        month={month}
+        onStep={onStepMonth}
+        onSelect={onSelectMonth}
+        canStepForward={canStepForward}
+      />
 
-        <div className="flex items-center gap-0.5 rounded-full border border-white/15 bg-white/10 p-0.5">
-          <Step
-            label={m.count_month_prev()}
-            onClick={() => onStepMonth(-1)}
-            direction="prev"
-          />
-          <MonthPicker month={month} onSelect={onSelectMonth} />
-          <Step
-            label={m.count_month_next()}
-            onClick={() => onStepMonth(1)}
-            direction="next"
-            disabled={!canStepForward}
-            disabledHint={m.count_month_latest()}
-          />
-        </div>
-
-        {scopes.map((scope) => (
-          <span
-            key={scope.id}
-            className="text-on-strip flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 py-0.5 pr-1 pl-2.5 text-[10.5px] font-semibold"
+      {scopes.map((scope) => (
+        <span
+          key={scope.id}
+          className="text-on-strip flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 py-0.5 pr-1 pl-2.5 text-[10.5px] font-semibold"
+        >
+          {scope.rim && (
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 shrink-0 rounded-full ${RIM_CLASS[scope.rim]}`}
+            />
+          )}
+          {scope.label}
+          <button
+            type="button"
+            onClick={() => onRemoveScope(scope.id)}
+            aria-label={m.count_filter_remove({ what: scope.label })}
+            className="text-on-strip-muted hover:text-on-strip relative grid h-4 w-4 place-items-center rounded-full before:absolute before:-inset-2 before:content-[''] hover:bg-white/20"
           >
-            {scope.rim && (
-              <span
-                aria-hidden="true"
-                className={`h-2 w-2 shrink-0 rounded-full ${RIM_CLASS[scope.rim]}`}
+            <svg width="7" height="7" viewBox="0 0 7 7" aria-hidden="true">
+              <path
+                d="M1 1l5 5M6 1L1 6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
               />
-            )}
-            {scope.label}
-            <button
-              type="button"
-              onClick={() => onRemoveScope(scope.id)}
-              aria-label={m.count_filter_remove({ what: scope.label })}
-              className="text-on-strip-muted hover:text-on-strip relative grid h-4 w-4 place-items-center rounded-full before:absolute before:-inset-2 before:content-[''] hover:bg-white/20"
-            >
-              <svg width="7" height="7" viewBox="0 0 7 7" aria-hidden="true">
-                <path
-                  d="M1 1l5 5M6 1L1 6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </span>
-        ))}
-      </div>
-
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-white/15 lg:grid-cols-4">
-        {figures.map((figure) => (
-          <div key={figure.id} className="bg-strip-cell min-w-0 p-3 sm:p-3.5">
-            <dt className="text-on-strip-muted text-[9px] font-bold tracking-[0.11em] uppercase">
-              {figure.key}
-            </dt>
-            <dd
-              title={figure.isText ? figure.value : undefined}
-              className={`font-display tnum text-on-strip mt-1.5 truncate text-xl font-bold sm:text-[22px] ${
-                figure.isText ? 'sm:text-[19px]' : ''
-              }`}
-            >
-              {figure.value}
-            </dd>
-            {figure.note && (
-              <p
-                className={`mt-1 truncate text-[10.5px] font-semibold ${
-                  figure.tone === 'delta' ? 'text-delta' : 'text-on-strip-muted'
-                }`}
-              >
-                {figure.note}
-              </p>
-            )}
-            {figure.sub && (
-              <p className="text-on-strip-muted truncate text-[10.5px] font-semibold">
-                {figure.sub}
-              </p>
-            )}
-          </div>
-        ))}
-      </dl>
-    </section>
+            </svg>
+          </button>
+        </span>
+      ))}
+    </StripShell>
   )
 }
-
-const Step = ({
-  label,
-  onClick,
-  direction,
-  disabled = false,
-  disabledHint,
-}: {
-  label: string
-  onClick: () => void
-  direction: 'prev' | 'next'
-  disabled?: boolean
-  disabledHint?: string
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    aria-label={disabled && disabledHint ? disabledHint : label}
-    className="text-on-strip grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/20 disabled:pointer-events-none disabled:opacity-35 sm:h-[22px] sm:w-[22px]"
-  >
-    <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true">
-      <path
-        d={direction === 'prev' ? 'M6 1L2.5 4.5 6 8' : 'M3 1l3.5 3.5L3 8'}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  </button>
-)

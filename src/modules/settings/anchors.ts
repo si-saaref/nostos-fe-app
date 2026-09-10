@@ -4,6 +4,7 @@
  */
 export const SETTINGS_ANCHORS = {
   expenseCategories: 'kategori-pengeluaran',
+  incomeTypes: 'jenis-pemasukan',
   accounts: 'akun',
   members: 'anggota',
   household: 'rumah',

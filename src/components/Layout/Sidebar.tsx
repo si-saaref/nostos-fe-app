@@ -25,6 +25,11 @@ const LIVE: NavItem[] = [
     icon: 'M4 6h16v12H4zM4 10h16M8 14h5',
   },
   {
+    to: '/financial/income',
+    label: messages.nav_income,
+    icon: 'M12 20V4M5 11l7-7 7 7',
+  },
+  {
     to: '/settings',
     label: messages.nav_settings,
     icon: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 12h2m13 0h2M12 3.5v2m0 13v2',
@@ -42,7 +47,6 @@ interface PlannedItem {
 }
 
 const PLANNED: PlannedItem[] = [
-  { id: 'income', label: messages.nav_income, icon: 'M12 20V4M5 11l7-7 7 7' },
   {
     id: 'savings',
     label: messages.nav_savings,

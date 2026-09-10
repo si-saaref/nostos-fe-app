@@ -10,13 +10,15 @@ web
 
 **Primary — the household admin, at a desk.** One or two people per household (usually the
 creator plus a promoted invitee). They review the shared ledger, filter and correct entries,
-answer "where did the money go this month", invite and remove members, and are the only role
-permitted to edit or delete an expense. Most of their time is spent on a larger screen, in a
+answer "where did the money go this month" and "how much do we actually have", invite and
+remove members, and are the only role permitted to edit or delete an expense or an income
+entry. Most of their time is spent on a larger screen, in a
 sit-down session, reading many rows at once.
 
 **Secondary but real — the member, capturing on the go.** Two to four invited family members
 per household. They log an expense right after paying, usually on a phone, often standing in
-a shop and in a hurry. They can create and read; they cannot edit or delete. Responsiveness
+a shop and in a hurry — and they log an inflow the same way: a salary that landed, a cash
+withdrawal at an ATM, a gift. They can create and read; they cannot edit or delete. Responsiveness
 is not a courtesy for this audience — capture on a phone is an expected path, and the app
 also ships as a Capacitor shell to iOS and Android.
 
@@ -28,14 +30,19 @@ Console actions in a separate product and repository. This app never offers them
 ## Product Purpose
 
 NOSTOS — Greek _νόστος_, "homecoming" — gives a family one trusted, shared record of what the
-household spends. It replaces scattered spreadsheets, bank-statement archaeology and memory
-with a single household ledger: every expense logged once, with who paid, what it was for,
-how it was paid, and when.
+household spends and what it takes in. It replaces scattered spreadsheets, bank-statement
+archaeology and memory with a single household ledger: every expense logged once, with who
+paid, what it was for, how it was paid, and when; every inflow logged once, with where it
+came from, where it landed, and what kind of money it was.
+
+Together those two halves answer the question neither could answer alone — **how much does
+this household actually hold, and in which payment source** — because a balance is an opening
+balance plus income minus expenses, per source.
 
 Success is a household that stops arguing about who paid last time, because the answer is on
-a screen both people can see. Concretely: an expense can be recorded in under a minute by any
-member, the month's spending is legible without reconstruction, and no household ever sees
-another household's data.
+a screen both people can see. Concretely: an expense or an inflow can be recorded in under a
+minute by any member, the month's money is legible without reconstruction, and no household
+ever sees another household's data.
 
 ## Positioning
 
@@ -56,9 +63,15 @@ The brand frame is the Odyssey: an epic journey ending in return. Finances broug
 
 ## Operating Context
 
-- **The capture moment.** A member pays for something — groceries, utilities, transport, a
-  QRIS scan — and records it soon after on a phone. Six fields: what, how much, category,
-  payment method, date paid, who paid.
+- **The capture moment, outbound.** A member pays for something — groceries, utilities,
+  transport, a QRIS scan — and records it soon after on a phone. Six fields: what, how much,
+  category, payment method, date paid, who paid.
+- **The capture moment, inbound.** A salary lands, a bonus arrives, a relative gives cash —
+  or nothing arrives at all and money simply moves, from a bank to a pocket at an ATM or from
+  a bank to an e-wallet on a top-up. Both are one income entry: from source (empty when the
+  money came from outside the household), to source, amount, type, name, date. **Transfers
+  are the common case, not the exception** — most income entries in a real month move money
+  the household already had, and they must never read as earnings.
 - **The review session.** An admin opens the ledger on a laptop, filters by date range,
   category, payment method or person, searches, pages through results, and corrects what is
   wrong. Filters live in the URL so a filtered view is bookmarkable and shareable.
@@ -67,8 +80,17 @@ The brand frame is the Odyssey: an epic journey ending in return. Finances broug
   immediately and is claimed by clicking an emailed link. Members can be removed; anyone can
   leave; a household can be scheduled for deletion by an operator, which members experience
   as lost access and the admin experiences as a read-only banner with a deadline.
-- **Categories and payment methods are household-configured**, not a fixed taxonomy — one
-  family's "Groceries / Utilities / Transport" is another's something else.
+- **The position question.** "Do we have enough for this?" is answered per payment source,
+  and a household commonly runs several sources of the same kind — BSI, BNI and BCA are three
+  banks; ShopeePay and GoPay are two e-wallets. Any surface stating position groups by kind
+  and subtotals it, and survives eight sources without redesign.
+- **Balances carry across months and flows do not.** A source holding Rp 250.000 on
+  30 September holds Rp 250.000 on 1 October. Flow figures are month-scoped and reset;
+  position figures are cumulative to a date. Two clocks, and any surface showing both stamps
+  each with the clock it runs on.
+- **Categories, payment sources and income types are household-configured**, not a fixed
+  taxonomy — one family's "Groceries / Utilities / Transport" is another's something else,
+  and one family's income types are "salary / bonus / tarik tunai" while another's are not.
 - **Money is Indonesian Rupiah** by default, formatted with an `id-ID` locale, whole-rupiah
   display, two decimals accepted on input.
 
@@ -86,6 +108,11 @@ The brand frame is the Odyssey: an epic journey ending in return. Finances broug
 **Specified, not yet built** — the near-term surface backlog
 
 - Expense edit and delete (admin only), each behind a confirmation.
+- **Income** (`notes/MASTER_PRD_INCOME.md`, shaped in `docs/SURFACE-INCOME.md`): a
+  month-scoped income page — one stated position card grouped by source kind, one
+  day-to-day statement of all flows beneath it — plus record/edit/delete and a
+  Settings → Income Types section whose presets appear whenever the household has no
+  types yet.
 - Mobile card view of the ledger; the desktop table is the only list rendering today.
 - A 3–4 card summary strip at the top of the expenses page — confirmed in scope
   (2026-08-27). Bounded by the aggregate-availability constraint below.
@@ -110,14 +137,29 @@ The brand frame is the Odyssey: an epic journey ending in return. Finances broug
   session-status endpoint — any 401 from any query is the revocation signal.
 - **ASCII-only email validation** in Phase 1.
 - **Aggregate data availability is narrow, and it bounds every summary surface.**
-  `GET /api/expenses` returns a filter-scoped `totals: { sum, count, average }`
-  alongside `items` and `pagination` (BE PRD §3.1); the repo's `Paginated<T>` type and
-  MSW handler currently drop it. Because those totals are filter-scoped, any card built
-  on them must state the period and filters it is counting, or it silently misreports.
-  Nothing in the data model or any PRD supplies income, savings, an opening balance, or
-  a payment-source balance, so **a cash-on-hand or "total current cash" figure is not
-  computable in Phase 1 and must not be displayed**. Grouped aggregates (spend by
-  category, by person) have no endpoint either and need backend work first.
+  `GET /api/expenses` and `GET .../income` each return a filter-scoped
+  `totals: { sum, count, average }` alongside `items` and `pagination` (BE PRD §3.1).
+  Because those totals are filter-scoped, any figure built on them must state the period
+  and filters it is counting, or it silently misreports. Grouped aggregates — spend by
+  category, spend by person, income by type — have no endpoint and need backend work first.
+  Anything derived client-side from the rows on hand is honest **only while the page holds
+  every row in the filtered set**, so it is guarded against `pagination.total` and shows
+  nothing rather than a partial sum.
+- **A per-source balance is now in scope, and it is a backend dependency.**
+  `payment_sources.opening_balance` + `as_of` plus the income ledger make
+  `opening ± income ∓ expense` derivable per source (income PRD §5), which retires the
+  earlier rule that no cash figure was computable. It is **not** computable in the browser:
+  it needs every income and expense the household has ever recorded, across all months, so
+  a wide fetch would be silently wrong the moment history outgrows one page. It requires
+  `GET /api/v1/households/:id/positions?as_of=&from=&to=` returning per-source
+  `opening_balance` and `balance`. Until that endpoint is live, every position surface
+  renders a stated degraded band — no number, a plain sentence — and **never a guessed
+  balance**. Zero and negative balances are legal and are designed states, not bugs.
+- **Net inflow and real income are the same figure.** `totals.sum` on the income list is
+  `sum(to) − sum(from)`, so a transfer cancels itself and only money from outside the
+  household survives. Never present the two as separate figures, and never present either
+  as a balance: a flow total and a carried-forward position are different quantities, and
+  an empty month has a real position and a zero inflow.
 - **Full internationalization is required.** English and Bahasa Indonesia are both real
   targets: no hardcoded strings, and every layout must survive longer translations without
   truncating or reflowing into illegibility. Currency and dates stay locale-aware.
@@ -131,9 +173,11 @@ The brand frame is the Odyssey: an epic journey ending in return. Finances broug
   areas, touch targets) are used where they are cheap and expected.
 
 **Explicitly out of scope for Phase 1**
-Export (CSV/XLSX), bulk operations, restore UI, recurring expenses, expense splitting,
-receipt attachments, analytics dashboards, income tracking, budgets and alerts,
-multi-currency, inline editing, 2FA, international email domains.
+Export (CSV/XLSX), bulk operations, restore UI, recurring expenses and recurring income,
+expense splitting and income splitting, receipt attachments, analytics dashboards and income
+trends, budgets and alerts, multi-currency, inline editing, 2FA, international email domains.
+On income specifically: **search, filter and sort are deferred** — the income page is scoped
+by month and nothing else — and there is no income card on the dashboard yet.
 
 **Explicitly undecided** — do not resolve these silently in design work
 
@@ -165,24 +209,42 @@ multi-currency, inline editing, 2FA, international email domains.
   account" in UI chrome), member, admin, operator, expense, expense type / category,
   payment source / payment method, paid by, invite, pending, no access, left, removed,
   former member, soft delete, audit trail, deletion deadline.
+- **Income terminology, equally load-bearing:** income entry (never "transaction"), income
+  type, from source and to source, external inflow (a `from source` of nothing — salary,
+  bonus, gift), transfer (both sources set — withdrawal, deposit, top-up), position (what a
+  source holds, cumulative to a date; never "cash on hand"), opening balance and its `as of`
+  date, net inflow.
 
 ## Evidence on Hand
 
 - **Product and architecture documents** in the Obsidian vault, symlinked at `notes/` and not
   part of this repo: `notes/NOSTOS-Master-Document.md` (identity, locked stack, permission
   matrix, phases, decision log), `notes/FE-App/prd-auth-fe.md` v3.1,
-  `notes/FE-App/prd-expenditure-fe.md` (17 acceptance criteria), `notes/MASTER_PRD_*`,
+  `notes/FE-App/prd-expenditure-fe.md` (17 acceptance criteria),
+  `notes/MASTER_PRD_INCOME.md` v1.0 (income, 4 user stories), `notes/MASTER_PRD_*`,
   `notes/BE/`. Never copy a vault document into the repo — link to it.
+- **`docs/SURFACE-INCOME.md`** is the confirmed design brief for the income surface: its
+  structure, signing rule, states and the backend contract it waits on.
+- **`docs/API-CONTRACT-INCOME.md`** is the derived inventory of what the API already serves
+  and what income still needs — 16 member-facing endpoints exist, income needs 8 more that
+  do not. Derived from `notes/Postman/nostos-api.postman_collection.json` and the live
+  probes in `notes/BE/CUTOVER-2026-09-07.md`, never from memory.
 - **`docs/FRONTEND.md`** is the authoritative technical record for this repo and wins any
   disagreement with the vault about what this code actually does.
 - **Mock fixtures only** for content: `src/mocks/fixtures/` — "The Smiths", Alex Smith,
   Groceries / Utilities / Transport, Cash / Debit Card, rupiah amounts. Useful as realistic
   shapes; not real household data.
-- **No brand assets exist.** `public/favicon.svg` and `public/icons.svg` are unbranded
-  template leftovers (a purple `#863bff` mark unrelated to NOSTOS), `src/assets/hero.png` is
-  referenced by nothing, and `index.html` still titles the app "fe-app". There is no NOSTOS
-  logo, wordmark, colour system, or type pairing. There is also no design language: the
-  shipped UI is default-Tailwind scaffolding (`blue-600` on `gray-*`, system-ui type).
+- **A design language now exists in code and is authoritative.** `src/styles/globals.css`
+  holds the theme contract — three themes (`mawar`, `kobalt`, `tegel`) over one set of custom
+  properties, the four-plus `--rim-*` category/source channel, and the `plate-shadow` /
+  `lift-shadow` / `well-shadow` / `strip-shadow` elevation scale. Type is Archivo with
+  Archivo Narrow for display. No component may name a colour; adding a theme is a two-file
+  change (`globals.css` + `src/theme/themes.ts`). `src/theme/rims.ts` derives a rim from a
+  row's stable `order`, never from array position.
+- **Brand assets are still missing.** `public/favicon.svg` and `public/icons.svg` are
+  unbranded template leftovers (a purple `#863bff` mark unrelated to NOSTOS),
+  `src/assets/hero.png` is referenced by nothing, and `index.html` still titles the app
+  "fe-app". There is no NOSTOS logo or wordmark.
 - **No usage data, customers, testimonials, press, pricing, benchmarks or launch metrics
   exist.** The success metrics in the master document are targets, not results. Future work
   must not present any of them as achieved, and must not invent households, quotes, or

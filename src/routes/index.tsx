@@ -18,6 +18,13 @@ const ExpensesPage = lazy(() =>
 )
 
 // eslint-disable-next-line react-refresh/only-export-components -- lazy-loaded component is local to this router file, not exported
+const IncomePage = lazy(() =>
+  import('@/modules/financial/pages/IncomePage').then((module) => ({
+    default: module.IncomePage,
+  })),
+)
+
+// eslint-disable-next-line react-refresh/only-export-components -- lazy-loaded component is local to this router file, not exported
 const SettingsPage = lazy(() =>
   import('@/modules/settings/pages/SettingsPage').then((module) => ({
     default: module.SettingsPage,
@@ -56,6 +63,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<Loading />}>
                 <ExpensesPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/financial/income',
+            element: (
+              <Suspense fallback={<Loading />}>
+                <IncomePage />
               </Suspense>
             ),
           },
