@@ -12,10 +12,11 @@ import { useIncomeTypes } from '@/modules/settings/api/incomeTypes'
 import { useHousehold } from '@/contexts/useHousehold'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
+import { AmountInput } from '@/components/AmountInput'
 import { FormField } from '@/components/FormField'
 import { Select } from '@/components/Select'
 import { getErrorMessage } from '@/utils/errors'
-import { MONEY_MIN, MONEY_STEP, isValidMoney } from '@/utils/money'
+import { MONEY_MIN, isValidMoney } from '@/utils/money'
 import { isoDay } from '@/utils/dates'
 import { rimFor } from '@/theme/rims'
 import type { Blocker } from '@/components/FormBlockers'
@@ -85,7 +86,8 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
   } = useForm<CreateIncomeInput>({
     defaultValues: {
       name: income?.name ?? '',
-      amount: income?.amount ?? 0,
+      // No zero seed: an empty field asks for the amount, a `0` states one.
+      amount: income?.amount,
       typeId: income?.typeId ?? '',
       fromSourceId: income?.fromSourceId ?? null,
       toSourceId: income?.toSourceId ?? '',
@@ -213,27 +215,29 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
         />
       </FormField>
 
-      <FormField label={m.inc_form_amount()} error={errors.amount?.message}>
-        <input
-          type="number"
-          inputMode="decimal"
-          step={MONEY_STEP}
-          min={MONEY_MIN}
-          className="well-shadow bg-chip tnum w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('amount', {
-            required: m.inc_err_amount(),
-            valueAsNumber: true,
-            // One predicate rather than two rules, so "0" and "10.999" each
-            // get the message that names their own problem. A third decimal is
-            // a rejection, not a rounding — the server rejects it too, and
-            // nothing between here and there quietly fixes it.
-            validate: (value) =>
-              !Number.isFinite(value) || value < MONEY_MIN
+      <Controller
+        control={control}
+        name="amount"
+        rules={{
+          // One predicate rather than two rules, so an empty field, "0" and a
+          // third decimal each get the message that names their own problem.
+          // No ceiling — BE's cap is twelve digits (deviation #6), not ours.
+          validate: (amount) =>
+            amount === undefined
+              ? m.inc_err_amount()
+              : amount < MONEY_MIN
                 ? m.form_err_positive()
-                : isValidMoney(value) || m.form_err_decimals(),
-          })}
-        />
-      </FormField>
+                : isValidMoney(amount) || m.form_err_decimals(),
+        }}
+        render={({ field, fieldState }) => (
+          <AmountInput
+            label={m.inc_form_amount()}
+            value={field.value}
+            onChange={field.onChange}
+            error={fieldState.error?.message}
+          />
+        )}
+      />
 
       <FormField label={m.inc_form_date()} error={errors.date?.message}>
         <input

@@ -48,7 +48,7 @@ describe('IncomeTypeSection', () => {
     )
 
     await waitFor(() =>
-      expect(db.incomeTypes.map((type) => type.name)).toContain('bonus'),
+      expect(db.incomeTypes.map((type) => type.name)).toContain('Bonus'),
     )
   })
 

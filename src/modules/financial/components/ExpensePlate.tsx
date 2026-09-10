@@ -1,8 +1,9 @@
 import { useMessages } from '@/i18n/useMessages'
-import { memo, useId } from 'react'
+import { memo, useId, useRef } from 'react'
 import { useSettings } from '@/contexts/useSettings'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay } from '@/utils/dates'
+import { useDismiss } from '@/hooks/useDismiss'
 import { RIM_CLASS } from '@/theme/rims'
 import type { RimIndex } from '@/theme/rims'
 import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
@@ -93,9 +94,15 @@ const ExpensePlateBase = ({
               }
             : null
 
+  // Opening a row to read it is not a commitment: a click away or Escape
+  // closes it again, the same gesture every editor in the app answers.
+  const plateRef = useRef<HTMLElement>(null)
+  useDismiss(plateRef, () => onToggle(expense.id), isOpen)
+
   return (
     <li>
       <article
+        ref={plateRef}
         className={`bg-card relative overflow-hidden rounded-lg ${
           isOpen ? 'lift-shadow' : 'plate-shadow'
         }`}

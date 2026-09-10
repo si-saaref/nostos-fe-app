@@ -196,7 +196,7 @@ describe('ExpenseForm — decimals', () => {
     renderWithProviders(<ExpenseForm onSuccess={onSuccess} />)
 
     await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Patungan')
-    await userEvent.type(screen.getByLabelText(/jumlah/i), '50000.50')
+    await userEvent.type(screen.getByLabelText(/jumlah/i), '50000,50')
     await chooseOption(/kategori/i, 'Belanja')
     await chooseOption(/metode pembayaran/i, /^Tunai/)
     await userEvent.click(screen.getByRole('button', { name: /catat/i }))
@@ -204,23 +204,16 @@ describe('ExpenseForm — decimals', () => {
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
   })
 
-  it('rejects a third decimal place rather than rounding it away', async () => {
-    const onSuccess = vi.fn()
-    renderWithProviders(<ExpenseForm onSuccess={onSuccess} />)
+  it('will not take a third decimal place at all', async () => {
+    renderWithProviders(<ExpenseForm />)
 
-    await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Patungan')
-    await userEvent.type(screen.getByLabelText(/jumlah/i), '10.999')
-    await chooseOption(/kategori/i, 'Belanja')
-    await chooseOption(/metode pembayaran/i, /^Tunai/)
-    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+    const amount = screen.getByLabelText(/jumlah/i)
+    await userEvent.type(amount, '10,999')
 
-    expect(
-      await screen.findByText(/2 angka di belakang koma/i),
-    ).toBeInTheDocument()
-    expect(onSuccess).not.toHaveBeenCalled()
+    expect(amount).toHaveValue('10,99')
   })
 
-  it('rejects zero', async () => {
+  it('will not take a lone zero, so the amount stays required', async () => {
     renderWithProviders(<ExpenseForm />)
     await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Gratis')
     await userEvent.type(screen.getByLabelText(/jumlah/i), '0')
@@ -228,7 +221,7 @@ describe('ExpenseForm — decimals', () => {
     await chooseOption(/metode pembayaran/i, /^Tunai/)
     await userEvent.click(screen.getByRole('button', { name: /catat/i }))
 
-    expect(await screen.findByText(/lebih dari nol/i)).toBeInTheDocument()
+    expect(await screen.findByText(/jumlah wajib diisi/i)).toBeInTheDocument()
   })
 })
 
@@ -239,7 +232,7 @@ describe('ExpenseForm — edit mode', () => {
     expect(
       await screen.findByDisplayValue('Belanja mingguan'),
     ).toBeInTheDocument()
-    expect(screen.getByDisplayValue('150000')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('150.000')).toBeInTheDocument()
     expect(screen.getByDisplayValue('2026-08-20')).toBeInTheDocument()
     // The submit says what it will do, rather than offering to "Record" a row
     // that already exists.
@@ -256,7 +249,7 @@ describe('ExpenseForm — edit mode', () => {
 
     const amount = await screen.findByLabelText(/jumlah/i)
     await userEvent.clear(amount)
-    await userEvent.type(amount, '180000.25')
+    await userEvent.type(amount, '180000,25')
     await userEvent.click(
       screen.getByRole('button', { name: /simpan perubahan/i }),
     )

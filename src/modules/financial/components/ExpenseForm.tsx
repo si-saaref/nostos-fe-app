@@ -14,10 +14,11 @@ import { useActivePayers, useRoster } from '@/modules/settings/api/members'
 import { useHousehold } from '@/contexts/useHousehold'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { getErrorMessage } from '@/utils/errors'
-import { MONEY_MIN, MONEY_STEP, isValidMoney } from '@/utils/money'
+import { MONEY_MIN, isValidMoney } from '@/utils/money'
 import { isoDay } from '@/utils/dates'
 import { Select } from '@/components/Select'
 import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
+import { AmountInput } from '@/components/AmountInput'
 import { FormField } from '@/components/FormField'
 import { rimFor } from '@/theme/rims'
 import type { Blocker } from '@/components/FormBlockers'
@@ -94,7 +95,8 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
   } = useForm<CreateExpenseInput>({
     defaultValues: {
       name: expense?.name ?? '',
-      value: expense?.value ?? 0,
+      // No zero seed: an empty field asks for the amount, a `0` states one.
+      value: expense?.value,
       typeId: expense?.typeId ?? '',
       sourceId: expense?.sourceId ?? '',
       datePaid: expense?.datePaid ?? today,
@@ -213,29 +215,29 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
         />
       </FormField>
 
-      <FormField label={m.form_amount()} error={errors.value?.message}>
-        <input
-          type="number"
-          inputMode="decimal"
-          step={MONEY_STEP}
-          min={MONEY_MIN}
-          className="well-shadow bg-chip tnum w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('value', {
-            required: m.form_err_amount(),
-            valueAsNumber: true,
-            // `min: 1` used to sit here, which silently made a split bill
-            // unrecordable: the API takes two decimal places, so 50000.50 is a
-            // valid amount and 0.01 is the real floor. One predicate rather
-            // than two rules, so "0" and "10.999" each get the message that
-            // names their own problem. No ceiling — BE's cap is twelve digits
-            // (deviation #6) and not ours to enforce.
-            validate: (value) =>
-              !Number.isFinite(value) || value < MONEY_MIN
+      <Controller
+        control={control}
+        name="value"
+        rules={{
+          // One predicate rather than two rules, so an empty field, "0" and a
+          // third decimal each get the message that names their own problem.
+          // No ceiling — BE's cap is twelve digits (deviation #6), not ours.
+          validate: (amount) =>
+            amount === undefined
+              ? m.form_err_amount()
+              : amount < MONEY_MIN
                 ? m.form_err_positive()
-                : isValidMoney(value) || m.form_err_decimals(),
-          })}
-        />
-      </FormField>
+                : isValidMoney(amount) || m.form_err_decimals(),
+        }}
+        render={({ field, fieldState }) => (
+          <AmountInput
+            label={m.form_amount()}
+            value={field.value}
+            onChange={field.onChange}
+            error={fieldState.error?.message}
+          />
+        )}
+      />
 
       <FormField label={m.form_date()} error={errors.datePaid?.message}>
         <input
