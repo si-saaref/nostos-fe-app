@@ -22,6 +22,13 @@ interface Props {
    * is what lets that request stand down.
    */
   summary?: Summary
+  /**
+   * Has the list query answered yet? Without it the fallback below fires on
+   * the first render of every page load — the summary cannot be inspected
+   * before the response carrying it arrives, so "no summary" and "not yet"
+   * look identical, and the request this is meant to retire goes out anyway.
+   */
+  listLoaded: boolean
   /** First day of the month in view. */
   month: Date
   onStepMonth: (delta: number) => void
@@ -53,6 +60,7 @@ export const CountStrip = ({
   filters,
   totals,
   summary,
+  listLoaded,
   month,
   onStepMonth,
   onSelectMonth,
@@ -69,7 +77,7 @@ export const CountStrip = ({
   // A whole second request for one number. It exists only because the list
   // route could not answer "and what was last month?", and it disappears the
   // moment the route can: `enabled` is false as soon as a summary carries it.
-  const hasServerPrevious = summary?.previous !== undefined
+  const askPrevious = listLoaded && summary?.previous === undefined
   const previousQuery = useExpenses(
     householdId,
     {
@@ -79,7 +87,7 @@ export const CountStrip = ({
       page: 1,
       limit: 1,
     },
-    { enabled: !hasServerPrevious },
+    { enabled: askPrevious },
   )
   const previousTotals = summary?.previous ?? previousQuery.data?.totals
 

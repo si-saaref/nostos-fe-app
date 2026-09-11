@@ -25,6 +25,13 @@ interface Props {
    * `previous` is exactly what the extra request below buys.
    */
   summary?: Summary
+  /**
+   * Has the list query answered yet? Without it the fallback below fires on
+   * the first render of every page load — the summary cannot be inspected
+   * before the response carrying it arrives, so "no summary" and "not yet"
+   * look identical, and the request this is meant to retire goes out anyway.
+   */
+  listLoaded: boolean
   /** What the month opened at — a carried balance, not a flow. */
   opening?: number
   /** False while the position endpoint has not answered. */
@@ -59,6 +66,7 @@ export const InflowStrip = ({
   canStepForward,
   totals,
   summary,
+  listLoaded,
   opening,
   hasOpening,
   figures,
@@ -70,7 +78,7 @@ export const InflowStrip = ({
   // A whole second request for one number, and only because the list route
   // could not answer "and what did last month close at?". It stands down the
   // moment a summary carries it.
-  const hasServerPrevious = summary?.previous !== undefined
+  const askPrevious = listLoaded && summary?.previous === undefined
   const previousQuery = useIncome(
     householdId,
     {
@@ -79,7 +87,7 @@ export const InflowStrip = ({
       page: 1,
       limit: 1,
     },
-    { enabled: !hasServerPrevious },
+    { enabled: askPrevious },
   )
   const previousTotals = summary?.previous ?? previousQuery.data?.totals
 

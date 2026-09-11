@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { MAX_PAGE_SIZE, useExpenses } from '@/modules/financial/api/expenses'
 import { isoDay, shiftDays } from '@/utils/dates'
-import type { SummaryBaseline } from '@/types/api'
 import type { Expense } from '@/types/expense'
 import type {
   Baseline,
@@ -19,14 +18,12 @@ import type {
  * gets no verdict — we have nothing to compare it to, and saying nothing is
  * the honest answer.
  *
- * Served by the list route when it can: `meta.summary.baselines` is the same
- * statistics computed over the same trailing window, in the query the server
- * was already running, and it retires the 500-row request below entirely.
- *
- * Where it is absent, this computes them on the client from one wide request
- * over recent history — affordable at household scale (a few hundred rows) and
- * needing no backend change. The two paths produce the same `Baseline`, so
- * nothing downstream knows which one it got.
+ * The API has no aggregate for this, so it is computed on the client from one
+ * wide request over recent history — affordable at household scale (a few
+ * hundred rows). `meta.summary` retired the other two list calls on this page
+ * but not this one: a `summary.baselines` block is requested and not built
+ * (`notes/FE-App/API-CHANGES-REFACTOR-EXPENSE-INCOME-2026-09-10.md` §2), and
+ * when it lands only this hook moves.
  */
 const BASELINE_WINDOW_DAYS = 120
 
@@ -85,29 +82,18 @@ const groupBy = <T>(rows: T[], keyOf: (row: T) => string): Map<string, T[]> => {
   return groups
 }
 
-export const useItemBaselines = (
-  householdId: string,
-  served?: SummaryBaseline[],
-) => {
+export const useItemBaselines = (householdId: string) => {
   const today = new Date()
-  const hasServed = served !== undefined
-  const query = useExpenses(
-    householdId,
-    {
-      dateFrom: isoDay(shiftDays(today, -BASELINE_WINDOW_DAYS)),
-      dateTo: isoDay(today),
-      page: 1,
-      limit: MAX_PAGE_SIZE,
-      sortBy: 'datePaid',
-      sortOrder: 'desc',
-    },
-    { enabled: !hasServed },
-  )
+  const query = useExpenses(householdId, {
+    dateFrom: isoDay(shiftDays(today, -BASELINE_WINDOW_DAYS)),
+    dateTo: isoDay(today),
+    page: 1,
+    limit: MAX_PAGE_SIZE,
+    sortBy: 'datePaid',
+    sortOrder: 'desc',
+  })
 
-  const items = useMemo(
-    () => (hasServed ? [] : (query.data?.items ?? [])),
-    [hasServed, query.data],
-  )
+  const items = useMemo(() => query.data?.items ?? [], [query.data])
 
   /**
    * Indexed once per fetch rather than scanned per row. The tape calls
@@ -133,19 +119,6 @@ export const useItemBaselines = (
 
   const baselines = useMemo(() => {
     const result = new Map<string, Baseline>()
-    if (served) {
-      served.forEach((row) =>
-        result.set(row.key, {
-          key: row.key,
-          count: row.count,
-          median: row.median,
-          low: row.p25,
-          high: row.p75,
-          min: row.min,
-        }),
-      )
-      return result
-    }
     byItem.forEach((rows, key) => {
       const baseline = baselineFrom(
         key,
@@ -154,7 +127,7 @@ export const useItemBaselines = (
       if (baseline) result.set(key, baseline)
     })
     return result
-  }, [byItem, served])
+  }, [byItem])
 
   /**
    * The instrument's whole discipline lives here: a row is silent unless the
@@ -204,15 +177,11 @@ export const useItemBaselines = (
    */
   const recentByItem = useMemo(() => {
     const result = new Map<string, RecentPoint[]>()
-    if (served) {
-      served.forEach((row) => result.set(row.key, row.recent ?? NO_ROWS))
-      return result
-    }
     byItem.forEach((rows, key) => {
       result.set(key, rows.slice(0, RECENT_TAKE).reverse())
     })
     return result
-  }, [byItem, served])
+  }, [byItem])
 
   const recentFor = useCallback(
     (name: string): RecentPoint[] => recentByItem.get(itemKey(name)) ?? NO_ROWS,

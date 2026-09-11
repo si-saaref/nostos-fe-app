@@ -355,3 +355,106 @@ describe('IncomePage', () => {
     )
   })
 })
+
+/**
+ * `meta.summary` carries no flag — its presence in the response IS the
+ * signal, and the only way to know the wiring works is to count the requests
+ * the page actually makes. Before it, the strip and the empty-state card each
+ * needed the previous month at `limit=1`
+ * (`notes/FE-App/API-CHANGES-REFACTOR-EXPENSE-INCOME-2026-09-10.md` §3).
+ */
+describe('IncomePage — requests', () => {
+  const countIncomeCalls = () => {
+    const urls: string[] = []
+    const listen = ({ request }: { request: Request }) => {
+      const url = new URL(request.url)
+      if (request.method === 'GET' && url.pathname.endsWith('/income')) {
+        urls.push(url.search)
+      }
+    }
+    server.events.on('request:start', listen)
+    return {
+      urls,
+      stop: () => server.events.removeListener('request:start', listen),
+    }
+  }
+
+  it('asks for the month once and never for the month before it', async () => {
+    const { urls, stop } = countIncomeCalls()
+    try {
+      renderPage()
+      await settled()
+      await waitFor(() => expect(urls.length).toBeGreaterThan(0))
+      // Give any second request a chance to be made before asserting it wasn't.
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(urls).toHaveLength(1)
+      expect(urls[0]).toContain(`date_from=${thisMonth.from}`)
+      expect(urls.some((search) => search.includes('limit=1&'))).toBe(false)
+    } finally {
+      stop()
+    }
+  })
+
+  // The narrowing reaches the server, which is what keeps `meta.summary`
+  // scoped with the rows: a strip stating the whole month above a list
+  // showing one type is the disagreement this page exists to prevent.
+  it('sends the type narrowing to the server rather than filtering on hand', async () => {
+    const { urls, stop } = countIncomeCalls()
+    try {
+      renderPage()
+      await settled()
+
+      const type = db.incomeTypes[0]
+      await userEvent.click(
+        screen.getByRole('combobox', { name: /jenis pemasukan|income type/i }),
+      )
+      await userEvent.click(
+        await screen.findByRole('option', { name: type.name }),
+      )
+
+      await waitFor(() =>
+        expect(
+          urls.some((search) => search.includes(`type_id=${type.id}`)),
+        ).toBe(true),
+      )
+    } finally {
+      stop()
+    }
+  })
+
+  it('falls back to the extra request when no summary is sent', async () => {
+    // A deployment mid-migration: rows and the legacy totals, no summary.
+    // Built here rather than by re-fetching the real handler, which would
+    // re-enter this override and recurse.
+    server.use(
+      http.get('*/api/v1/income', () =>
+        Response.json({
+          success: true,
+          data: [],
+          meta: {
+            pagination: { page: 1, limit: 400, total: 0, total_pages: 1 },
+            totals: {
+              sum: 0,
+              count: 0,
+              average: 0,
+              moved: 0,
+              external_count: 0,
+              transfer_count: 0,
+            },
+          },
+        }),
+      ),
+    )
+    const { urls, stop } = countIncomeCalls()
+    try {
+      renderPage()
+      await settled()
+      await waitFor(() =>
+        expect(urls.some((search) => search.includes('limit=1'))).toBe(true),
+      )
+    } finally {
+      stop()
+    }
+  })
+})

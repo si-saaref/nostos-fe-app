@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
-import { API_CAPABILITIES } from '@/api/capabilities'
 import { entityKey } from '@/api/keys'
 import { averageMoney, roundMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated } from '@/types/api'
@@ -98,11 +97,9 @@ export const toExpense = (row: WireExpense): Expense => ({
 /** Domain → wire, for the create body. */
 const toExpenseBody = (input: CreateExpenseInput) => ({
   name: input.name,
-  // Omitted entirely while the column is unshipped: a server that rejects
-  // unknown keys would 400 the whole create over a field nobody typed into.
-  ...(API_CAPABILITIES.entryDescription
-    ? { description: input.description ?? null }
-    : {}),
+  // Blank is absent. The server coerces `''` to `null` anyway, but sending
+  // the empty string would make "" and null both reachable from here.
+  description: input.description?.trim() || null,
   value: input.value,
   type_id: input.typeId,
   source_id: input.sourceId,
@@ -124,8 +121,10 @@ const toExpenseBody = (input: CreateExpenseInput) => ({
 const toExpensePatch = (patch: UpdateExpenseInput) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
-  if (API_CAPABILITIES.entryDescription && patch.description !== undefined) {
-    body.description = patch.description
+  // `null` clears it; the server treats a blank string as a clear too, and
+  // normalising here keeps the two spellings from both being reachable.
+  if (patch.description !== undefined) {
+    body.description = patch.description?.trim() || null
   }
   if (patch.value !== undefined) body.value = patch.value
   if (patch.typeId !== undefined) body.type_id = patch.typeId

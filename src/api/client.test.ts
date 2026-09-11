@@ -144,25 +144,17 @@ describe('unwrapPage — meta.summary', () => {
         summary: {
           current: { sum: 250, count: 2, average: 125 },
           previous: { sum: 90, count: 1, average: 90 },
-          breakdown: { by_type: [{ id: 'type-a', sum: 250, count: 2 }] },
-          baselines: [
-            {
-              key: 'nasi goreng',
-              count: 7,
-              median: 120000,
-              p25: 110000,
-              p75: 135000,
-              min: 95000,
-              recent: [{ id: 'e1', value: 110000, date_paid: '2026-08-14' }],
-            },
-          ],
+          breakdown: {
+            by_type: [{ id: 'type-a', sum: 250, count: 2 }],
+            by_member: [{ id: 'user-a', sum: 250, count: 2 }],
+          },
         },
       }),
       (row) => row,
     )
     expect(page.summary?.previous?.sum).toBe(90)
     expect(page.summary?.breakdown?.byType?.[0].id).toBe('type-a')
-    expect(page.summary?.baselines?.[0].recent?.[0].datePaid).toBe('2026-08-14')
+    expect(page.summary?.breakdown?.byMember?.[0].id).toBe('user-a')
   })
 
   // Absent is "not computed", never "the household has nothing".

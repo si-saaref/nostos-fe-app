@@ -19,7 +19,6 @@ import { isoDay } from '@/utils/dates'
 import { Select } from '@/components/Select'
 import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
 import { AmountInput } from '@/components/AmountInput'
-import { API_CAPABILITIES } from '@/api/capabilities'
 import { DateField } from '@/components/DateField'
 import { FormField } from '@/components/FormField'
 import { rimFor } from '@/theme/rims'
@@ -332,24 +331,21 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
 
       {/* Last, and full width. Sitting third it broke the six real fields
           into three ragged rows with half of each one empty; at the end it
-          closes the form under a filled grid. Gated because a field
-          collecting text the server would drop loses the typing in silence. */}
-      {API_CAPABILITIES.entryDescription && (
-        <div className="sm:col-span-2 lg:col-span-3">
-          <FormField label={m.form_description()}>
-            {/* One line to start, growing with what is typed into it. Two
+          closes the form under a filled grid. */}
+      <div className="sm:col-span-2 lg:col-span-3">
+        <FormField label={m.form_description()}>
+          {/* One line to start, growing with what is typed into it. Two
                 fixed rows reserved a band of empty well on every entry that
                 never needed the field. */}
-            <textarea
-              rows={1}
-              maxLength={DESCRIPTION_MAX}
-              placeholder={m.form_description_hint()}
-              className="well-shadow bg-chip placeholder:text-muted field-sizing-content max-h-32 min-h-[34px] w-full resize-y rounded-lg px-3 py-2 text-[12.5px] outline-none"
-              {...register('description')}
-            />
-          </FormField>
-        </div>
-      )}
+          <textarea
+            rows={1}
+            maxLength={DESCRIPTION_MAX}
+            placeholder={m.form_description_hint()}
+            className="well-shadow bg-chip placeholder:text-muted field-sizing-content max-h-32 min-h-[34px] w-full resize-y rounded-lg px-3 py-2 text-[12.5px] outline-none"
+            {...register('description')}
+          />
+        </FormField>
+      </div>
 
       {error && !handledOnField && (
         <p

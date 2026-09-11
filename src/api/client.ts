@@ -102,9 +102,9 @@ export const unwrapPage = <W, T>(
 
 /**
  * Wire → domain for the summary block. Only the two nested keys are renamed;
- * `current`, `previous` and the slice/baseline rows are already camel-safe,
- * and spreading them keeps `WireTotals` and `Totals` honest about being the
- * same shape.
+ * `current`, `previous` and the slice rows are already camel-safe, and
+ * spreading them keeps `WireTotals` and `Totals` honest about being the same
+ * shape.
  */
 const toSummary = (wire: WireSummary): Summary => ({
   current: { ...wire.current },
@@ -113,14 +113,6 @@ const toSummary = (wire: WireSummary): Summary => ({
     byType: wire.breakdown.by_type?.map((slice) => ({ ...slice })),
     byMember: wire.breakdown.by_member?.map((slice) => ({ ...slice })),
   },
-  baselines: wire.baselines?.map(({ recent, ...row }) => ({
-    ...row,
-    recent: recent?.map((point) => ({
-      id: point.id,
-      value: point.value,
-      datePaid: point.date_paid,
-    })),
-  })),
 })
 
 /**

@@ -21,8 +21,7 @@ import { canManageExpenses } from '@/utils/permissions'
 import { getErrorMessage } from '@/utils/errors'
 import { rimFor } from '@/theme/rims'
 import { monthRange } from '@/utils/dates'
-import { averageMoney, sumMoney } from '@/utils/money'
-import type { Paginated } from '@/types/api'
+import { sumMoney } from '@/utils/money'
 import type { DayIncomeGroup } from '@/modules/financial/types/ledger'
 import type { Income } from '@/types/income'
 
@@ -86,43 +85,9 @@ export const IncomePage = () => {
   const [toEdit, setToEdit] = useState<Income | null>(null)
 
   const isNarrowed = Boolean(filters.typeId)
-  const items = useMemo(() => {
-    const rows = data?.items ?? []
-    return filters.typeId
-      ? rows.filter((row) => row.typeId === filters.typeId)
-      : rows
-  }, [data, filters.typeId])
-
-  /**
-   * The page every figure on this screen is counted from.
-   *
-   * Unnarrowed it is simply the server's, aggregates and all. Narrowed by
-   * type it cannot be: the route takes no `type_id`, so `meta.totals` still
-   * describes the whole month while the statement below shows one type, and
-   * a strip disagreeing with the list under it is the failure this page is
-   * arranged to prevent. So the aggregates are recomputed from the rows —
-   * exact only while the page holds every row of the month, and `undefined`
-   * rather than a partial sum when it does not.
-   *
-   * `sum` counts external arrivals only, because that is what `totals.sum`
-   * means: transfers cancel themselves out of net inflow.
-   */
-  const scopedPage = useMemo<Paginated<Income> | undefined>(() => {
-    if (!data) return undefined
-    if (!filters.typeId) return data
-    if (data.items.length < data.pagination.total) return undefined
-    const external = items.filter((row) => row.fromSourceId === null)
-    const sum = sumMoney(external.map((row) => row.amount))
-    return {
-      items,
-      pagination: { ...data.pagination, total: items.length },
-      totals: {
-        sum,
-        count: items.length,
-        average: averageMoney(sum, items.length),
-      },
-    }
-  }, [data, items, filters.typeId])
+  // Narrowing goes to the server, so the rows and every figure beside them
+  // come back scoped together. Nothing is recomputed here.
+  const items = useMemo(() => data?.items ?? [], [data])
 
   /**
    * Day groups, newest first, each carrying its arrival and its movement
@@ -150,7 +115,7 @@ export const IncomePage = () => {
       }))
   }, [items])
 
-  const figures = useMemo(() => incomeMonthFigures(scopedPage), [scopedPage])
+  const figures = useMemo(() => incomeMonthFigures(data), [data])
 
   const positionGroups = useMemo(
     () => groupPositionsByKind(positions.data?.items ?? [], accounts ?? []),
@@ -210,7 +175,7 @@ export const IncomePage = () => {
   /** A form is on screen, so nothing else may offer to open one. */
   const isRecording = showForm || toEdit !== null
   const activeType = incomeTypes?.find((type) => type.id === filters.typeId)
-  const entryCount = scopedPage?.pagination.total ?? items.length
+  const entryCount = data?.pagination.total ?? 0
   const scopeLine = activeType
     ? entryCount === 1
       ? m.inc_scope_filtered_one({
@@ -244,8 +209,9 @@ export const IncomePage = () => {
           onStepMonth={stepMonth}
           onSelectMonth={setMonth}
           canStepForward={canStepForward}
-          totals={scopedPage?.totals}
+          totals={data?.totals}
           summary={data?.summary}
+          listLoaded={data !== undefined}
           opening={positions.data?.totals.opening}
           hasOpening={positions.isSuccess}
           figures={figures}

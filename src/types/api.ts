@@ -46,39 +46,23 @@ export interface WireSummary {
   current: WireTotals
   /** The same filters over the preceding period of equal length. */
   previous?: WireTotals
-  /** Ranked contributors to `current.sum`, biggest first. */
+  /**
+   * Ranked contributors to `current.sum`, biggest first, capped at 5 and
+   * ordered `sum DESC, count DESC, id ASC` so two tied types cannot swap
+   * places between requests. Expenses only — income has no `paid_by_user_id`,
+   * and an empty filtered set yields `by_type: []` rather than an absent
+   * block, because "nothing matched" is an answer.
+   */
   breakdown?: {
     by_type?: WireSummarySlice[]
     by_member?: WireSummarySlice[]
   }
-  /**
-   * Per-item spend statistics over a trailing window the server chooses,
-   * independent of the request's own date filters. Expenses only.
-   */
-  baselines?: WireBaseline[]
 }
 
 export interface WireSummarySlice {
   id: string
   sum: number
   count: number
-}
-
-/** One recurring purchase, as the server has seen it. */
-export interface WireBaseline {
-  /** The normalised item name the rows were grouped under. */
-  key: string
-  count: number
-  median: number
-  p25: number
-  p75: number
-  min: number
-  /**
-   * The last few purchases of this item, oldest first — the sparkline on the
-   * lifted plate. Without it the client would still need the wide row fetch
-   * this block exists to retire.
-   */
-  recent?: Array<{ id: string; value: number; date_paid: string }>
 }
 
 export interface WirePagination {
@@ -169,23 +153,12 @@ export interface Summary {
     byType?: SummarySlice[]
     byMember?: SummarySlice[]
   }
-  baselines?: SummaryBaseline[]
 }
 
 export interface SummarySlice {
   id: string
   sum: number
   count: number
-}
-
-export interface SummaryBaseline {
-  key: string
-  count: number
-  median: number
-  p25: number
-  p75: number
-  min: number
-  recent?: Array<{ id: string; value: number; datePaid: string }>
 }
 
 /**

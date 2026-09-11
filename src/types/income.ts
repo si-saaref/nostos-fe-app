@@ -59,17 +59,14 @@ export interface CreateIncomeInput {
 export type UpdateIncomeInput = Partial<CreateIncomeInput>
 
 /**
- * Month is the scope the server understands. `typeId` is the one narrowing the
- * UI offers on top of it and it is applied client-side — the route accepts no
- * `type_id` (requested in `notes/FE-App/API-CHANGES-2026-09-10.md`), so it is
- * deliberately never spelled into `toRequestParams`. Search, source and sort
- * stay deferred by the PRD: a filter the API does not accept is a control that
- * looks like it works.
+ * Month and type are the whole scope. Both reach the server, so `meta.summary`
+ * is narrowed with the rows and the strip cannot disagree with the statement
+ * under it. Search, source and sort stay deferred by the PRD: a filter the API
+ * does not accept is a control that looks like it works.
  */
 export interface IncomeFilters {
   dateFrom?: string
   dateTo?: string
-  /** Client-side narrowing. Never sent to the API. */
   typeId?: string
   page: number
   limit: number

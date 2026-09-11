@@ -12,12 +12,9 @@ interface Props {
 /**
  * Narrowing the statement by income type.
  *
- * The list route takes no `type_id` yet, so this filters the rows the page is
- * already holding rather than asking the server for a narrower set — honest
- * only because the month is fetched whole, and guarded as such by the page
- * that owns the figures. Server-side narrowing is requested in
- * `notes/FE-App/API-CHANGES-2026-09-10.md`; when it lands, only this file and
- * `useIncomeFilters` move.
+ * `type_id` goes to the server, so `meta.summary` is scoped with the rows and
+ * the strip above can never state a month while the list under it shows one
+ * type.
  *
  * Named for the width it currently has — "All types", not "Type" — the same
  * rule the expense filter row follows.

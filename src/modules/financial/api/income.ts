@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
-import { API_CAPABILITIES } from '@/api/capabilities'
 import { entityKey } from '@/api/keys'
 import { averageMoney, roundMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated } from '@/types/api'
@@ -45,6 +44,7 @@ const toRequestParams = (filters?: IncomeFilters) => {
   }
   if (filters.dateFrom) params.date_from = filters.dateFrom
   if (filters.dateTo) params.date_to = filters.dateTo
+  if (filters.typeId) params.type_id = filters.typeId
   return params
 }
 
@@ -74,10 +74,8 @@ export const toIncome = (row: WireIncome): Income => ({
  */
 const toIncomeBody = (input: CreateIncomeInput) => ({
   name: input.name,
-  // Omitted while the column is unshipped — see `toExpenseBody`.
-  ...(API_CAPABILITIES.entryDescription
-    ? { description: input.description ?? null }
-    : {}),
+  // Blank is absent — see `toExpenseBody`.
+  description: input.description?.trim() || null,
   amount: input.amount,
   type_id: input.typeId,
   from_source_id: input.fromSourceId,
@@ -101,8 +99,10 @@ const toIncomeBody = (input: CreateIncomeInput) => ({
 const toIncomePatch = (patch: UpdateIncomeInput) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
-  if (API_CAPABILITIES.entryDescription && patch.description !== undefined) {
-    body.description = patch.description
+  // `null` clears it; the server treats a blank string as a clear too, and
+  // normalising here keeps the two spellings from both being reachable.
+  if (patch.description !== undefined) {
+    body.description = patch.description?.trim() || null
   }
   if (patch.amount !== undefined) body.amount = patch.amount
   if (patch.typeId !== undefined) body.type_id = patch.typeId
@@ -118,6 +118,7 @@ const toIncomePatch = (patch: UpdateIncomeInput) => {
 const matchesFilters = (income: Income, filters: IncomeFilters): boolean => {
   if (filters.dateFrom && income.date < filters.dateFrom) return false
   if (filters.dateTo && income.date > filters.dateTo) return false
+  if (filters.typeId && income.typeId !== filters.typeId) return false
   return true
 }
 

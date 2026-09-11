@@ -55,10 +55,7 @@ export const ExpensesPage = () => {
   const { data: categories } = useActiveCategories(householdId)
   const { data: accounts } = useActiveAccounts(householdId)
   const { data: users } = useRoster(householdId)
-  const { judge, baselineFor, recentFor } = useItemBaselines(
-    householdId,
-    data?.summary?.baselines,
-  )
+  const { judge, baselineFor, recentFor } = useItemBaselines(householdId)
   const { mutate: deleteExpense, error: deleteError } =
     useDeleteExpense(householdId)
 
@@ -341,6 +338,7 @@ export const ExpensesPage = () => {
           filters={filters}
           totals={data?.totals}
           summary={data?.summary}
+          listLoaded={data !== undefined}
           month={month}
           onStepMonth={stepMonth}
           onSelectMonth={setMonth}
