@@ -8,7 +8,7 @@ import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay } from '@/utils/dates'
 import type { StripFigure } from '@/modules/financial/components/StripShell'
 import type { IncomeMonthFigures } from '@/modules/financial/lib/incomeFigures'
-import type { Totals } from '@/types/api'
+import type { Summary, Totals } from '@/types/api'
 
 interface Props {
   householdId: string
@@ -20,6 +20,11 @@ interface Props {
   canStepForward: boolean
   /** Filter-scoped aggregates for the month in view. */
   totals?: Totals
+  /**
+   * The list response's summary block, when the deployment sends one. Its
+   * `previous` is exactly what the extra request below buys.
+   */
+  summary?: Summary
   /** What the month opened at — a carried balance, not a flow. */
   opening?: number
   /** False while the position endpoint has not answered. */
@@ -53,6 +58,7 @@ export const InflowStrip = ({
   onSelectMonth,
   canStepForward,
   totals,
+  summary,
   opening,
   hasOpening,
   figures,
@@ -61,17 +67,24 @@ export const InflowStrip = ({
   const { locale } = useSettings()
   const currency = useCurrency()
 
-  // One row is enough: only the previous month's `totals` are wanted, and the
-  // rows themselves belong to a page nobody is looking at.
-  const previousQuery = useIncome(householdId, {
-    dateFrom: previousMonth.from,
-    dateTo: previousMonth.to,
-    page: 1,
-    limit: 1,
-  })
+  // A whole second request for one number, and only because the list route
+  // could not answer "and what did last month close at?". It stands down the
+  // moment a summary carries it.
+  const hasServerPrevious = summary?.previous !== undefined
+  const previousQuery = useIncome(
+    householdId,
+    {
+      dateFrom: previousMonth.from,
+      dateTo: previousMonth.to,
+      page: 1,
+      limit: 1,
+    },
+    { enabled: !hasServerPrevious },
+  )
+  const previousTotals = summary?.previous ?? previousQuery.data?.totals
 
   const sum = totals?.sum ?? 0
-  const previousSum = previousQuery.data?.totals?.sum ?? 0
+  const previousSum = previousTotals?.sum ?? 0
   const thisMonthLabel = monthLabel(month, locale)
   const previousLabel = monthLabel(fromIsoDay(previousMonth.from), locale)
   const money = (value: number) => formatCurrency(value, currency, locale)
@@ -139,14 +152,18 @@ export const InflowStrip = ({
           : deltaPct === 0
             ? m.inc_vs_flat()
             : `${deltaPct > 0 ? '▲' : '▼'} ${Math.abs(deltaPct).toLocaleString(locale)}%`,
-      note: previousQuery.isLoading
-        ? undefined
-        : hasComparison
-          ? m.inc_vs_note({ month: previousLabel, amount: money(previousSum) })
-          : m.inc_vs_closed({
-              month: previousLabel,
-              amount: money(previousSum),
-            }),
+      note:
+        !previousTotals && previousQuery.isLoading
+          ? undefined
+          : hasComparison
+            ? m.inc_vs_note({
+                month: previousLabel,
+                amount: money(previousSum),
+              })
+            : m.inc_vs_closed({
+                month: previousLabel,
+                amount: money(previousSum),
+              }),
       tone: deltaPct !== null && deltaPct > 0 ? 'delta' : 'muted',
       isNil: deltaPct === null || deltaPct === 0,
     },

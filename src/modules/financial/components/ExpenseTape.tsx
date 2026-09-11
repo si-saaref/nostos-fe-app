@@ -7,7 +7,11 @@ import { isOptimisticId } from '@/modules/financial/api/expenses'
 import { formatCurrency } from '@/utils/formatters'
 import { fromIsoDay } from '@/utils/dates'
 import type { RimIndex } from '@/theme/rims'
-import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
+import type {
+  Baseline,
+  RecentPoint,
+  Verdict,
+} from '@/modules/financial/types/baseline'
 import type { DayGroup } from '@/modules/financial/types/ledger'
 import type { Expense } from '@/types/expense'
 
@@ -19,7 +23,7 @@ interface Props {
   nameOfUser: (userId: string) => string
   judge: (expense: Expense) => Verdict
   baselineFor: (name: string) => Baseline | undefined
-  recentFor: (name: string) => Expense[]
+  recentFor: (name: string) => RecentPoint[]
   openId: string | null
   onToggle: (id: string) => void
   canManage: boolean

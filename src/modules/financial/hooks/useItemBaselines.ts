@@ -1,8 +1,13 @@
 import { useCallback, useMemo } from 'react'
 import { MAX_PAGE_SIZE, useExpenses } from '@/modules/financial/api/expenses'
 import { isoDay, shiftDays } from '@/utils/dates'
+import type { SummaryBaseline } from '@/types/api'
 import type { Expense } from '@/types/expense'
-import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
+import type {
+  Baseline,
+  RecentPoint,
+  Verdict,
+} from '@/modules/financial/types/baseline'
 
 /**
  * "What's normal?" — the household's own history, per recurring item.
@@ -14,10 +19,14 @@ import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
  * gets no verdict — we have nothing to compare it to, and saying nothing is
  * the honest answer.
  *
- * The API has no aggregate endpoint, so this is computed on the client from a
- * single wide request over recent history. That is affordable at household
- * scale (a few hundred rows) and needs no backend change; if grouped
- * aggregates ever ship, only this hook moves.
+ * Served by the list route when it can: `meta.summary.baselines` is the same
+ * statistics computed over the same trailing window, in the query the server
+ * was already running, and it retires the 500-row request below entirely.
+ *
+ * Where it is absent, this computes them on the client from one wide request
+ * over recent history — affordable at household scale (a few hundred rows) and
+ * needing no backend change. The two paths produce the same `Baseline`, so
+ * nothing downstream knows which one it got.
  */
 const BASELINE_WINDOW_DAYS = 120
 
@@ -35,7 +44,7 @@ const QUIET_HIGH = 1.25
 const RECENT_TAKE = 4
 
 /** One shared empty result, so "no history" is referentially stable too. */
-const NO_ROWS: Expense[] = []
+const NO_ROWS: RecentPoint[] = []
 
 /** Same purchase, loosely spelled — "Token listrik" and "token  Listrik". */
 const itemKey = (name: string): string =>
@@ -76,18 +85,29 @@ const groupBy = <T>(rows: T[], keyOf: (row: T) => string): Map<string, T[]> => {
   return groups
 }
 
-export const useItemBaselines = (householdId: string) => {
+export const useItemBaselines = (
+  householdId: string,
+  served?: SummaryBaseline[],
+) => {
   const today = new Date()
-  const query = useExpenses(householdId, {
-    dateFrom: isoDay(shiftDays(today, -BASELINE_WINDOW_DAYS)),
-    dateTo: isoDay(today),
-    page: 1,
-    limit: MAX_PAGE_SIZE,
-    sortBy: 'datePaid',
-    sortOrder: 'desc',
-  })
+  const hasServed = served !== undefined
+  const query = useExpenses(
+    householdId,
+    {
+      dateFrom: isoDay(shiftDays(today, -BASELINE_WINDOW_DAYS)),
+      dateTo: isoDay(today),
+      page: 1,
+      limit: MAX_PAGE_SIZE,
+      sortBy: 'datePaid',
+      sortOrder: 'desc',
+    },
+    { enabled: !hasServed },
+  )
 
-  const items = useMemo(() => query.data?.items ?? [], [query.data])
+  const items = useMemo(
+    () => (hasServed ? [] : (query.data?.items ?? [])),
+    [hasServed, query.data],
+  )
 
   /**
    * Indexed once per fetch rather than scanned per row. The tape calls
@@ -113,6 +133,19 @@ export const useItemBaselines = (householdId: string) => {
 
   const baselines = useMemo(() => {
     const result = new Map<string, Baseline>()
+    if (served) {
+      served.forEach((row) =>
+        result.set(row.key, {
+          key: row.key,
+          count: row.count,
+          median: row.median,
+          low: row.p25,
+          high: row.p75,
+          min: row.min,
+        }),
+      )
+      return result
+    }
     byItem.forEach((rows, key) => {
       const baseline = baselineFrom(
         key,
@@ -121,7 +154,7 @@ export const useItemBaselines = (householdId: string) => {
       if (baseline) result.set(key, baseline)
     })
     return result
-  }, [byItem])
+  }, [byItem, served])
 
   /**
    * The instrument's whole discipline lives here: a row is silent unless the
@@ -170,15 +203,19 @@ export const useItemBaselines = (householdId: string) => {
    * a fresh array per call would defeat the tape's memoisation.
    */
   const recentByItem = useMemo(() => {
-    const result = new Map<string, Expense[]>()
+    const result = new Map<string, RecentPoint[]>()
+    if (served) {
+      served.forEach((row) => result.set(row.key, row.recent ?? NO_ROWS))
+      return result
+    }
     byItem.forEach((rows, key) => {
       result.set(key, rows.slice(0, RECENT_TAKE).reverse())
     })
     return result
-  }, [byItem])
+  }, [byItem, served])
 
   const recentFor = useCallback(
-    (name: string): Expense[] => recentByItem.get(itemKey(name)) ?? NO_ROWS,
+    (name: string): RecentPoint[] => recentByItem.get(itemKey(name)) ?? NO_ROWS,
     [recentByItem],
   )
 

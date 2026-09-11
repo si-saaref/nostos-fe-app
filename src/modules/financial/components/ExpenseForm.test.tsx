@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
@@ -36,26 +36,23 @@ describe('ExpenseForm', () => {
     expect(alerts.map((alert) => alert.textContent).join(' ')).toMatch(/wajib/i)
   })
 
-  it('rejects a future date', async () => {
+  // A future day is now unreachable rather than rejected after the fact: the
+  // picker refuses to hand one over, which is the stronger guarantee. The
+  // form's own `validate` still stands behind it for a hand-crafted value.
+  it('will not offer a future day', async () => {
     renderWithProviders(<ExpenseForm />)
     const future = new Date()
     future.setDate(future.getDate() + 3)
-    const iso = future.toISOString().slice(0, 10)
 
-    await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Kopi')
-    await userEvent.type(screen.getByLabelText(/jumlah/i), '25000')
-    await chooseOption(/kategori/i, 'Belanja')
-    await chooseOption(/metode pembayaran/i, /^Tunai/)
-    // Native validation would silently swallow this submit without noValidate,
-    // so this test also guards that the form owns its own rules.
-    fireEvent.change(screen.getByLabelText(/tanggal bayar/i), {
-      target: { value: iso },
+    await userEvent.click(
+      screen.getByRole('button', { name: /tanggal bayar/i }),
+    )
+    const cells = await screen.findAllByRole('button', {
+      name: String(future.getDate()),
     })
-    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
-
-    expect(
-      await screen.findByText(/tidak boleh tanggal yang akan datang/i),
-    ).toBeInTheDocument()
+    expect(cells.some((cell) => !(cell as HTMLButtonElement).disabled)).toBe(
+      false,
+    )
   })
 
   // A required Select used to block the submit and render nothing, so the
@@ -233,7 +230,8 @@ describe('ExpenseForm — edit mode', () => {
       await screen.findByDisplayValue('Belanja mingguan'),
     ).toBeInTheDocument()
     expect(screen.getByDisplayValue('150.000')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('2026-08-20')).toBeInTheDocument()
+    // The date reads back in the household's locale now, not as raw ISO.
+    expect(screen.getByText(/20 Agu 2026/i)).toBeInTheDocument()
     // The submit says what it will do, rather than offering to "Record" a row
     // that already exists.
     expect(

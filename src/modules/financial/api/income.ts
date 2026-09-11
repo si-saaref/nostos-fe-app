@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
+import { API_CAPABILITIES } from '@/api/capabilities'
 import { entityKey } from '@/api/keys'
 import { averageMoney, roundMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated } from '@/types/api'
@@ -51,6 +52,7 @@ const toRequestParams = (filters?: IncomeFilters) => {
 export const toIncome = (row: WireIncome): Income => ({
   id: row.id,
   name: row.name,
+  description: row.description,
   amount: row.amount,
   typeId: row.type_id,
   fromSourceId: row.from_source_id,
@@ -72,6 +74,10 @@ export const toIncome = (row: WireIncome): Income => ({
  */
 const toIncomeBody = (input: CreateIncomeInput) => ({
   name: input.name,
+  // Omitted while the column is unshipped — see `toExpenseBody`.
+  ...(API_CAPABILITIES.entryDescription
+    ? { description: input.description ?? null }
+    : {}),
   amount: input.amount,
   type_id: input.typeId,
   from_source_id: input.fromSourceId,
@@ -95,6 +101,9 @@ const toIncomeBody = (input: CreateIncomeInput) => ({
 const toIncomePatch = (patch: UpdateIncomeInput) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
+  if (API_CAPABILITIES.entryDescription && patch.description !== undefined) {
+    body.description = patch.description
+  }
   if (patch.amount !== undefined) body.amount = patch.amount
   if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.fromSourceId !== undefined) {
@@ -166,7 +175,16 @@ const OPTIMISTIC_PREFIX = 'optimistic-'
 export const isOptimisticId = (id: string): boolean =>
   id.startsWith(OPTIMISTIC_PREFIX)
 
-export const useIncome = (householdId: string, filters?: IncomeFilters) =>
+/**
+ * `options.enabled` is how a caller retires its own request — see the same
+ * note on `useExpenses`. Two figures on the income page were bought with a
+ * second `/income`; both switch themselves off once `meta.summary` answers.
+ */
+export const useIncome = (
+  householdId: string,
+  filters?: IncomeFilters,
+  options?: { enabled?: boolean },
+) =>
   useQuery({
     queryKey: incomeKeys.list(householdId, filters),
     queryFn: async () =>
@@ -176,7 +194,7 @@ export const useIncome = (householdId: string, filters?: IncomeFilters) =>
         }),
         toIncome,
       ),
-    enabled: Boolean(householdId),
+    enabled: Boolean(householdId) && (options?.enabled ?? true),
   })
 
 /**

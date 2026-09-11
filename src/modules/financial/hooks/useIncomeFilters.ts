@@ -11,6 +11,7 @@ import type { IncomeFilters } from '@/types/income'
 const PARAM_MAP: Record<keyof IncomeFilters, string> = {
   dateFrom: 'dateFrom',
   dateTo: 'dateTo',
+  typeId: 'type',
   page: 'page',
   limit: 'limit',
 }
@@ -26,14 +27,18 @@ const toPositiveInt = (value: string | null, fallback: number): number => {
  * left implicit, because every figure on the page is scoped by it and a total
  * whose range is unstated misreports silently.
  *
- * Search, type, source and sort are deliberately absent: the PRD defers them,
- * and a filter the route does not accept is a control that looks like it works.
+ * `typeId` lives here but never reaches the wire: the route takes no
+ * `type_id`, so the page narrows the rows it already holds. It is in the URL
+ * anyway, because a narrowed view has to be shareable and has to survive a
+ * reload like every other scope in this product. Search, source and sort stay
+ * deferred by the PRD.
  */
 const parseFilters = (params: URLSearchParams): IncomeFilters => {
   const thisMonth = monthRange(new Date())
   return {
     dateFrom: params.get('dateFrom') ?? thisMonth.from,
     dateTo: params.get('dateTo') ?? thisMonth.to,
+    typeId: params.get('type') ?? undefined,
     page: toPositiveInt(params.get('page'), 1),
     // One request per month. The statement is continuous, and the strip's
     // derived figures only render when the page holds every row of the month.
@@ -44,7 +49,15 @@ const parseFilters = (params: URLSearchParams): IncomeFilters => {
 export const useIncomeFilters = (householdId: string) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const filters = parseFilters(searchParams)
-  const query = useIncome(householdId, filters)
+  // `typeId` is deliberately kept out of the request and therefore out of the
+  // query key: it narrows client-side, so including it would fork the cache
+  // and refetch the identical month on every change of the picker.
+  const query = useIncome(householdId, {
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    page: filters.page,
+    limit: filters.limit,
+  })
 
   const updateFilters = (next: Partial<IncomeFilters>) => {
     const merged: IncomeFilters = { ...filters, ...next }

@@ -4,6 +4,7 @@ import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
 import { AmountInput } from '@/components/AmountInput'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { DateField } from '@/components/DateField'
 import { DismissablePanel } from '@/components/DismissablePanel'
 import { FormField } from '@/components/FormField'
 import { SettingPlate } from '@/modules/settings/components/SettingPlate'
@@ -103,15 +104,13 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
         disabled={disabled}
         onChange={(value) => setDraft({ ...draft, openingBalance: value ?? 0 })}
       />
-      <FormField label={m.acc_as_of()}>
-        <input
-          type="date"
-          value={draft.asOf}
-          disabled={disabled}
-          onChange={(event) => setDraft({ ...draft, asOf: event.target.value })}
-          className="well-shadow bg-chip rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
-        />
-      </FormField>
+      <DateField
+        label={m.acc_as_of()}
+        className="w-[190px]"
+        value={draft.asOf}
+        disabled={disabled}
+        onChange={(value) => setDraft({ ...draft, asOf: value })}
+      />
     </div>
   )
 

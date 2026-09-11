@@ -6,7 +6,11 @@ import { fromIsoDay } from '@/utils/dates'
 import { useDismiss } from '@/hooks/useDismiss'
 import { RIM_CLASS } from '@/theme/rims'
 import type { RimIndex } from '@/theme/rims'
-import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
+import type {
+  Baseline,
+  RecentPoint,
+  Verdict,
+} from '@/modules/financial/types/baseline'
 import type { Expense } from '@/types/expense'
 
 interface Props {
@@ -18,7 +22,7 @@ interface Props {
   recorderName: string
   verdict: Verdict
   baseline?: Baseline
-  recent: Expense[]
+  recent: RecentPoint[]
   isOpen: boolean
   /** Takes the id so the callback can be stable across a tape of 200 rows. */
   onToggle: (id: string) => void
@@ -122,7 +126,7 @@ const ExpensePlateBase = ({
           onClick={() => onToggle(expense.id)}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:grid sm:h-[42px] sm:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_7.5rem_6.5rem] sm:items-center sm:gap-3 sm:py-0"
+          className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:grid sm:h-[42px] sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_7.5rem_6.5rem] sm:items-center sm:gap-3 sm:py-0"
         >
           <span className="flex items-baseline justify-between gap-3 sm:min-w-0 sm:items-center">
             <span className="truncate pl-1 text-[12.5px] font-medium">
@@ -165,6 +169,12 @@ const ExpensePlateBase = ({
 
         {isOpen && (
           <div id={panelId} className="border-hair border-t px-3 pt-3 pb-3">
+            {expense.description && (
+              <p className="text-muted mb-3 max-w-prose text-[11.5px] leading-relaxed whitespace-pre-line">
+                {expense.description}
+              </p>
+            )}
+
             <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <DetailField label={m.plate_category()} value={typeName} />
               <DetailField label={m.plate_method()} value={sourceName} />

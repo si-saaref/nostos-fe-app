@@ -9,7 +9,7 @@ import { db, resetMockState } from '@/mocks/db'
 import { MOCK_ME } from '@/mocks/fixtures/household'
 import { IncomePage } from '@/modules/financial/pages/IncomePage'
 import { Role } from '@/types/household'
-import { isoDay, monthRange } from '@/utils/dates'
+import { monthRange } from '@/utils/dates'
 
 const thisMonth = monthRange(new Date())
 
@@ -276,7 +276,12 @@ describe('IncomePage', () => {
     await userEvent.type(description, 'Gaji ke-13')
     await userEvent.type(screen.getByLabelText(/jumlah|amount/i), '3000000')
 
-    const typeTrigger = screen.getByRole('combobox', { name: /jenis|type/i })
+    // Two type pickers on the page now — the statement's filter and the
+    // form's own — so this one is addressed inside the form.
+    const form = screen.getByRole('form', { name: /catat|record/i })
+    const typeTrigger = within(form).getByRole('combobox', {
+      name: /jenis|type/i,
+    })
     await userEvent.click(typeTrigger)
     await userEvent.click(
       within(await screen.findByRole('listbox')).getAllByRole('option')[1],
@@ -329,6 +334,8 @@ describe('IncomePage', () => {
     ).toBeInTheDocument()
   })
 
+  // A future day is unreachable rather than rejected after the fact: the
+  // picker will not hand one over.
   it('will not offer a future date', async () => {
     renderPage()
     await settled()
@@ -336,9 +343,15 @@ describe('IncomePage', () => {
     await userEvent.click(
       screen.getByRole('button', { name: /catat pemasukan|record income/i }),
     )
-    expect(screen.getByLabelText(/tanggal|date/i)).toHaveAttribute(
-      'max',
-      isoDay(new Date()),
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    await userEvent.click(screen.getByRole('button', { name: /tanggal|date/i }))
+    const cells = await screen.findAllByRole('button', {
+      name: String(tomorrow.getDate()),
+    })
+    expect(cells.some((cell) => !(cell as HTMLButtonElement).disabled)).toBe(
+      false,
     )
   })
 })

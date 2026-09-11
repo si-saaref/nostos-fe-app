@@ -3,11 +3,13 @@ import { useMessages } from '@/i18n/useMessages'
 import { useHousehold } from '@/contexts/useHousehold'
 import { useSettings } from '@/contexts/useSettings'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { DismissablePanel } from '@/components/DismissablePanel'
 import { useDeleteIncome, useIncome } from '@/modules/financial/api/income'
 import { usePositions } from '@/modules/financial/api/positions'
 import { useIncomeFilters } from '@/modules/financial/hooks/useIncomeFilters'
 import { incomeMonthFigures } from '@/modules/financial/lib/incomeFigures'
 import { groupPositionsByKind } from '@/modules/financial/lib/positionGroups'
+import { IncomeFilter } from '@/modules/financial/components/IncomeFilter'
 import { InflowStrip } from '@/modules/financial/components/InflowStrip'
 import { PositionCard } from '@/modules/financial/components/PositionCard'
 import { IncomeForm } from '@/modules/financial/components/IncomeForm'
@@ -19,7 +21,8 @@ import { canManageExpenses } from '@/utils/permissions'
 import { getErrorMessage } from '@/utils/errors'
 import { rimFor } from '@/theme/rims'
 import { monthRange } from '@/utils/dates'
-import { sumMoney } from '@/utils/money'
+import { averageMoney, sumMoney } from '@/utils/money'
+import type { Paginated } from '@/types/api'
 import type { DayIncomeGroup } from '@/modules/financial/types/ledger'
 import type { Income } from '@/types/income'
 
@@ -44,6 +47,7 @@ export const IncomePage = () => {
   const { locale } = useSettings()
   const {
     filters,
+    updateFilters,
     month,
     setMonth,
     stepMonth,
@@ -81,7 +85,44 @@ export const IncomePage = () => {
   // half-typed new entry.
   const [toEdit, setToEdit] = useState<Income | null>(null)
 
-  const items = useMemo(() => data?.items ?? [], [data])
+  const isNarrowed = Boolean(filters.typeId)
+  const items = useMemo(() => {
+    const rows = data?.items ?? []
+    return filters.typeId
+      ? rows.filter((row) => row.typeId === filters.typeId)
+      : rows
+  }, [data, filters.typeId])
+
+  /**
+   * The page every figure on this screen is counted from.
+   *
+   * Unnarrowed it is simply the server's, aggregates and all. Narrowed by
+   * type it cannot be: the route takes no `type_id`, so `meta.totals` still
+   * describes the whole month while the statement below shows one type, and
+   * a strip disagreeing with the list under it is the failure this page is
+   * arranged to prevent. So the aggregates are recomputed from the rows —
+   * exact only while the page holds every row of the month, and `undefined`
+   * rather than a partial sum when it does not.
+   *
+   * `sum` counts external arrivals only, because that is what `totals.sum`
+   * means: transfers cancel themselves out of net inflow.
+   */
+  const scopedPage = useMemo<Paginated<Income> | undefined>(() => {
+    if (!data) return undefined
+    if (!filters.typeId) return data
+    if (data.items.length < data.pagination.total) return undefined
+    const external = items.filter((row) => row.fromSourceId === null)
+    const sum = sumMoney(external.map((row) => row.amount))
+    return {
+      items,
+      pagination: { ...data.pagination, total: items.length },
+      totals: {
+        sum,
+        count: items.length,
+        average: averageMoney(sum, items.length),
+      },
+    }
+  }, [data, items, filters.typeId])
 
   /**
    * Day groups, newest first, each carrying its arrival and its movement
@@ -109,7 +150,7 @@ export const IncomePage = () => {
       }))
   }, [items])
 
-  const figures = useMemo(() => incomeMonthFigures(data), [data])
+  const figures = useMemo(() => incomeMonthFigures(scopedPage), [scopedPage])
 
   const positionGroups = useMemo(
     () => groupPositionsByKind(positions.data?.items ?? [], accounts ?? []),
@@ -143,9 +184,16 @@ export const IncomePage = () => {
   )
   const requestEdit = useCallback((income: Income) => {
     setToEdit(income)
+    // One form on the page at a time. A blank "record" panel stacked above a
+    // populated "edit" panel offers two submits for two different acts.
+    setShowForm(false)
     // The disclosure and the edit panel would otherwise show the same row
     // twice, in two places, with two sets of values.
     setOpenId(null)
+  }, [])
+  const requestRecord = useCallback(() => {
+    setToEdit(null)
+    setShowForm(true)
   }, [])
   const requestDelete = useCallback((income: Income) => setToDelete(income), [])
 
@@ -161,9 +209,20 @@ export const IncomePage = () => {
   const canManage = canManageExpenses(role)
   /** A form is on screen, so nothing else may offer to open one. */
   const isRecording = showForm || toEdit !== null
-  const entryCount = data?.pagination.total ?? 0
-  const scopeLine =
-    entryCount === 0
+  const activeType = incomeTypes?.find((type) => type.id === filters.typeId)
+  const entryCount = scopedPage?.pagination.total ?? items.length
+  const scopeLine = activeType
+    ? entryCount === 1
+      ? m.inc_scope_filtered_one({
+          month: monthLabel,
+          type: activeType.name,
+        })
+      : m.inc_scope_filtered({
+          month: monthLabel,
+          type: activeType.name,
+          n: entryCount,
+        })
+    : entryCount === 0
       ? m.inc_scope({ month: monthLabel })
       : entryCount === 1
         ? m.inc_scope_count_one({ month: monthLabel })
@@ -185,7 +244,8 @@ export const IncomePage = () => {
           onStepMonth={stepMonth}
           onSelectMonth={setMonth}
           canStepForward={canStepForward}
-          totals={data?.totals}
+          totals={scopedPage?.totals}
+          summary={data?.summary}
           opening={positions.data?.totals.opening}
           hasOpening={positions.isSuccess}
           figures={figures}
@@ -199,8 +259,17 @@ export const IncomePage = () => {
           isUnavailable={positions.isError}
         />
 
+        {/* The same control band the expense ledger has: what narrows the
+            list on the left, what it currently shows beside it, and the one
+            way to add to it on the right. */}
         <div className="flex flex-wrap items-center gap-2">
+          <IncomeFilter
+            householdId={householdId}
+            filters={filters}
+            onChange={updateFilters}
+          />
           <p className="text-muted text-[11px] font-semibold">{scopeLine}</p>
+          <span className="flex-1" />
           {/* Gone while the form is open. A "+ Record income" button whose
               only effect is to close the record-income form is a lie, and it
               also put a third control named "Catat" on the page — the form's
@@ -208,8 +277,8 @@ export const IncomePage = () => {
           {!isRecording && (
             <button
               type="button"
-              onClick={() => setShowForm(true)}
-              className="bg-accent text-accent-ink ml-auto hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
+              onClick={requestRecord}
+              className="bg-accent text-accent-ink hidden shrink-0 rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
             >
               + {m.action_record_income()}
             </button>
@@ -217,16 +286,22 @@ export const IncomePage = () => {
         </div>
 
         {showForm && (
-          <div className="bg-card lift-shadow rounded-xl p-4">
+          <DismissablePanel
+            onDismiss={() => setShowForm(false)}
+            className="bg-card lift-shadow rounded-xl p-4"
+          >
             <IncomeForm
               onSuccess={() => setShowForm(false)}
               onCancel={() => setShowForm(false)}
             />
-          </div>
+          </DismissablePanel>
         )}
 
         {toEdit && (
-          <div className="bg-card lift-shadow rounded-xl p-4">
+          <DismissablePanel
+            onDismiss={() => setToEdit(null)}
+            className="bg-card lift-shadow rounded-xl p-4"
+          >
             <h2 className="font-display mb-3 text-[12.5px] font-bold">
               {m.inc_form_edit_title({ name: toEdit.name })}
             </h2>
@@ -238,7 +313,7 @@ export const IncomePage = () => {
               onSuccess={() => setToEdit(null)}
               onCancel={() => setToEdit(null)}
             />
-          </div>
+          </DismissablePanel>
         )}
 
         {deleteError && (
@@ -283,12 +358,28 @@ export const IncomePage = () => {
             have nothing to record yet — it is the month this position came
             from. "No income recorded" would also be a claim about the
             household, when an empty October is only a fact about October. */}
-          {!isLoading && !isError && groups.length === 0 && (
+          {!isLoading && !isError && groups.length === 0 && isNarrowed && (
+            <div className="bg-card plate-shadow flex h-full min-h-[18rem] flex-col items-center justify-center rounded-xl p-8 text-center">
+              <h2 className="font-display text-base font-bold">
+                {m.inc_empty_filtered({ month: monthLabel })}
+              </h2>
+              <button
+                type="button"
+                onClick={() => updateFilters({ typeId: undefined, page: 1 })}
+                className="border-hair text-ink mt-4 rounded-lg border px-4 py-2 text-[11.5px] font-semibold"
+              >
+                {m.count_scope_all({ what: m.count_types() })}
+              </button>
+            </div>
+          )}
+
+          {!isLoading && !isError && groups.length === 0 && !isNarrowed && (
             <EmptyMonth
               householdId={householdId}
               monthLabel={monthLabel}
               previousLabel={previousLabel}
               previousMonth={previousMonth}
+              servedPreviousCount={data?.summary?.previous?.count}
               onBack={() => stepMonth(-1)}
             />
           )}
@@ -313,7 +404,7 @@ export const IncomePage = () => {
       {!isRecording && (
         <button
           type="button"
-          onClick={() => setShowForm(true)}
+          onClick={requestRecord}
           className="bg-accent text-accent-ink fixed right-4 bottom-20 z-30 flex h-12 items-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg lg:hidden"
         >
           <span aria-hidden="true" className="text-lg leading-none">
@@ -355,27 +446,35 @@ const EmptyMonth = ({
   monthLabel,
   previousLabel,
   previousMonth,
+  servedPreviousCount,
   onBack,
 }: {
   householdId: string
   monthLabel: string
   previousLabel: string
   previousMonth: { from: string; to: string }
+  /** From `meta.summary.previous`, when the deployment sends one. */
+  servedPreviousCount?: number
   onBack: () => void
 }) => {
   const m = useMessages()
-  // The same key the strip already asked for, so this costs no request: one
-  // row, for the count in `meta`.
-  const previous = useIncome(householdId, {
-    dateFrom: previousMonth.from,
-    dateTo: previousMonth.to,
-    page: 1,
-    limit: 1,
-  })
-  const count = previous.data?.totals?.count
+  // The same key the strip already asked for, so while the strip still has to
+  // ask this costs no request: one row, for the count in `meta`. Once the
+  // summary carries the previous month, neither of them asks at all.
+  const previous = useIncome(
+    householdId,
+    {
+      dateFrom: previousMonth.from,
+      dateTo: previousMonth.to,
+      page: 1,
+      limit: 1,
+    },
+    { enabled: servedPreviousCount === undefined },
+  )
+  const count = servedPreviousCount ?? previous.data?.totals?.count
 
   return (
-    <div className="bg-card plate-shadow rounded-xl p-8 text-center">
+    <div className="bg-card plate-shadow flex h-full min-h-[18rem] flex-col items-center justify-center rounded-xl p-8 text-center">
       <h2 className="font-display text-base font-bold">
         {m.inc_empty_title({ month: monthLabel })}
       </h2>

@@ -1,6 +1,8 @@
 import type { Mock } from 'vitest'
 import { AxiosError } from 'axios'
-import { apiClient, setHouseholdId } from '@/api/client'
+import type { AxiosResponse } from 'axios'
+import { apiClient, setHouseholdId, unwrapPage } from '@/api/client'
+import type { ApiEnvelope, ApiMeta } from '@/types/api'
 
 /**
  * A real AxiosError, not a plain object shaped like one. The interceptor
@@ -88,5 +90,85 @@ describe('apiClient', () => {
       await expect(runRejection(error)).rejects.toBe(error)
       expect(assign).toHaveBeenCalledWith('/signin?error=session_ended')
     })
+  })
+})
+
+interface Row {
+  id: string
+}
+
+const respond = (meta: ApiMeta): AxiosResponse<ApiEnvelope<Row[]>> =>
+  ({
+    data: { success: true, data: [{ id: 'a' }], meta },
+    config: { url: '/expenses' },
+  }) as AxiosResponse<ApiEnvelope<Row[]>>
+
+const PAGINATION = { page: 1, limit: 400, total: 1, total_pages: 1 }
+
+/**
+ * `meta.summary` is the block that retires `meta.totals` and the duplicate
+ * list calls with it (`notes/FE-App/API-CHANGES-2026-09-10.md`). Its presence
+ * is the feature flag, so the two readings have to be exercised separately.
+ */
+describe('unwrapPage — meta.summary', () => {
+  it('reads the legacy totals when no summary is sent', () => {
+    const page = unwrapPage(
+      respond({
+        pagination: PAGINATION,
+        totals: { sum: 100, count: 1, average: 100 },
+      }),
+      (row) => row,
+    )
+    expect(page.totals?.sum).toBe(100)
+    expect(page.summary).toBeUndefined()
+  })
+
+  // Both on the wire is a deployment mid-migration, and two figures that can
+  // disagree must never both be readable.
+  it('prefers summary.current over meta.totals', () => {
+    const page = unwrapPage(
+      respond({
+        pagination: PAGINATION,
+        totals: { sum: 100, count: 1, average: 100 },
+        summary: { current: { sum: 250, count: 2, average: 125 } },
+      }),
+      (row) => row,
+    )
+    expect(page.totals?.sum).toBe(250)
+  })
+
+  it('renames the nested wire keys and nothing else', () => {
+    const page = unwrapPage(
+      respond({
+        pagination: PAGINATION,
+        summary: {
+          current: { sum: 250, count: 2, average: 125 },
+          previous: { sum: 90, count: 1, average: 90 },
+          breakdown: { by_type: [{ id: 'type-a', sum: 250, count: 2 }] },
+          baselines: [
+            {
+              key: 'nasi goreng',
+              count: 7,
+              median: 120000,
+              p25: 110000,
+              p75: 135000,
+              min: 95000,
+              recent: [{ id: 'e1', value: 110000, date_paid: '2026-08-14' }],
+            },
+          ],
+        },
+      }),
+      (row) => row,
+    )
+    expect(page.summary?.previous?.sum).toBe(90)
+    expect(page.summary?.breakdown?.byType?.[0].id).toBe('type-a')
+    expect(page.summary?.baselines?.[0].recent?.[0].datePaid).toBe('2026-08-14')
+  })
+
+  // Absent is "not computed", never "the household has nothing".
+  it('leaves aggregates undefined when meta carries neither', () => {
+    const page = unwrapPage(respond({ pagination: PAGINATION }), (row) => row)
+    expect(page.totals).toBeUndefined()
+    expect(page.summary).toBeUndefined()
   })
 })

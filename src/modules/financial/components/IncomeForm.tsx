@@ -13,6 +13,8 @@ import { useHousehold } from '@/contexts/useHousehold'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
 import { AmountInput } from '@/components/AmountInput'
+import { API_CAPABILITIES } from '@/api/capabilities'
+import { DateField } from '@/components/DateField'
 import { FormField } from '@/components/FormField'
 import { Select } from '@/components/Select'
 import { getErrorMessage } from '@/utils/errors'
@@ -32,6 +34,9 @@ interface Props {
 
 /** The server's own cap (PRD §5). Trimmed as it is typed, not rejected after. */
 const NAME_MAX = 100
+
+/** Room for a shopping list, not for an essay. Mirrors the column's cap. */
+const DESCRIPTION_MAX = 500
 
 /**
  * Six fields, and one of them is optional in a way that carries the whole
@@ -86,6 +91,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
   } = useForm<CreateIncomeInput>({
     defaultValues: {
       name: income?.name ?? '',
+      description: income?.description ?? '',
       // No zero seed: an empty field asks for the amount, a `0` states one.
       amount: income?.amount,
       typeId: income?.typeId ?? '',
@@ -203,7 +209,11 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     <form
       onSubmit={guardedSubmit}
       noValidate
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      // Named, because the ledger page can hold this form and a filter row
+      // with pickers of the same name: without it, "the type picker" is
+      // ambiguous to a screen reader exactly as it was to the test.
+      aria-label={m.action_record_income()}
+      className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3"
     >
       <FormBlockers blockers={blockers} />
 
@@ -239,17 +249,23 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
         )}
       />
 
-      <FormField label={m.inc_form_date()} error={errors.date?.message}>
-        <input
-          type="date"
-          max={today}
-          className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('date', {
-            required: m.inc_err_date(),
-            validate: (value) => value <= today || m.form_err_future(),
-          })}
-        />
-      </FormField>
+      <Controller
+        control={control}
+        name="date"
+        rules={{
+          required: m.inc_err_date(),
+          validate: (day) => day <= today || m.form_err_future(),
+        }}
+        render={({ field, fieldState }) => (
+          <DateField
+            label={m.inc_form_date()}
+            value={field.value}
+            onChange={field.onChange}
+            max={today}
+            error={fieldState.error?.message}
+          />
+        )}
+      />
 
       <Controller
         control={control}
@@ -317,6 +333,27 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
           />
         )}
       />
+
+      {/* Last, and full width. Sitting third it broke the six real fields
+          into three ragged rows with half of each one empty; at the end it
+          closes the form under a filled grid. Gated because a field
+          collecting text the server would drop loses the typing in silence. */}
+      {API_CAPABILITIES.entryDescription && (
+        <div className="sm:col-span-2 lg:col-span-3">
+          <FormField label={m.form_description()}>
+            {/* One line to start, growing with what is typed into it. Two
+                fixed rows reserved a band of empty well on every entry that
+                never needed the field. */}
+            <textarea
+              rows={1}
+              maxLength={DESCRIPTION_MAX}
+              placeholder={m.form_description_hint()}
+              className="well-shadow bg-chip placeholder:text-muted field-sizing-content max-h-32 min-h-[34px] w-full resize-y rounded-lg px-3 py-2 text-[12.5px] outline-none"
+              {...register('description')}
+            />
+          </FormField>
+        </div>
+      )}
 
       {error && !handledOnField && (
         <p
