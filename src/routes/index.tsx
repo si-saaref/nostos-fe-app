@@ -27,6 +27,13 @@ const IncomePage = lazy(() =>
 )
 
 // eslint-disable-next-line react-refresh/only-export-components -- lazy-loaded component is local to this router file, not exported
+const CalendarPage = lazy(() =>
+  import('@/modules/financial/pages/CalendarPage').then((module) => ({
+    default: module.CalendarPage,
+  })),
+)
+
+// eslint-disable-next-line react-refresh/only-export-components -- lazy-loaded component is local to this router file, not exported
 const SettingsPage = lazy(() =>
   import('@/modules/settings/pages/SettingsPage').then((module) => ({
     default: module.SettingsPage,
@@ -77,6 +84,16 @@ export const router = createBrowserRouter([
                 fallback={<Loading full label={messages.inc_loading()} />}
               >
                 <IncomePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/calendar',
+            element: (
+              <Suspense
+                fallback={<Loading full label={messages.state_loading()} />}
+              >
+                <CalendarPage />
               </Suspense>
             ),
           },

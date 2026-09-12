@@ -30,6 +30,11 @@ const LIVE: NavItem[] = [
     icon: 'M12 20V4M5 11l7-7 7 7',
   },
   {
+    to: '/calendar',
+    label: messages.nav_calendar,
+    icon: 'M7 3v3m10-3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v13H4V7a1 1 0 0 1 1-1zM8 13h2m4 0h2m-8 4h2m4 0h2',
+  },
+  {
     to: '/settings',
     label: messages.nav_settings,
     icon: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 12h2m13 0h2M12 3.5v2m0 13v2',
@@ -55,7 +60,7 @@ const PLANNED: PlannedItem[] = [
   {
     id: 'plan',
     label: messages.nav_plan,
-    icon: 'M7 3v3m10-3v3M4 8h16M5 6h14a1 1 0 0 1 1 1v13H4V7a1 1 0 0 1 1-1z',
+    icon: 'M12 6v6l4 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
   },
 ]
 
@@ -189,13 +194,13 @@ export const BottomBar = () => {
           key={item.to}
           to={item.to}
           className={({ isActive }) =>
-            `flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-semibold ${
+            `flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-2 text-[10px] font-semibold ${
               isActive ? 'text-accent' : 'text-muted'
             }`
           }
         >
           <Glyph path={item.icon} />
-          {item.label()}
+          <span className="max-w-full truncate">{item.label()}</span>
         </NavLink>
       ))}
     </nav>
