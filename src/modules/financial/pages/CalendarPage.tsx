@@ -14,9 +14,6 @@ import { rimFor } from '@/theme/rims'
 import { isoDay } from '@/utils/dates'
 import type { RimIndex } from '@/theme/rims'
 
-/** One reading measure for every band, matching the two ledgers. */
-const MEASURE = 'mx-auto w-full max-w-[1320px]'
-
 /** The ceiling both list routes accept, and therefore what a month may hold. */
 const PAGE_SIZE = 500
 
@@ -106,9 +103,7 @@ export const CalendarPage = () => {
 
   return (
     <section className="flex h-full flex-col">
-      <div
-        className={`${MEASURE} flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6`}
-      >
+      <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
         <CalendarStrip
           month={month}
           onStepMonth={stepMonth}
@@ -121,7 +116,7 @@ export const CalendarPage = () => {
         />
       </div>
 
-      <div className={`${MEASURE} min-h-0 flex-1 px-4 pb-6 lg:px-6`}>
+      <div className="min-h-0 flex-1 px-4 pb-6 lg:px-6">
         {isError && (
           <div
             role="alert"

@@ -25,9 +25,6 @@ import { sumMoney } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
 import { useCallback, useMemo, useState } from 'react'
 
-/** One reading measure for every band, matching the expenses page. */
-const MEASURE = 'mx-auto w-full max-w-[1320px]'
-
 /**
  * The income surface: one position card that states, one statement that lists.
  *
@@ -199,9 +196,7 @@ export const IncomePage = () => {
           the statement they describe — the two questions this page answers are
           co-equal, and a position you have to scroll back up to find is not.
           It is also what the sticky day shelves stick beneath. */}
-      <div
-        className={`${MEASURE} flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6`}
-      >
+      <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
         <InflowStrip
           householdId={householdId}
           month={month}
@@ -292,9 +287,7 @@ export const IncomePage = () => {
         )}
       </div>
 
-      <div
-        className={`${MEASURE} flex min-h-0 flex-1 flex-col px-4 pb-4 lg:px-6`}
-      >
+      <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 lg:px-6">
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-2">
           {/* {isLoading && <Loading full label={m.inc_loading()} />} */}
 

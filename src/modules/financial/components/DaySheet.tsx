@@ -166,18 +166,39 @@ const Figure = ({
   </div>
 )
 
+type Kind = 'out' | 'in' | 'moved'
+
+/**
+ * The kind is stated three times over, because the rim cannot state it once.
+ *
+ * A rim carries *category* — Belanja, BNI — so two rows of different kinds
+ * routinely wear neighbouring colours, and an expense beside a transfer was
+ * distinguishable only by the presence of pills. So the amount takes a sign,
+ * the colour matches the mark the same money draws on the grid above, and the
+ * kind is spelled out in a word beneath the figure. Sign, hue and word: remove
+ * any one and the row still reads.
+ */
+const KIND_TEXT: Record<Kind, string> = {
+  out: 'text-flow-out',
+  in: 'text-flow-in',
+  moved: 'text-flow-moved',
+}
+
 const Row = ({
   rim,
+  kind,
+  kindLabel,
   name,
   meta,
   amount,
-  tone,
 }: {
   rim: RimIndex
+  kind: Kind
+  kindLabel: string
   name: string
   meta: React.ReactNode
+  /** Already signed by the caller: a transfer has no sign to carry. */
   amount: string
-  tone?: 'in' | 'moved'
 }) => (
   <li className="border-hair flex items-start gap-2.5 border-b py-2.5 last:border-b-0">
     <i
@@ -189,17 +210,22 @@ const Row = ({
         {meta}
       </div>
     </div>
-    <span
-      className={`font-display tnum text-[13.5px] whitespace-nowrap ${
-        tone === 'in'
-          ? 'text-rim-1 font-bold'
-          : tone === 'moved'
-            ? 'text-muted font-semibold'
-            : 'font-bold'
-      }`}
-    >
-      {amount}
-    </span>
+    <div className="shrink-0 text-right">
+      <span
+        className={`font-display tnum block text-[13.5px] whitespace-nowrap ${
+          KIND_TEXT[kind]
+        } ${kind === 'moved' ? 'font-semibold' : 'font-bold'}`}
+      >
+        {amount}
+      </span>
+      <span
+        className={`mt-0.5 block text-[8.5px] font-bold tracking-[0.09em] uppercase ${
+          kind === 'in' ? 'text-flow-in' : 'text-muted'
+        }`}
+      >
+        {kindLabel}
+      </span>
+    </div>
   </li>
 )
 
@@ -215,22 +241,29 @@ const ExpenseRow = ({
   nameOf: (id: string) => string
   rim: RimIndex
   money: (value: number) => string
-}) => (
-  <Row
-    rim={rim}
-    name={expense.name}
-    amount={money(expense.value)}
-    meta={
-      <>
-        {nameOf(expense.typeId)}
-        <Dot />
-        {nameOf(expense.sourceId)}
-        <Dot />
-        {nameOf(expense.paidByUserId)}
-      </>
-    }
-  />
-)
+}) => {
+  const m = useMessages()
+  return (
+    <Row
+      rim={rim}
+      kind="out"
+      kindLabel={m.cal_kind_out()}
+      name={expense.name}
+      // Signed, unlike on the expense ledger: there every row is an expense, so
+      // a minus would be noise. Here it is the difference between two kinds.
+      amount={`− ${money(expense.value)}`}
+      meta={
+        <>
+          {nameOf(expense.typeId)}
+          <Dot />
+          {nameOf(expense.sourceId)}
+          <Dot />
+          {nameOf(expense.paidByUserId)}
+        </>
+      }
+    />
+  )
+}
 
 /**
  * The signing rule, exactly as `IncomePlate` states it: an external inflow
@@ -255,8 +288,9 @@ const IncomeRow = ({
   return (
     <Row
       rim={rim}
+      kind={isTransfer ? 'moved' : 'in'}
+      kindLabel={isTransfer ? m.cal_kind_moved() : m.cal_kind_in()}
       name={income.name}
-      tone={isTransfer ? 'moved' : 'in'}
       amount={isTransfer ? money(income.amount) : `+ ${money(income.amount)}`}
       meta={
         <>

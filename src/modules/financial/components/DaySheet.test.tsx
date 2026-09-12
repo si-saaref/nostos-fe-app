@@ -167,6 +167,57 @@ describe('DaySheet', () => {
     expect(rows[2]).toHaveTextContent('Sayur & buah pasar')
   })
 
+  it('names the kind of every row, because the rim names its category', () => {
+    renderSheet(
+      dayOf({
+        spent: 50000,
+        inflow: 1500000,
+        moved: 140000,
+        expenses: [expense(50000, 'Ayam bakar')],
+        income: [
+          incomeRow(1500000, null, 'Gajian kecil'),
+          incomeRow(140000, 'source-tunai', 'TT Bos'),
+        ],
+        count: 3,
+      }),
+    )
+
+    const rows = screen.getAllByRole('listitem')
+    const kindOf = (name: string) =>
+      rows.find((row) => row.textContent?.includes(name))
+
+    expect(kindOf('Gajian kecil')).toHaveTextContent('Pemasukan')
+    expect(kindOf('TT Bos')).toHaveTextContent('Pemindahan')
+    expect(kindOf('Ayam bakar')).toHaveTextContent('Pengeluaran')
+  })
+
+  it('signs an expense out and an inflow in, and leaves a transfer unsigned', () => {
+    renderSheet(
+      dayOf({
+        spent: 50000,
+        inflow: 1500000,
+        moved: 140000,
+        expenses: [expense(50000, 'Ayam bakar')],
+        income: [
+          incomeRow(1500000, null, 'Gajian kecil'),
+          incomeRow(140000, 'source-tunai', 'TT Bos'),
+        ],
+        count: 3,
+      }),
+    )
+
+    const rows = screen.getAllByRole('listitem')
+    const rowFor = (name: string) =>
+      rows.find((row) => row.textContent?.includes(name))
+
+    // On a page mixing both ledgers an unsigned amount is ambiguous, so the
+    // two directed kinds take a sign. The transfer keeps none: it has no
+    // direction the household as a whole could read one from.
+    expect(rowFor('Ayam bakar')).toHaveTextContent(/−\s?IDR|−\s?Rp/)
+    expect(rowFor('Gajian kecil')).toHaveTextContent(/\+\s?IDR|\+\s?Rp/)
+    expect(rowFor('TT Bos')).not.toHaveTextContent(/[−+]/)
+  })
+
   it('says where entries are changed, because they are not changed here', () => {
     renderSheet(dayOf({ spent: 87000, expenses: [expense(87000)], count: 1 }))
     expect(screen.getByText(/hanya untuk dibaca/i)).toBeInTheDocument()

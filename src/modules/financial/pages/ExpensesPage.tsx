@@ -27,13 +27,6 @@ import { sumMoney } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-/**
- * One reading measure for every band of the page, so nothing sits off-grid.
- * Capped well short of a wide monitor: a ledger row two thousand pixels across
- * asks the eye to carry a name all the way to an amount, and loses it.
- */
-const MEASURE = 'mx-auto w-full max-w-[1320px]'
-
 export const ExpensesPage = () => {
   const m = useMessages()
   const { householdId, role } = useHousehold()
@@ -330,9 +323,7 @@ export const ExpensesPage = () => {
     <section className="flex h-full flex-col">
       {/* Pinned: the count and the filters never scroll away from the ledger
           they describe, because a total you cannot see cannot be trusted. */}
-      <div
-        className={`${MEASURE} flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6`}
-      >
+      <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
         <CountStrip
           householdId={householdId}
           filters={filters}
@@ -408,7 +399,7 @@ export const ExpensesPage = () => {
         )}
       </div>
 
-      <div className={`${MEASURE} flex min-h-0 flex-1 gap-4 px-4 pb-4 lg:px-6`}>
+      <div className="flex min-h-0 flex-1 gap-4 px-4 pb-4 lg:px-6">
         <MonthRail
           days={days}
           rangeFrom={filters.dateFrom}
