@@ -1,31 +1,31 @@
-import { useMessages } from '@/i18n/useMessages'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDeleteExpense } from '@/modules/financial/api/expenses'
-import { useActiveCategories } from '@/modules/settings/api/categories'
-import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useRoster } from '@/modules/settings/api/members'
-import { useHousehold } from '@/contexts/useHousehold'
-import { useSettings } from '@/contexts/useSettings'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
+import { useHousehold } from '@/contexts/useHousehold'
+import { useSettings } from '@/contexts/useSettings'
+import { useMessages } from '@/i18n/useMessages'
+import { useDeleteExpense } from '@/modules/financial/api/expenses'
 import { CountStrip } from '@/modules/financial/components/CountStrip'
 import { ExpenseFilter } from '@/modules/financial/components/ExpenseFilter'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
 import { ExpenseTape } from '@/modules/financial/components/ExpenseTape'
 import { MonthRail } from '@/modules/financial/components/MonthRail'
-import { useItemBaselines } from '@/modules/financial/hooks/useItemBaselines'
 import { useExpenseFilters } from '@/modules/financial/hooks/useExpenseFilters'
-import { canManageExpenses } from '@/utils/permissions'
-import { getErrorMessage } from '@/utils/errors'
-import { rimFor } from '@/theme/rims'
-import { sumMoney } from '@/utils/money'
+import { useItemBaselines } from '@/modules/financial/hooks/useItemBaselines'
 import type {
   DayGroup,
   DayTotal,
   ScopeChip,
   TopSlice,
 } from '@/modules/financial/types/ledger'
+import { useActiveAccounts } from '@/modules/settings/api/accounts'
+import { useActiveCategories } from '@/modules/settings/api/categories'
+import { useRoster } from '@/modules/settings/api/members'
+import { rimFor } from '@/theme/rims'
 import type { Expense } from '@/types/expense'
+import { getErrorMessage } from '@/utils/errors'
+import { sumMoney } from '@/utils/money'
+import { canManageExpenses } from '@/utils/permissions'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 /**
  * One reading measure for every band of the page, so nothing sits off-grid.
@@ -423,15 +423,7 @@ export const ExpensesPage = () => {
           ref={scrollRef}
           className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-2"
         >
-          {isLoading && (
-            <p
-              role="status"
-              aria-live="polite"
-              className="text-muted py-8 text-sm"
-            >
-              {m.tape_loading()}
-            </p>
-          )}
+          {/* {isLoading && <Loading full label={m.tape_loading()} />} */}
 
           {isError && (
             <div role="alert" className="bg-card plate-shadow rounded-xl p-6">

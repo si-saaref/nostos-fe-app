@@ -12,6 +12,13 @@ export interface StripFigure {
   isText?: boolean
   /** Nothing to report yet. Renders quiet, so a dash never looks like a total. */
   isNil?: boolean
+  /**
+   * The figure has not arrived. Without it the cells printed `IDR 0` until
+   * the response landed, which is a claim about the household's money rather
+   * than a wait. It renders as the same quiet dash `isNil` does: both mean
+   * "no figure here", and a spinner inside a figure cell is noise.
+   */
+  isLoading?: boolean
 }
 
 interface Props {
@@ -57,12 +64,14 @@ export const StripShell = ({ label, children, figures }: Props) => (
             // and only a name can be long enough to truncate.
             title={figure.isText ? figure.value : undefined}
             className={`font-display tnum mt-1.5 truncate text-xl font-bold sm:text-[22px] ${
-              figure.isNil ? 'text-on-strip-muted' : 'text-on-strip'
+              figure.isNil || figure.isLoading
+                ? 'text-on-strip-muted'
+                : 'text-on-strip'
             } ${figure.isText ? 'sm:text-[19px]' : ''}`}
           >
-            {figure.value}
+            {figure.isLoading ? '—' : figure.value}
           </dd>
-          {figure.note && (
+          {!figure.isLoading && figure.note && (
             <p
               className={`mt-1 truncate text-[10.5px] font-semibold ${
                 figure.tone === 'delta' ? 'text-delta' : 'text-on-strip-muted'
@@ -71,7 +80,7 @@ export const StripShell = ({ label, children, figures }: Props) => (
               {figure.note}
             </p>
           )}
-          {figure.sub && (
+          {!figure.isLoading && figure.sub && (
             <p className="text-on-strip-muted truncate text-[10.5px] font-semibold">
               {figure.sub}
             </p>

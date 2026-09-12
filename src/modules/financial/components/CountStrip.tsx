@@ -91,6 +91,9 @@ export const CountStrip = ({
   )
   const previousTotals = summary?.previous ?? previousQuery.data?.totals
 
+  // One flag for the four cells: they come from one response, so lighting
+  // them up one at a time would be theatre.
+  const isLoading = !listLoaded
   const sum = totals?.sum ?? 0
   const count = totals?.count ?? 0
   const average = totals?.average ?? 0
@@ -116,6 +119,7 @@ export const CountStrip = ({
   const figures: StripFigure[] = [
     {
       id: 'total',
+      isLoading,
       key: m.count_total(),
       value: formatCurrency(sum, currency, locale),
       note:
@@ -129,6 +133,7 @@ export const CountStrip = ({
     },
     {
       id: 'previous',
+      isLoading,
       key: m.count_previous(),
       value:
         !previousTotals && previousQuery.isLoading
@@ -143,6 +148,7 @@ export const CountStrip = ({
     },
     {
       id: 'entries',
+      isLoading,
       key: m.count_entries(),
       value: String(count),
       // Rounded: an average is a summary figure, and printing it to the cent
@@ -155,6 +161,7 @@ export const CountStrip = ({
     },
     {
       id: 'slice',
+      isLoading,
       key: slice?.kind === 'member' ? m.count_who() : m.count_where(),
       value: slice ? slice.name : '—',
       note: slice

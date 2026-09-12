@@ -20,12 +20,12 @@ const LIVE: NavItem[] = [
     icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   },
   {
-    to: '/financial/expenses',
+    to: '/expenses',
     label: messages.nav_expenses,
     icon: 'M4 6h16v12H4zM4 10h16M8 14h5',
   },
   {
-    to: '/financial/income',
+    to: '/income',
     label: messages.nav_income,
     icon: 'M12 20V4M5 11l7-7 7 7',
   },

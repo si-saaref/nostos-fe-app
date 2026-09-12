@@ -175,6 +175,31 @@
     inset 0 1px 0 rgb(255 255 255 / 0.12);
 }
 
+/* The one loading indicator in the app: a rotating arc.
+   A wait should read as the product working, not as a sentence to read. */
+@keyframes spinner-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@utility spinner {
+  animation: spinner-turn 0.75s linear infinite;
+}
+
+/* The global reduced-motion rule only shortens the spin, which parks the arc
+   at an arbitrary angle and reads as a broken ring. Stop it and close the
+   ring instead. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+  .spinner circle {
+    stroke-dasharray: none;
+    opacity: 0.45;
+  }
+}
+
 html {
   background: var(--ground);
 }

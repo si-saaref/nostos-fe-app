@@ -1,29 +1,29 @@
-import { useCallback, useMemo, useState } from 'react'
-import { useMessages } from '@/i18n/useMessages'
-import { useHousehold } from '@/contexts/useHousehold'
-import { useSettings } from '@/contexts/useSettings'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
+import { useHousehold } from '@/contexts/useHousehold'
+import { useSettings } from '@/contexts/useSettings'
+import { useMessages } from '@/i18n/useMessages'
 import { useDeleteIncome, useIncome } from '@/modules/financial/api/income'
 import { usePositions } from '@/modules/financial/api/positions'
+import { IncomeFilter } from '@/modules/financial/components/IncomeFilter'
+import { IncomeForm } from '@/modules/financial/components/IncomeForm'
+import { IncomeStatement } from '@/modules/financial/components/IncomeStatement'
+import { InflowStrip } from '@/modules/financial/components/InflowStrip'
+import { PositionCard } from '@/modules/financial/components/PositionCard'
 import { useIncomeFilters } from '@/modules/financial/hooks/useIncomeFilters'
 import { incomeMonthFigures } from '@/modules/financial/lib/incomeFigures'
 import { groupPositionsByKind } from '@/modules/financial/lib/positionGroups'
-import { IncomeFilter } from '@/modules/financial/components/IncomeFilter'
-import { InflowStrip } from '@/modules/financial/components/InflowStrip'
-import { PositionCard } from '@/modules/financial/components/PositionCard'
-import { IncomeForm } from '@/modules/financial/components/IncomeForm'
-import { IncomeStatement } from '@/modules/financial/components/IncomeStatement'
+import type { DayIncomeGroup } from '@/modules/financial/types/ledger'
 import { useAccounts } from '@/modules/settings/api/accounts'
 import { useIncomeTypes } from '@/modules/settings/api/incomeTypes'
 import { useRoster } from '@/modules/settings/api/members'
-import { canManageExpenses } from '@/utils/permissions'
-import { getErrorMessage } from '@/utils/errors'
 import { rimFor } from '@/theme/rims'
-import { monthRange } from '@/utils/dates'
-import { sumMoney } from '@/utils/money'
-import type { DayIncomeGroup } from '@/modules/financial/types/ledger'
 import type { Income } from '@/types/income'
+import { monthRange } from '@/utils/dates'
+import { getErrorMessage } from '@/utils/errors'
+import { sumMoney } from '@/utils/money'
+import { canManageExpenses } from '@/utils/permissions'
+import { useCallback, useMemo, useState } from 'react'
 
 /** One reading measure for every band, matching the expenses page. */
 const MEASURE = 'mx-auto w-full max-w-[1320px]'
@@ -296,15 +296,7 @@ export const IncomePage = () => {
         className={`${MEASURE} flex min-h-0 flex-1 flex-col px-4 pb-4 lg:px-6`}
       >
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-2">
-          {isLoading && (
-            <p
-              role="status"
-              aria-live="polite"
-              className="text-muted py-8 text-sm"
-            >
-              {m.inc_loading()}
-            </p>
-          )}
+          {/* {isLoading && <Loading full label={m.inc_loading()} />} */}
 
           {isError && (
             <div role="alert" className="bg-card plate-shadow rounded-xl p-6">

@@ -91,6 +91,10 @@ export const InflowStrip = ({
   )
   const previousTotals = summary?.previous ?? previousQuery.data?.totals
 
+  // One flag for the four cells — they come from one response. The opening
+  // figure is the exception: it is the position endpoint's, and it has its own
+  // settled "unknown" already.
+  const isLoading = !listLoaded
   const sum = totals?.sum ?? 0
   const previousSum = previousTotals?.sum ?? 0
   const thisMonthLabel = monthLabel(month, locale)
@@ -129,6 +133,7 @@ export const InflowStrip = ({
     },
     {
       id: 'in',
+      isLoading,
       key: m.inc_in(),
       value: money(sum),
       note: countNote(
@@ -140,6 +145,7 @@ export const InflowStrip = ({
     },
     {
       id: 'moved',
+      isLoading,
       key: m.inc_moved(),
       value: figures.moved === null ? m.inc_unknown() : money(figures.moved),
       note: countNote(
@@ -151,6 +157,7 @@ export const InflowStrip = ({
     },
     {
       id: 'previous',
+      isLoading,
       key: m.inc_vs({ month: previousLabel }),
       // A zero change has no direction, and `▼ 0%` claimed one — the arrow
       // only appears when the figure actually moved.

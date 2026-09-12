@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { m as messages } from '@/paraglide/messages.js'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { DashboardLayout } from '@/components/Layout/DashboardLayout'
 import { SessionBoundary } from '@/routes/SessionBoundary'
@@ -9,6 +10,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { Loading } from '@/components/Loading'
+import { LegacyRedirect } from '@/routes/LegacyRedirect'
 
 // eslint-disable-next-line react-refresh/only-export-components -- lazy-loaded component is local to this router file, not exported
 const ExpensesPage = lazy(() =>
@@ -59,17 +61,21 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: '/dashboard', element: <DashboardPage /> },
           {
-            path: '/financial/expenses',
+            path: '/expenses',
             element: (
-              <Suspense fallback={<Loading />}>
+              <Suspense
+                fallback={<Loading full label={messages.tape_loading()} />}
+              >
                 <ExpensesPage />
               </Suspense>
             ),
           },
           {
-            path: '/financial/income',
+            path: '/income',
             element: (
-              <Suspense fallback={<Loading />}>
+              <Suspense
+                fallback={<Loading full label={messages.inc_loading()} />}
+              >
                 <IncomePage />
               </Suspense>
             ),
@@ -77,10 +83,24 @@ export const router = createBrowserRouter([
           {
             path: '/settings',
             element: (
-              <Suspense fallback={<Loading />}>
+              <Suspense
+                fallback={<Loading full label={messages.state_loading()} />}
+              >
                 <SettingsPage />
               </Suspense>
             ),
+          },
+
+          // The ledgers moved out of `/financial/` on 2026-09-11. Filters live
+          // in the query string, so a shared or bookmarked view is a real URL
+          // someone holds — these carry it across rather than 404ing it.
+          {
+            path: '/financial/expenses',
+            element: <LegacyRedirect to="/expenses" />,
+          },
+          {
+            path: '/financial/income',
+            element: <LegacyRedirect to="/income" />,
           },
         ],
       },

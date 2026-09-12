@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { getErrorMessage } from '@/utils/errors'
+import type { ReactNode } from 'react'
 
 interface Props {
   id: string
@@ -70,15 +70,7 @@ export const SectionShell = ({
         </p>
       )}
 
-      {isLoading && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="text-muted py-4 text-[12px]"
-        >
-          {m.state_loading()}
-        </p>
-      )}
+      {/* {isLoading && <Loading label={m.state_loading()} />} */}
 
       {isError && (
         <div role="alert" className="bg-card plate-shadow rounded-xl p-4">

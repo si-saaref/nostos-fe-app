@@ -31,7 +31,7 @@ beforeEach(() => {
 describe('useIncomeFilters', () => {
   it('defaults to the current calendar month, written into the filters', async () => {
     const { result } = renderHook(() => useIncomeFilters(HOUSEHOLD), {
-      wrapper: wrapperAt('/financial/income'),
+      wrapper: wrapperAt('/income'),
     })
 
     const thisMonth = monthRange(new Date())
@@ -41,9 +41,7 @@ describe('useIncomeFilters', () => {
 
   it('reads the month out of the URL so a shared link opens the same view', () => {
     const { result } = renderHook(() => useIncomeFilters(HOUSEHOLD), {
-      wrapper: wrapperAt(
-        '/financial/income?dateFrom=2026-03-01&dateTo=2026-03-31',
-      ),
+      wrapper: wrapperAt('/income?dateFrom=2026-03-01&dateTo=2026-03-31'),
     })
 
     expect(result.current.month.getFullYear()).toBe(2026)
@@ -53,7 +51,7 @@ describe('useIncomeFilters', () => {
   it('steps whole months and resets the page with them', async () => {
     const { result } = renderHook(() => useIncomeFilters(HOUSEHOLD), {
       wrapper: wrapperAt(
-        '/financial/income?dateFrom=2026-03-01&dateTo=2026-03-31&page=4',
+        '/income?dateFrom=2026-03-01&dateTo=2026-03-31&page=4',
       ),
     })
 
@@ -69,16 +67,14 @@ describe('useIncomeFilters', () => {
 
   it('cannot step past the month containing today', () => {
     const { result } = renderHook(() => useIncomeFilters(HOUSEHOLD), {
-      wrapper: wrapperAt('/financial/income'),
+      wrapper: wrapperAt('/income'),
     })
     expect(result.current.canStepForward).toBe(false)
   })
 
   it('exposes the previous month, so the strip can compare against it', () => {
     const { result } = renderHook(() => useIncomeFilters(HOUSEHOLD), {
-      wrapper: wrapperAt(
-        '/financial/income?dateFrom=2026-03-01&dateTo=2026-03-31',
-      ),
+      wrapper: wrapperAt('/income?dateFrom=2026-03-01&dateTo=2026-03-31'),
     })
     expect(result.current.previousMonth.from).toBe('2026-02-01')
     expect(result.current.previousMonth.to).toBe('2026-02-28')
@@ -86,7 +82,7 @@ describe('useIncomeFilters', () => {
 
   it('ignores a junk page in the URL rather than sending it', () => {
     const { result } = renderHook(() => useIncomeFilters(HOUSEHOLD), {
-      wrapper: wrapperAt('/financial/income?page=lol&limit=-3'),
+      wrapper: wrapperAt('/income?page=lol&limit=-3'),
     })
     expect(result.current.filters.page).toBe(1)
     expect(result.current.filters.limit).toBeGreaterThan(0)
@@ -94,7 +90,7 @@ describe('useIncomeFilters', () => {
 
   it('asks for a whole month in one request', () => {
     const { result } = renderHook(() => useIncomeFilters(HOUSEHOLD), {
-      wrapper: wrapperAt('/financial/income'),
+      wrapper: wrapperAt('/income'),
     })
     // The statement is continuous rather than paginated, and the strip's
     // derived figures are only shown when the page holds every row.

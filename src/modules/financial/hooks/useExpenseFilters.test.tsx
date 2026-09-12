@@ -7,9 +7,7 @@ import { useExpenseFilters } from '@/modules/financial/hooks/useExpenseFilters'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={createTestQueryClient()}>
-    <MemoryRouter initialEntries={['/financial/expenses']}>
-      {children}
-    </MemoryRouter>
+    <MemoryRouter initialEntries={['/expenses']}>{children}</MemoryRouter>
   </QueryClientProvider>
 )
 
@@ -42,7 +40,7 @@ describe('useExpenseFilters', () => {
     const { result } = renderHook(() => useExpenseFilters('household-001'), {
       wrapper: ({ children }) => (
         <QueryClientProvider client={createTestQueryClient()}>
-          <MemoryRouter initialEntries={['/financial/expenses']}>
+          <MemoryRouter initialEntries={['/expenses']}>
             {children}
             <Probe />
           </MemoryRouter>
@@ -61,9 +59,7 @@ describe('useExpenseFilters', () => {
   // fact. Before this, `?order=lol` was cast to 'asc' | 'desc' and forwarded.
   it('falls back to safe defaults for junk in the URL', () => {
     const { result } = renderHook(() => useExpenseFilters('household-001'), {
-      wrapper: wrapperAt(
-        '/financial/expenses?order=lol&limit=abc&page=-3&sortBy=drop',
-      ),
+      wrapper: wrapperAt('/expenses?order=lol&limit=abc&page=-3&sortBy=drop'),
     })
     expect(result.current.filters.sortOrder).toBe('desc')
     expect(result.current.filters.sortBy).toBe('datePaid')
@@ -73,7 +69,7 @@ describe('useExpenseFilters', () => {
 
   it('accepts the values it does support', () => {
     const { result } = renderHook(() => useExpenseFilters('household-001'), {
-      wrapper: wrapperAt('/financial/expenses?order=asc&sortBy=value&limit=50'),
+      wrapper: wrapperAt('/expenses?order=asc&sortBy=value&limit=50'),
     })
     expect(result.current.filters.sortOrder).toBe('asc')
     expect(result.current.filters.sortBy).toBe('value')
