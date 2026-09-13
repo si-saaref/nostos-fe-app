@@ -20,9 +20,29 @@ beforeEach(() => {
 const renderPage = (household?: Parameters<typeof renderWithProviders>[1]) =>
   renderWithProviders(<IncomePage />, household)
 
+/**
+ * The income list has answered.
+ *
+ * This used to wait for the loading indicator to disappear, which stopped
+ * meaning anything the moment that indicator was commented out of the page
+ * (87489fa): `queryByText` returned null on the very first render, so every
+ * test that queried synchronously afterwards was racing the response and
+ * passing only by luck.
+ *
+ * The scope line is the honest signal. It is the one element that states what
+ * the list actually returned — a count once rows are in, and otherwise one of
+ * the two stated empty months. All three are unreachable before the response
+ * lands, which is exactly the property a settle helper needs.
+ */
+const SETTLED =
+  /·\s*\d+\s*(entri|entries)|tidak ada catatan|nothing recorded|pemasukan pertama|first income/i
+
 const settled = async () =>
   waitFor(() =>
-    expect(screen.queryByText(/memuat pemasukan|loading income/i)).toBeNull(),
+    // `queryAll`, not `query`: a settled page states its count in the scope
+    // line and again on every day shelf, and how many places say so is not
+    // what is being asked. One is enough.
+    expect(screen.queryAllByText(SETTLED).length).toBeGreaterThan(0),
   )
 
 describe('IncomePage', () => {
@@ -72,7 +92,7 @@ describe('IncomePage', () => {
     await settled()
 
     const day = await screen.findByRole('region', {
-      name: /1 September|September 1/i,
+      name: /\b1 September|September 1\b/i,
     })
     // 8.600.000 arrived, 1.200.000 only changed pockets. Their sum, 9.800.000,
     // is money the household never gained and must appear nowhere.
@@ -88,7 +108,7 @@ describe('IncomePage', () => {
 
     // The 2nd carries one deposit and nothing from outside.
     const day = await screen.findByRole('region', {
-      name: /2 September|September 2/i,
+      name: /\b2 September|September 2\b/i,
     })
     expect(day.textContent).toMatch(/pindah|moved/i)
     expect(day.textContent).not.toMatch(/\+/)
