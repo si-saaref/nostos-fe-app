@@ -14,10 +14,12 @@ import { useActivePayers, useRoster } from '@/modules/settings/api/members'
 import { useHousehold } from '@/contexts/useHousehold'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { getErrorMessage } from '@/utils/errors'
-import { MONEY_MIN, MONEY_STEP, isValidMoney } from '@/utils/money'
+import { MONEY_MIN, isValidMoney } from '@/utils/money'
 import { isoDay } from '@/utils/dates'
 import { Select } from '@/components/Select'
 import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
+import { AmountInput } from '@/components/AmountInput'
+import { DateField } from '@/components/DateField'
 import { FormField } from '@/components/FormField'
 import { rimFor } from '@/theme/rims'
 import type { Blocker } from '@/components/FormBlockers'
@@ -43,6 +45,9 @@ interface Props {
  * after the fact, and nothing here is worth losing to a length error.
  */
 const NAME_MAX = 100
+
+/** Room for a shopping list, not for an essay. Mirrors the column's cap. */
+const DESCRIPTION_MAX = 500
 
 /**
  * Create is open to every member — the permission matrix gates update and
@@ -94,7 +99,9 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
   } = useForm<CreateExpenseInput>({
     defaultValues: {
       name: expense?.name ?? '',
-      value: expense?.value ?? 0,
+      description: expense?.description ?? '',
+      // No zero seed: an empty field asks for the amount, a `0` states one.
+      value: expense?.value,
       typeId: expense?.typeId ?? '',
       sourceId: expense?.sourceId ?? '',
       datePaid: expense?.datePaid ?? today,
@@ -201,7 +208,11 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
     <form
       onSubmit={guardedSubmit}
       noValidate
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      // Named, because the ledger page can hold this form and a filter row
+      // with pickers of the same name: without it, "the type picker" is
+      // ambiguous to a screen reader exactly as it was to the test.
+      aria-label={m.action_record_long()}
+      className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3"
     >
       <FormBlockers blockers={blockers} />
 
@@ -213,41 +224,47 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
         />
       </FormField>
 
-      <FormField label={m.form_amount()} error={errors.value?.message}>
-        <input
-          type="number"
-          inputMode="decimal"
-          step={MONEY_STEP}
-          min={MONEY_MIN}
-          className="well-shadow bg-chip tnum w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('value', {
-            required: m.form_err_amount(),
-            valueAsNumber: true,
-            // `min: 1` used to sit here, which silently made a split bill
-            // unrecordable: the API takes two decimal places, so 50000.50 is a
-            // valid amount and 0.01 is the real floor. One predicate rather
-            // than two rules, so "0" and "10.999" each get the message that
-            // names their own problem. No ceiling — BE's cap is twelve digits
-            // (deviation #6) and not ours to enforce.
-            validate: (value) =>
-              !Number.isFinite(value) || value < MONEY_MIN
+      <Controller
+        control={control}
+        name="value"
+        rules={{
+          // One predicate rather than two rules, so an empty field, "0" and a
+          // third decimal each get the message that names their own problem.
+          // No ceiling — BE's cap is twelve digits (deviation #6), not ours.
+          validate: (amount) =>
+            amount === undefined
+              ? m.form_err_amount()
+              : amount < MONEY_MIN
                 ? m.form_err_positive()
-                : isValidMoney(value) || m.form_err_decimals(),
-          })}
-        />
-      </FormField>
+                : isValidMoney(amount) || m.form_err_decimals(),
+        }}
+        render={({ field, fieldState }) => (
+          <AmountInput
+            label={m.form_amount()}
+            value={field.value}
+            onChange={field.onChange}
+            error={fieldState.error?.message}
+          />
+        )}
+      />
 
-      <FormField label={m.form_date()} error={errors.datePaid?.message}>
-        <input
-          type="date"
-          max={today}
-          className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-          {...register('datePaid', {
-            required: m.form_err_date(),
-            validate: (value) => value <= today || m.form_err_future(),
-          })}
-        />
-      </FormField>
+      <Controller
+        control={control}
+        name="datePaid"
+        rules={{
+          required: m.form_err_date(),
+          validate: (day) => day <= today || m.form_err_future(),
+        }}
+        render={({ field, fieldState }) => (
+          <DateField
+            label={m.form_date()}
+            value={field.value}
+            onChange={field.onChange}
+            max={today}
+            error={fieldState.error?.message}
+          />
+        )}
+      />
 
       <Controller
         control={control}
@@ -311,6 +328,24 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
           />
         )}
       />
+
+      {/* Last, and full width. Sitting third it broke the six real fields
+          into three ragged rows with half of each one empty; at the end it
+          closes the form under a filled grid. */}
+      <div className="sm:col-span-2 lg:col-span-3">
+        <FormField label={m.form_description()}>
+          {/* One line to start, growing with what is typed into it. Two
+                fixed rows reserved a band of empty well on every entry that
+                never needed the field. */}
+          <textarea
+            rows={1}
+            maxLength={DESCRIPTION_MAX}
+            placeholder={m.form_description_hint()}
+            className="well-shadow bg-chip placeholder:text-muted field-sizing-content max-h-32 min-h-[34px] w-full resize-y rounded-lg px-3 py-2 text-[12.5px] outline-none"
+            {...register('description')}
+          />
+        </FormField>
+      </div>
 
       {error && !handledOnField && (
         <p

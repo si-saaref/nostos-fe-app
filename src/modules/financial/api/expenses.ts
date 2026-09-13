@@ -81,6 +81,7 @@ const toRequestParams = (filters?: ExpenseFilters) => {
 export const toExpense = (row: WireExpense): Expense => ({
   id: row.id,
   name: row.name,
+  description: row.description,
   value: row.value,
   typeId: row.type_id,
   sourceId: row.source_id,
@@ -96,6 +97,9 @@ export const toExpense = (row: WireExpense): Expense => ({
 /** Domain → wire, for the create body. */
 const toExpenseBody = (input: CreateExpenseInput) => ({
   name: input.name,
+  // Blank is absent. The server coerces `''` to `null` anyway, but sending
+  // the empty string would make "" and null both reachable from here.
+  description: input.description?.trim() || null,
   value: input.value,
   type_id: input.typeId,
   source_id: input.sourceId,
@@ -117,6 +121,11 @@ const toExpenseBody = (input: CreateExpenseInput) => ({
 const toExpensePatch = (patch: UpdateExpenseInput) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
+  // `null` clears it; the server treats a blank string as a clear too, and
+  // normalising here keeps the two spellings from both being reachable.
+  if (patch.description !== undefined) {
+    body.description = patch.description?.trim() || null
+  }
   if (patch.value !== undefined) body.value = patch.value
   if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.sourceId !== undefined) body.source_id = patch.sourceId
@@ -193,7 +202,17 @@ const OPTIMISTIC_PREFIX = 'optimistic-'
 export const isOptimisticId = (id: string): boolean =>
   id.startsWith(OPTIMISTIC_PREFIX)
 
-export const useExpenses = (householdId: string, filters?: ExpenseFilters) =>
+/**
+ * `options.enabled` is how a caller retires its own request. Several figures
+ * on the ledger were bought with a second and third `/expenses` because the
+ * list route could not answer them; each of those callers now switches itself
+ * off the moment `meta.summary` carries the answer instead.
+ */
+export const useExpenses = (
+  householdId: string,
+  filters?: ExpenseFilters,
+  options?: { enabled?: boolean },
+) =>
   useQuery({
     queryKey: expenseKeys.list(householdId, filters),
     queryFn: async () =>
@@ -203,7 +222,7 @@ export const useExpenses = (householdId: string, filters?: ExpenseFilters) =>
         }),
         toExpense,
       ),
-    enabled: Boolean(householdId),
+    enabled: Boolean(householdId) && (options?.enabled ?? true),
   })
 
 export const useCreateExpense = (householdId: string) => {

@@ -9,6 +9,7 @@ import {
   ok,
   okPage,
   pause,
+  previousPeriod,
 } from '@/mocks/handlers/shared'
 import type { WireMeta } from '@/mocks/handlers/shared'
 import { averageMoney, isValidMoney, sumMoney } from '@/utils/money'
@@ -22,6 +23,7 @@ import type { StoredExpense, WireExpense } from '@/types/expense'
 const toWire = (expense: StoredExpense): WireExpense => ({
   id: expense.id,
   name: expense.name,
+  description: expense.description ?? null,
   value: expense.value,
   type_id: expense.typeId,
   source_id: expense.sourceId,
@@ -42,20 +44,55 @@ const toWire = (expense: StoredExpense): WireExpense => ({
 const live = (): StoredExpense[] =>
   db.expenses.filter((expense) => expense.deletedAt === null)
 
+const totalsFor = (items: StoredExpense[]) => {
+  const sum = sumMoney(items.map((expense) => expense.value))
+  return { sum, count: items.length, average: averageMoney(sum, items.length) }
+}
+
+/** Ranked `sum DESC, count DESC, id ASC`, capped at 5, as the API ranks it. */
+const rank = (
+  items: StoredExpense[],
+  keyOf: (row: StoredExpense) => string,
+) => {
+  const byKey = new Map<string, { sum: number; count: number }>()
+  items.forEach((row) => {
+    const key = keyOf(row)
+    const bucket = byKey.get(key) ?? { sum: 0, count: 0 }
+    byKey.set(key, { sum: bucket.sum + row.value, count: bucket.count + 1 })
+  })
+  return [...byKey.entries()]
+    .map(([id, bucket]) => ({
+      id,
+      sum: sumMoney([bucket.sum]),
+      count: bucket.count,
+    }))
+    .sort(
+      (a, b) => b.sum - a.sum || b.count - a.count || a.id.localeCompare(b.id),
+    )
+    .slice(0, 5)
+}
+
 /**
  * The counts, hoisted into `meta` where the envelope puts them.
  *
- * `totals` is computed over `items` — the whole filtered set — before the page
- * is sliced out of it, which is the property everything rendering from it
- * depends on. Computing them after the slice would make them page-scoped, and
- * a count strip that changes when you turn the page is reporting nothing.
+ * Every block is computed over `items` — the whole filtered set — before the
+ * page is sliced out of it, which is the property everything rendering from
+ * them depends on. Computing them after the slice would make them
+ * page-scoped, and a count strip that changes when you turn the page is
+ * reporting nothing.
+ *
+ * `summary` supersedes `totals`; both are sent while `totals` is deprecated,
+ * and `summary.current` is the same aggregate so the two cannot disagree.
+ * `previous` is omitted rather than zeroed when no period resolves — absent
+ * means "not computed", and a `0` is a claim about the household's money.
  */
 const metaFor = (
   items: StoredExpense[],
   page: number,
   limit: number,
+  previous: StoredExpense[] | null,
 ): WireMeta => {
-  const sum = sumMoney(items.map((expense) => expense.value))
+  const current = totalsFor(items)
   return {
     pagination: {
       page,
@@ -63,10 +100,15 @@ const metaFor = (
       total: items.length,
       total_pages: Math.max(1, Math.ceil(items.length / limit)),
     },
-    totals: {
-      sum,
-      count: items.length,
-      average: averageMoney(sum, items.length),
+    totals: current,
+    summary: {
+      current,
+      ...(previous ? { previous: totalsFor(previous) } : {}),
+      // Always present, `[]` included: "nothing matched" is an answer.
+      breakdown: {
+        by_type: rank(items, (row) => row.typeId),
+        by_member: rank(items, (row) => row.paidByUserId),
+      },
     },
   }
 }
@@ -201,31 +243,43 @@ export const expenseHandlers = [
       return errorBody(400, 'VALIDATION_ERROR', 'page must be an integer ≥ 1')
     }
 
-    const matches = (expense: StoredExpense) => {
+    // Every filter but the period, so `previous` can reuse it with a
+    // different window — the same reason the API shares one `where` builder.
+    const matchesExceptPeriod = (expense: StoredExpense) => {
       const typeId = params.get('type_id')
       const sourceId = params.get('source_id')
       const paidBy = params.get('paid_by_user_id')
-      const from = params.get('date_from')
-      const to = params.get('date_to')
       if (typeId && expense.typeId !== typeId) return false
       if (sourceId && expense.sourceId !== sourceId) return false
       if (paidBy && expense.paidByUserId !== paidBy) return false
-      if (from && expense.datePaid < from) return false
-      if (to && expense.datePaid > to) return false
       if (search && !expense.name.toLowerCase().includes(search)) return false
       return true
     }
+    const within = (expense: StoredExpense, from: string, to: string) =>
+      (!from || expense.datePaid >= from) && (!to || expense.datePaid <= to)
 
+    const from = params.get('date_from') ?? ''
+    const to = params.get('date_to') ?? ''
     const items = live()
-      .filter(matches)
+      .filter(
+        (expense) => matchesExceptPeriod(expense) && within(expense, from, to),
+      )
       .sort((a, b) =>
         ascending ? compare(a, b, sortBy) : compare(b, a, sortBy),
       )
 
+    const back = previousPeriod(params.get('date_from'), params.get('date_to'))
+    const previous = back
+      ? live().filter(
+          (expense) =>
+            matchesExceptPeriod(expense) && within(expense, back.from, back.to),
+        )
+      : null
+
     const start = (page - 1) * limit
     return okPage(
       items.slice(start, start + limit).map(toWire),
-      metaFor(items, page, limit),
+      metaFor(items, page, limit, previous),
     )
   }),
 
@@ -245,6 +299,9 @@ export const expenseHandlers = [
     const created: StoredExpense = {
       id: nextId('exp'),
       name: body.name ?? '',
+      // Blank is coerced to null on write, so `''` never reaches the store
+      // and a reader never has to treat the two as the same thing.
+      description: body.description?.trim() || null,
       value: body.value ?? 0,
       typeId: body.type_id ?? '',
       sourceId: body.source_id ?? '',
@@ -265,8 +322,12 @@ export const expenseHandlers = [
     await pause(WRITE_LATENCY_MS)
     const body = (await request.json()) as Partial<WireExpense> &
       Record<string, unknown>
-    // Every field is non-nullable: absent leaves it alone, null is a 400.
-    const nulled = Object.keys(body).find((key) => body[key] === null)
+    // `description` is the one nullable column on the ledger, and `null` is
+    // how it is cleared. Every other field is non-nullable: absent leaves it
+    // alone, null is a 400.
+    const nulled = Object.keys(body).find(
+      (key) => body[key] === null && key !== 'description',
+    )
     if (nulled) {
       return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
         {
@@ -286,6 +347,9 @@ export const expenseHandlers = [
     db.expenses[index] = {
       ...current,
       ...(body.name !== undefined && { name: body.name }),
+      ...(body.description !== undefined && {
+        description: body.description?.trim() || null,
+      }),
       ...(body.value !== undefined && { value: body.value }),
       ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.source_id !== undefined && { sourceId: body.source_id }),

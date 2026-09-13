@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Loading } from '@/components/Loading'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
@@ -96,15 +97,9 @@ export const PositionCard = ({
     return (
       <section
         aria-label={m.pos_title()}
-        className="bg-card plate-shadow rounded-xl px-4 py-3.5"
+        className="bg-card plate-shadow rounded-xl"
       >
-        <p
-          role="status"
-          aria-live="polite"
-          className="text-muted text-[11.5px]"
-        >
-          {m.state_loading()}
-        </p>
+        <Loading label={m.state_loading()} />
       </section>
     )
   }

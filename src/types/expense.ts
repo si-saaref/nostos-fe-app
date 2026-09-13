@@ -1,6 +1,14 @@
 export interface Expense {
   id: string
   name: string
+  /**
+   * The detail behind the name. "Shop Market" is the entry; what came home
+   * from it belongs here, not crammed into a 60-character title.
+   *
+   * Optional and gated on `API_CAPABILITIES.entryDescription` until the
+   * column ships — see `notes/FE-App/API-CHANGES-2026-09-10.md` §1.
+   */
+  description?: string | null
   value: number
   typeId: string
   sourceId: string
@@ -23,6 +31,7 @@ export interface Expense {
 
 export interface CreateExpenseInput {
   name: string
+  description?: string | null
   value: number
   typeId: string
   sourceId: string
@@ -66,6 +75,7 @@ export interface ExpenseFilters {
 export interface WireExpense {
   id: string
   name: string
+  description?: string | null
   value: number
   type_id: string
   source_id: string

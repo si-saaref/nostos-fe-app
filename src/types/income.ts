@@ -14,6 +14,8 @@
 export interface Income {
   id: string
   name: string
+  /** The detail behind the name. See `Expense.description`. */
+  description?: string | null
   amount: number
   /**
    * Foreign key into the household's `income_types`. The row stores the key,
@@ -37,6 +39,7 @@ export interface Income {
 
 export interface CreateIncomeInput {
   name: string
+  description?: string | null
   amount: number
   typeId: string
   fromSourceId: string | null
@@ -56,13 +59,15 @@ export interface CreateIncomeInput {
 export type UpdateIncomeInput = Partial<CreateIncomeInput>
 
 /**
- * Month is the only scope. Search, filter and sort are deferred by the PRD, so
- * there is deliberately nothing here to narrow by type, source or person —
- * a filter the API does not accept is a control that looks like it works.
+ * Month and type are the whole scope. Both reach the server, so `meta.summary`
+ * is narrowed with the rows and the strip cannot disagree with the statement
+ * under it. Search, source and sort stay deferred by the PRD: a filter the API
+ * does not accept is a control that looks like it works.
  */
 export interface IncomeFilters {
   dateFrom?: string
   dateTo?: string
+  typeId?: string
   page: number
   limit: number
 }
@@ -75,6 +80,7 @@ export interface IncomeFilters {
 export interface WireIncome {
   id: string
   name: string
+  description?: string | null
   amount: number
   type_id: string
   from_source_id: string | null

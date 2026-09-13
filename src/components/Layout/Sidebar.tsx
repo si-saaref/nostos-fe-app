@@ -20,14 +20,19 @@ const LIVE: NavItem[] = [
     icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   },
   {
-    to: '/financial/expenses',
+    to: '/expenses',
     label: messages.nav_expenses,
     icon: 'M4 6h16v12H4zM4 10h16M8 14h5',
   },
   {
-    to: '/financial/income',
+    to: '/income',
     label: messages.nav_income,
     icon: 'M12 20V4M5 11l7-7 7 7',
+  },
+  {
+    to: '/calendar',
+    label: messages.nav_calendar,
+    icon: 'M7 3v3m10-3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v13H4V7a1 1 0 0 1 1-1zM8 13h2m4 0h2m-8 4h2m4 0h2',
   },
   {
     to: '/settings',
@@ -55,9 +60,13 @@ const PLANNED: PlannedItem[] = [
   {
     id: 'plan',
     label: messages.nav_plan,
-    icon: 'M7 3v3m10-3v3M4 8h16M5 6h14a1 1 0 0 1 1 1v13H4V7a1 1 0 0 1 1-1z',
+    icon: 'M12 6v6l4 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
   },
 ]
+
+/** Door with an arrow leaving it — the same 1.6 stroke as the nav glyphs. */
+const SIGNOUT_ICON =
+  'M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M9 8l-4 4 4 4M5 12h9'
 
 const Glyph = ({ path }: { path: string }) => (
   <svg
@@ -87,7 +96,7 @@ export const Sidebar = () => {
   const logout = useLogout()
 
   return (
-    <aside className="bg-card hidden h-screen w-56 shrink-0 flex-col shadow-[1px_0_0_var(--hair)] lg:flex">
+    <aside className="bg-card hidden h-screen w-64 shrink-0 flex-col shadow-[1px_0_0_var(--hair)] lg:flex">
       <div className="px-4 py-4">
         <Logo />
       </div>
@@ -132,10 +141,13 @@ export const Sidebar = () => {
         </ul>
       </nav>
 
-      <div className="border-hair mt-2 border-t">
+      {/* Sign out rides beside the name rather than under it: it is the one
+          action here, and a second full-width row read as a second
+          destination. */}
+      <div className="border-hair relative mt-2 border-t">
         <Link
           to={settingsHref(SETTINGS_ANCHORS.household)}
-          className="hover:bg-chip flex items-center gap-2.5 px-3 py-3"
+          className="hover:bg-chip flex items-center gap-2.5 py-3 pr-12 pl-3"
         >
           <span
             aria-hidden="true"
@@ -157,9 +169,11 @@ export const Sidebar = () => {
           type="button"
           onClick={() => logout.mutate()}
           disabled={logout.isPending}
-          className="text-muted hover:text-ink w-full px-3 pb-3 text-left text-[11px] font-semibold disabled:opacity-60"
+          aria-label={m.act_signout()}
+          title={m.act_signout()}
+          className="text-muted hover:bg-chip hover:text-ink absolute top-1/2 right-2.5 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg disabled:opacity-60"
         >
-          {m.act_signout()}
+          <Glyph path={SIGNOUT_ICON} />
         </button>
       </div>
     </aside>
@@ -180,13 +194,13 @@ export const BottomBar = () => {
           key={item.to}
           to={item.to}
           className={({ isActive }) =>
-            `flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-semibold ${
+            `flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-2 text-[10px] font-semibold ${
               isActive ? 'text-accent' : 'text-muted'
             }`
           }
         >
           <Glyph path={item.icon} />
-          {item.label()}
+          <span className="max-w-full truncate">{item.label()}</span>
         </NavLink>
       ))}
     </nav>

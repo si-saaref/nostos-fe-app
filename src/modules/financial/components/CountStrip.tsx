@@ -9,13 +9,26 @@ import { StripShell } from '@/modules/financial/components/StripShell'
 import { RIM_CLASS } from '@/theme/rims'
 import type { StripFigure } from '@/modules/financial/components/StripShell'
 import type { ScopeChip, TopSlice } from '@/modules/financial/types/ledger'
-import type { Totals } from '@/types/api'
+import type { Summary, Totals } from '@/types/api'
 import type { ExpenseFilters } from '@/types/expense'
 
 interface Props {
   householdId: string
   filters: ExpenseFilters
   totals?: Totals
+  /**
+   * The list response's summary block, when the deployment sends one. Its
+   * `previous` is the same figure the extra request below buys, so having it
+   * is what lets that request stand down.
+   */
+  summary?: Summary
+  /**
+   * Has the list query answered yet? Without it the fallback below fires on
+   * the first render of every page load — the summary cannot be inspected
+   * before the response carrying it arrives, so "no summary" and "not yet"
+   * look identical, and the request this is meant to retire goes out anyway.
+   */
+  listLoaded: boolean
   /** First day of the month in view. */
   month: Date
   onStepMonth: (delta: number) => void
@@ -46,6 +59,8 @@ export const CountStrip = ({
   householdId,
   filters,
   totals,
+  summary,
+  listLoaded,
   month,
   onStepMonth,
   onSelectMonth,
@@ -59,15 +74,26 @@ export const CountStrip = ({
   const currency = useCurrency()
   const previous = previousMonthRange(month)
 
-  const previousQuery = useExpenses(householdId, {
-    ...filters,
-    dateFrom: previous.from,
-    dateTo: previous.to,
-    page: 1,
-    limit: 1,
-  })
-  const previousTotals = previousQuery.data?.totals
+  // A whole second request for one number. It exists only because the list
+  // route could not answer "and what was last month?", and it disappears the
+  // moment the route can: `enabled` is false as soon as a summary carries it.
+  const askPrevious = listLoaded && summary?.previous === undefined
+  const previousQuery = useExpenses(
+    householdId,
+    {
+      ...filters,
+      dateFrom: previous.from,
+      dateTo: previous.to,
+      page: 1,
+      limit: 1,
+    },
+    { enabled: askPrevious },
+  )
+  const previousTotals = summary?.previous ?? previousQuery.data?.totals
 
+  // One flag for the four cells: they come from one response, so lighting
+  // them up one at a time would be theatre.
+  const isLoading = !listLoaded
   const sum = totals?.sum ?? 0
   const count = totals?.count ?? 0
   const average = totals?.average ?? 0
@@ -93,6 +119,7 @@ export const CountStrip = ({
   const figures: StripFigure[] = [
     {
       id: 'total',
+      isLoading,
       key: m.count_total(),
       value: formatCurrency(sum, currency, locale),
       note:
@@ -106,10 +133,12 @@ export const CountStrip = ({
     },
     {
       id: 'previous',
+      isLoading,
       key: m.count_previous(),
-      value: previousQuery.isLoading
-        ? '—'
-        : formatCurrency(previousSum, currency, locale),
+      value:
+        !previousTotals && previousQuery.isLoading
+          ? '—'
+          : formatCurrency(previousSum, currency, locale),
       note: previousTotals
         ? previousTotals.count === 1
           ? m.tape_entries_one()
@@ -119,6 +148,7 @@ export const CountStrip = ({
     },
     {
       id: 'entries',
+      isLoading,
       key: m.count_entries(),
       value: String(count),
       // Rounded: an average is a summary figure, and printing it to the cent
@@ -131,6 +161,7 @@ export const CountStrip = ({
     },
     {
       id: 'slice',
+      isLoading,
       key: slice?.kind === 'member' ? m.count_who() : m.count_where(),
       value: slice ? slice.name : '—',
       note: slice

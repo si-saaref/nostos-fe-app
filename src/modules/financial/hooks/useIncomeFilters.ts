@@ -11,6 +11,7 @@ import type { IncomeFilters } from '@/types/income'
 const PARAM_MAP: Record<keyof IncomeFilters, string> = {
   dateFrom: 'dateFrom',
   dateTo: 'dateTo',
+  typeId: 'type',
   page: 'page',
   limit: 'limit',
 }
@@ -26,14 +27,16 @@ const toPositiveInt = (value: string | null, fallback: number): number => {
  * left implicit, because every figure on the page is scoped by it and a total
  * whose range is unstated misreports silently.
  *
- * Search, type, source and sort are deliberately absent: the PRD defers them,
- * and a filter the route does not accept is a control that looks like it works.
+ * `typeId` travels the same way — in the URL, so a narrowed view is shareable
+ * and survives a reload, and on to the server, so the aggregates are scoped
+ * with the rows. Search, source and sort stay deferred by the PRD.
  */
 const parseFilters = (params: URLSearchParams): IncomeFilters => {
   const thisMonth = monthRange(new Date())
   return {
     dateFrom: params.get('dateFrom') ?? thisMonth.from,
     dateTo: params.get('dateTo') ?? thisMonth.to,
+    typeId: params.get('type') ?? undefined,
     page: toPositiveInt(params.get('page'), 1),
     // One request per month. The statement is continuous, and the strip's
     // derived figures only render when the page holds every row of the month.

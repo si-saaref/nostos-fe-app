@@ -9,6 +9,7 @@ import {
   ok,
   okPage,
   pause,
+  previousPeriod,
 } from '@/mocks/handlers/shared'
 import type { WireMeta } from '@/mocks/handlers/shared'
 import { averageMoney, isValidMoney, roundMoney, sumMoney } from '@/utils/money'
@@ -17,6 +18,7 @@ import type { StoredIncome, WireIncome } from '@/types/income'
 const toWire = (income: StoredIncome): WireIncome => ({
   id: income.id,
   name: income.name,
+  description: income.description ?? null,
   amount: income.amount,
   type_id: income.typeId,
   from_source_id: income.fromSourceId,
@@ -42,17 +44,28 @@ const live = (): StoredIncome[] =>
  * Computed over the whole filtered set before the page is sliced out of it — a
  * total that changes when you turn the page is reporting nothing.
  */
+const totalsFor = (items: StoredIncome[]) => {
+  const into = sumMoney(items.map((row) => row.amount))
+  const transfers = items.filter((row) => row.fromSourceId !== null)
+  const outOf = sumMoney(transfers.map((row) => row.amount))
+  const sum = roundMoney(into - outOf)
+  return {
+    sum,
+    count: items.length,
+    average: averageMoney(sum, items.length),
+    moved: outOf,
+    external_count: items.length - transfers.length,
+    transfer_count: transfers.length,
+  }
+}
+
 const metaFor = (
   items: StoredIncome[],
   page: number,
   limit: number,
+  previous: StoredIncome[] | null,
 ): WireMeta => {
-  const into = sumMoney(items.map((row) => row.amount))
-  const outOf = sumMoney(
-    items.filter((row) => row.fromSourceId !== null).map((row) => row.amount),
-  )
-  const sum = roundMoney(into - outOf)
-  const transfers = items.filter((row) => row.fromSourceId !== null)
+  const current = totalsFor(items)
   return {
     pagination: {
       page,
@@ -60,13 +73,12 @@ const metaFor = (
       total: items.length,
       total_pages: Math.max(1, Math.ceil(items.length / limit)),
     },
-    totals: {
-      sum,
-      count: items.length,
-      average: averageMoney(sum, items.length),
-      moved: outOf,
-      external_count: items.length - transfers.length,
-      transfer_count: transfers.length,
+    totals: current,
+    // No `breakdown`: income has no `paid_by_user_id`, only who typed the row,
+    // so a by-member ranking here would answer a question nobody asked.
+    summary: {
+      current,
+      ...(previous ? { previous: totalsFor(previous) } : {}),
     },
   }
 }
@@ -177,8 +189,15 @@ export const incomeHandlers = [
 
     const from = params.get('date_from')
     const to = params.get('date_to')
+    const typeId = params.get('type_id')
+    // Every filter but the period, so `previous` reuses it with a different
+    // window — the same reason the API shares one `where` builder.
+    const matchesExceptPeriod = (row: StoredIncome) =>
+      !typeId || row.typeId === typeId
+
     const items = live()
       .filter((row) => {
+        if (!matchesExceptPeriod(row)) return false
         if (from && row.date < from) return false
         if (to && row.date > to) return false
         return true
@@ -188,12 +207,22 @@ export const incomeHandlers = [
       // PRD means this order is the contract, not a default.
       .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
 
+    const back = previousPeriod(from, to)
+    const previous = back
+      ? live().filter(
+          (row) =>
+            matchesExceptPeriod(row) &&
+            row.date >= back.from &&
+            row.date <= back.to,
+        )
+      : null
+
     const start = (page - 1) * limit
     // A page past the end is an empty list with real totals, never a 404
     // (AC2.4): the household's month has a sum whether or not page 9 exists.
     return okPage(
       items.slice(start, start + limit).map(toWire),
-      metaFor(items, page, limit),
+      metaFor(items, page, limit, previous),
     )
   }),
 
@@ -225,6 +254,8 @@ export const incomeHandlers = [
     const created: StoredIncome = {
       id: nextId('inc'),
       name: body.name ?? '',
+      // Blank is coerced to null on write — see the expense handler.
+      description: body.description?.trim() || null,
       amount: body.amount ?? 0,
       typeId: body.type_id ?? '',
       fromSourceId: body.from_source_id ?? null,
@@ -247,10 +278,11 @@ export const incomeHandlers = [
       Record<string, unknown>
 
     // Three-way PATCH (AC3.4): absent leaves it alone, a value writes it, null
-    // clears it. Only `from_source_id` is nullable, so a null anywhere else is
-    // a 400 rather than a silent no-op.
+    // clears it. `from_source_id` and `description` are the two nullable
+    // fields, so a null anywhere else is a 400 rather than a silent no-op.
     const nulled = Object.keys(body).find(
-      (key) => body[key] === null && key !== 'from_source_id',
+      (key) =>
+        body[key] === null && key !== 'from_source_id' && key !== 'description',
     )
     if (nulled) {
       return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
@@ -274,6 +306,9 @@ export const incomeHandlers = [
     db.income[index] = {
       ...current,
       ...(body.name !== undefined && { name: body.name }),
+      ...(body.description !== undefined && {
+        description: body.description?.trim() || null,
+      }),
       ...(body.amount !== undefined && { amount: body.amount }),
       ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.from_source_id !== undefined && {

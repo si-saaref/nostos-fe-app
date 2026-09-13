@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { DismissablePanel } from '@/components/DismissablePanel'
 import { FormField } from '@/components/FormField'
 import { SettingPlate } from '@/modules/settings/components/SettingPlate'
 import { SectionShell } from '@/modules/settings/components/SectionShell'
@@ -13,6 +14,7 @@ import {
 import { MAX_PAGE_SIZE, useIncome } from '@/modules/financial/api/income'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { isoDay } from '@/utils/dates'
+import { capitalizeFirst } from '@/utils/text'
 import type { IncomeType } from '@/types/income'
 
 interface Props {
@@ -75,7 +77,7 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
 
   const hasNone = (types?.length ?? 0) === 0
   const addType = (name: string, then?: () => void) => {
-    const trimmed = name.trim()
+    const trimmed = capitalizeFirst(name.trim())
     if (!trimmed) return
     create({ name: trimmed }, { onSuccess: then })
   }
@@ -126,48 +128,53 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
       <ul className="flex flex-col gap-1.5">
         {isAdding && (
           <li>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault()
-                addType(newName, () => {
-                  setNewName('')
-                  setIsAdding(false)
-                })
-              }}
-              className="bg-card lift-shadow flex flex-wrap items-end gap-2 rounded-lg p-3"
-            >
-              <FormField
-                label={m.itype_name()}
-                className="min-w-[200px] flex-1"
+            <DismissablePanel onDismiss={() => setIsAdding(false)}>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  addType(newName, () => {
+                    setNewName('')
+                    setIsAdding(false)
+                  })
+                }}
+                className="bg-card lift-shadow flex flex-wrap items-end gap-2 rounded-lg p-3"
               >
-                <input
-                  autoFocus
-                  value={newName}
-                  onChange={(event) => setNewName(event.target.value)}
-                  className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-                />
-              </FormField>
-              <button
-                type="submit"
-                disabled={isCreating}
-                className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
-              >
-                {isCreating ? m.act_saving() : m.act_add()}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAdding(false)}
-                className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
-              >
-                {m.act_cancel()}
-              </button>
-            </form>
+                <FormField
+                  label={m.itype_name()}
+                  className="min-w-[200px] flex-1"
+                >
+                  <input
+                    autoFocus
+                    value={newName}
+                    onChange={(event) => setNewName(event.target.value)}
+                    className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
+                  />
+                </FormField>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdding(false)}
+                    className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
+                  >
+                    {m.act_cancel()}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreating}
+                    className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+                  >
+                    {isCreating ? m.act_saving() : m.act_add()}
+                  </button>
+                </div>
+              </form>
+            </DismissablePanel>
           </li>
         )}
 
         {types?.map((type) => {
           const isOpen = openId === type.id
           const used = usageOf(type)
+          const isArchived = Boolean(type.archivedAt)
           return (
             <SettingPlate
               key={type.id}
@@ -179,9 +186,9 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
                     : m.itype_in_use({ n: used })
                   : undefined
               }
-              muted={Boolean(type.archivedAt)}
+              muted={isArchived}
               trailing={
-                type.archivedAt ? (
+                isArchived ? (
                   <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
                     {m.itype_archived()}
                   </span>
@@ -200,7 +207,7 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
                 >
                   <input
                     value={draftName}
-                    disabled={!canManage}
+                    disabled={!canManage || isArchived}
                     onChange={(event) => setDraftName(event.target.value)}
                     className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
                   />
@@ -208,16 +215,17 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
                 {canManage && (
                   <RowActions
                     onSave={() => {
-                      if (draftName.trim() && draftName !== type.name) {
-                        update({ id: type.id, name: draftName.trim() })
+                      const name = capitalizeFirst(draftName.trim())
+                      if (name && name !== type.name) {
+                        update({ id: type.id, name })
                       }
                       setOpenId(null)
                     }}
                     onArchive={
-                      type.archivedAt ? undefined : () => setToArchive(type)
+                      isArchived ? undefined : () => setToArchive(type)
                     }
                     onRestore={
-                      type.archivedAt
+                      isArchived
                         ? () => update({ id: type.id, archivedAt: null })
                         : undefined
                     }

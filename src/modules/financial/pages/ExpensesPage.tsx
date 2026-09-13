@@ -1,37 +1,31 @@
-import { useMessages } from '@/i18n/useMessages'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDeleteExpense } from '@/modules/financial/api/expenses'
-import { useActiveCategories } from '@/modules/settings/api/categories'
-import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useRoster } from '@/modules/settings/api/members'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { DismissablePanel } from '@/components/DismissablePanel'
 import { useHousehold } from '@/contexts/useHousehold'
 import { useSettings } from '@/contexts/useSettings'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useMessages } from '@/i18n/useMessages'
+import { useDeleteExpense } from '@/modules/financial/api/expenses'
 import { CountStrip } from '@/modules/financial/components/CountStrip'
 import { ExpenseFilter } from '@/modules/financial/components/ExpenseFilter'
 import { ExpenseForm } from '@/modules/financial/components/ExpenseForm'
 import { ExpenseTape } from '@/modules/financial/components/ExpenseTape'
 import { MonthRail } from '@/modules/financial/components/MonthRail'
-import { useItemBaselines } from '@/modules/financial/hooks/useItemBaselines'
 import { useExpenseFilters } from '@/modules/financial/hooks/useExpenseFilters'
-import { canManageExpenses } from '@/utils/permissions'
-import { getErrorMessage } from '@/utils/errors'
-import { rimFor } from '@/theme/rims'
-import { sumMoney } from '@/utils/money'
+import { useItemBaselines } from '@/modules/financial/hooks/useItemBaselines'
 import type {
   DayGroup,
   DayTotal,
   ScopeChip,
   TopSlice,
 } from '@/modules/financial/types/ledger'
+import { useActiveAccounts } from '@/modules/settings/api/accounts'
+import { useActiveCategories } from '@/modules/settings/api/categories'
+import { useRoster } from '@/modules/settings/api/members'
+import { rimFor } from '@/theme/rims'
 import type { Expense } from '@/types/expense'
-
-/**
- * One reading measure for every band of the page, so nothing sits off-grid.
- * Capped well short of a wide monitor: a ledger row two thousand pixels across
- * asks the eye to carry a name all the way to an amount, and loses it.
- */
-const MEASURE = 'mx-auto w-full max-w-[1320px]'
+import { getErrorMessage } from '@/utils/errors'
+import { sumMoney } from '@/utils/money'
+import { canManageExpenses } from '@/utils/permissions'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 export const ExpensesPage = () => {
   const m = useMessages()
@@ -211,9 +205,17 @@ export const ExpensesPage = () => {
   )
   const requestEdit = useCallback((expense: Expense) => {
     setExpenseToEdit(expense)
+    // One form on the page at a time. A blank "record" panel stacked above a
+    // populated "edit" panel offers two submits for two different acts and
+    // gives no clue which one Enter belongs to.
+    setShowForm(false)
     // The plate's disclosure and the edit panel would otherwise show the same
     // row twice, in two places, with two sets of values.
     setOpenId(null)
+  }, [])
+  const requestRecord = useCallback(() => {
+    setExpenseToEdit(null)
+    setShowForm(true)
   }, [])
   const requestDelete = useCallback(
     (expense: Expense) => setExpenseToDelete(expense),
@@ -226,6 +228,8 @@ export const ExpensesPage = () => {
   }).format(month)
 
   const canManage = canManageExpenses(role)
+  /** A form is on screen, so nothing else may offer to open one. */
+  const isRecording = showForm || expenseToEdit !== null
   const activeCategory = categories?.find(
     (category) => category.id === filters.typeId,
   )
@@ -270,24 +274,38 @@ export const ExpensesPage = () => {
    */
   const slice = useMemo<TopSlice | null>(() => {
     const total = data?.totals?.sum ?? 0
-    const inScope = data?.pagination?.total ?? expenses.length
-    if (total <= 0 || expenses.length < inScope) return null
+    if (total <= 0) return null
 
     const kind: TopSlice['kind'] = filters.typeId ? 'member' : 'category'
-    const keyOf = (expense: Expense) =>
-      kind === 'member' ? expense.paidByUserId : expense.typeId
     const nameOf = kind === 'member' ? nameOfUser : nameOfType
+    const share = (value: number) => Math.round((value / total) * 100)
 
-    const byKey = new Map<string, number>()
-    expenses.forEach((expense) => {
-      const key = keyOf(expense)
-      byKey.set(key, (byKey.get(key) ?? 0) + expense.value)
-    })
+    // Ranked by the server when it can. `meta.summary.breakdown` is computed
+    // over the whole filtered set, so it is true on page four as well — which
+    // is what retires the "only while we hold every row" guard below.
+    const served =
+      kind === 'member'
+        ? data?.summary?.breakdown?.byMember
+        : data?.summary?.breakdown?.byType
+    const ranked: Array<[string, number]> = served
+      ? served.map((entry) => [entry.id, entry.sum])
+      : (() => {
+          // Summed from the rows on hand, which is honest only while the page
+          // holds all of them.
+          if (expenses.length < (data?.pagination?.total ?? expenses.length)) {
+            return []
+          }
+          const byKey = new Map<string, number>()
+          expenses.forEach((expense) => {
+            const key =
+              kind === 'member' ? expense.paidByUserId : expense.typeId
+            byKey.set(key, (byKey.get(key) ?? 0) + expense.value)
+          })
+          return [...byKey.entries()].sort((a, b) => b[1] - a[1])
+        })()
 
-    const ranked = [...byKey.entries()].sort((a, b) => b[1] - a[1])
     const top = ranked[0]
     if (!top) return null
-    const share = (value: number) => Math.round((value / total) * 100)
     const second = ranked[1]
 
     return {
@@ -305,13 +323,13 @@ export const ExpensesPage = () => {
     <section className="flex h-full flex-col">
       {/* Pinned: the count and the filters never scroll away from the ledger
           they describe, because a total you cannot see cannot be trusted. */}
-      <div
-        className={`${MEASURE} flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6`}
-      >
+      <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
         <CountStrip
           householdId={householdId}
           filters={filters}
           totals={data?.totals}
+          summary={data?.summary}
+          listLoaded={data !== undefined}
           month={month}
           onStepMonth={stepMonth}
           onSelectMonth={setMonth}
@@ -329,26 +347,34 @@ export const ExpensesPage = () => {
               onChange={updateFilters}
             />
           </div>
-          <button
-            type="button"
-            onClick={() => setShowForm((open) => !open)}
-            className="bg-accent text-accent-ink hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
-          >
-            + {m.action_record_long()}
-          </button>
+          {!isRecording && (
+            <button
+              type="button"
+              onClick={requestRecord}
+              className="bg-accent text-accent-ink hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
+            >
+              + {m.action_record_long()}
+            </button>
+          )}
         </div>
 
         {showForm && (
-          <div className="bg-card lift-shadow rounded-xl p-4">
+          <DismissablePanel
+            onDismiss={() => setShowForm(false)}
+            className="bg-card lift-shadow rounded-xl p-4"
+          >
             <ExpenseForm
               onSuccess={() => setShowForm(false)}
               onCancel={() => setShowForm(false)}
             />
-          </div>
+          </DismissablePanel>
         )}
 
         {expenseToEdit && (
-          <div className="bg-card lift-shadow rounded-xl p-4">
+          <DismissablePanel
+            onDismiss={() => setExpenseToEdit(null)}
+            className="bg-card lift-shadow rounded-xl p-4"
+          >
             <h2 className="font-display mb-3 text-[12.5px] font-bold">
               {m.expense_edit_title({ name: expenseToEdit.name })}
             </h2>
@@ -360,7 +386,7 @@ export const ExpensesPage = () => {
               onSuccess={() => setExpenseToEdit(null)}
               onCancel={() => setExpenseToEdit(null)}
             />
-          </div>
+          </DismissablePanel>
         )}
 
         {deleteError && (
@@ -373,7 +399,7 @@ export const ExpensesPage = () => {
         )}
       </div>
 
-      <div className={`${MEASURE} flex min-h-0 flex-1 gap-4 px-4 pb-4 lg:px-6`}>
+      <div className="flex min-h-0 flex-1 gap-4 px-4 pb-4 lg:px-6">
         <MonthRail
           days={days}
           rangeFrom={filters.dateFrom}
@@ -388,15 +414,7 @@ export const ExpensesPage = () => {
           ref={scrollRef}
           className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-2"
         >
-          {isLoading && (
-            <p
-              role="status"
-              aria-live="polite"
-              className="text-muted py-8 text-sm"
-            >
-              {m.tape_loading()}
-            </p>
-          )}
+          {/* {isLoading && <Loading full label={m.tape_loading()} />} */}
 
           {isError && (
             <div role="alert" className="bg-card plate-shadow rounded-xl p-6">
@@ -415,8 +433,11 @@ export const ExpensesPage = () => {
               yet" was a claim about the household; an empty March is a fact
               about March, and the household may have ninety-nine entries in
               August. */}
+          {/* Full height, not a shallow card with a screen of nothing under
+              it: an empty month is the whole answer, so it occupies the whole
+              space the tape would have. */}
           {!isLoading && !isError && groups.length === 0 && (
-            <div className="bg-card plate-shadow rounded-xl p-8 text-center">
+            <div className="bg-card plate-shadow flex h-full min-h-[18rem] flex-col items-center justify-center rounded-xl p-8 text-center">
               <h2 className="font-display text-base font-bold">
                 {isNarrowed
                   ? m.tape_empty_filtered()
@@ -463,16 +484,18 @@ export const ExpensesPage = () => {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setShowForm((open) => !open)}
-        className="bg-accent text-accent-ink fixed right-4 bottom-20 z-30 flex h-12 items-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg lg:hidden"
-      >
-        <span aria-hidden="true" className="text-lg leading-none">
-          +
-        </span>
-        {m.action_record()}
-      </button>
+      {!isRecording && (
+        <button
+          type="button"
+          onClick={requestRecord}
+          className="bg-accent text-accent-ink fixed right-4 bottom-20 z-30 flex h-12 items-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg lg:hidden"
+        >
+          <span aria-hidden="true" className="text-lg leading-none">
+            +
+          </span>
+          {m.action_record()}
+        </button>
+      )}
 
       {/* Deleting a money record is irreversible, so it asks — the settings
           module already stops for the *less* destructive archive. */}

@@ -2,7 +2,11 @@ import { useCallback, useMemo } from 'react'
 import { MAX_PAGE_SIZE, useExpenses } from '@/modules/financial/api/expenses'
 import { isoDay, shiftDays } from '@/utils/dates'
 import type { Expense } from '@/types/expense'
-import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
+import type {
+  Baseline,
+  RecentPoint,
+  Verdict,
+} from '@/modules/financial/types/baseline'
 
 /**
  * "What's normal?" — the household's own history, per recurring item.
@@ -14,10 +18,12 @@ import type { Baseline, Verdict } from '@/modules/financial/types/baseline'
  * gets no verdict — we have nothing to compare it to, and saying nothing is
  * the honest answer.
  *
- * The API has no aggregate endpoint, so this is computed on the client from a
- * single wide request over recent history. That is affordable at household
- * scale (a few hundred rows) and needs no backend change; if grouped
- * aggregates ever ship, only this hook moves.
+ * The API has no aggregate for this, so it is computed on the client from one
+ * wide request over recent history — affordable at household scale (a few
+ * hundred rows). `meta.summary` retired the other two list calls on this page
+ * but not this one: a `summary.baselines` block is requested and not built
+ * (`notes/FE-App/API-CHANGES-REFACTOR-EXPENSE-INCOME-2026-09-10.md` §2), and
+ * when it lands only this hook moves.
  */
 const BASELINE_WINDOW_DAYS = 120
 
@@ -35,7 +41,7 @@ const QUIET_HIGH = 1.25
 const RECENT_TAKE = 4
 
 /** One shared empty result, so "no history" is referentially stable too. */
-const NO_ROWS: Expense[] = []
+const NO_ROWS: RecentPoint[] = []
 
 /** Same purchase, loosely spelled — "Token listrik" and "token  Listrik". */
 const itemKey = (name: string): string =>
@@ -170,7 +176,7 @@ export const useItemBaselines = (householdId: string) => {
    * a fresh array per call would defeat the tape's memoisation.
    */
   const recentByItem = useMemo(() => {
-    const result = new Map<string, Expense[]>()
+    const result = new Map<string, RecentPoint[]>()
     byItem.forEach((rows, key) => {
       result.set(key, rows.slice(0, RECENT_TAKE).reverse())
     })
@@ -178,7 +184,7 @@ export const useItemBaselines = (householdId: string) => {
   }, [byItem])
 
   const recentFor = useCallback(
-    (name: string): Expense[] => recentByItem.get(itemKey(name)) ?? NO_ROWS,
+    (name: string): RecentPoint[] => recentByItem.get(itemKey(name)) ?? NO_ROWS,
     [recentByItem],
   )
 

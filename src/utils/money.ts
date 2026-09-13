@@ -54,3 +54,6 @@ export const averageMoney = (sum: number, count: number): number =>
  */
 export const isValidMoney = (value: number): boolean =>
   Number.isFinite(value) && value >= MONEY_MIN && roundMoney(value) === value
+
+/** Decimal places the column holds. Two, per `API-SPEC-EXPENSE.md` §3.2. */
+export const MONEY_PLACES = 2

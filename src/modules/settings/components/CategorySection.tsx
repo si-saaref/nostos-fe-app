@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { DismissablePanel } from '@/components/DismissablePanel'
 import { FormField } from '@/components/FormField'
 import { SettingPlate } from '@/modules/settings/components/SettingPlate'
 import { SectionShell } from '@/modules/settings/components/SectionShell'
@@ -14,6 +15,7 @@ import { MAX_PAGE_SIZE, useExpenses } from '@/modules/financial/api/expenses'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { rimFor } from '@/theme/rims'
 import { isoDay } from '@/utils/dates'
+import { capitalizeFirst } from '@/utils/text'
 import type { Category } from '@/types/catalog'
 
 interface Props {
@@ -84,60 +86,68 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
       <ul className="flex flex-col gap-1.5">
         {isAdding && (
           <li>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault()
-                if (!newName.trim()) return
-                create(
-                  { name: newName.trim() },
-                  {
-                    onSuccess: () => {
-                      setNewName('')
-                      setIsAdding(false)
+            <DismissablePanel onDismiss={() => setIsAdding(false)}>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!newName.trim()) return
+                  create(
+                    { name: capitalizeFirst(newName.trim()) },
+                    {
+                      onSuccess: () => {
+                        setNewName('')
+                        setIsAdding(false)
+                      },
                     },
-                  },
-                )
-              }}
-              className="bg-card lift-shadow flex flex-wrap items-end gap-2 rounded-lg p-3"
-            >
-              <FormField label={m.cat_name()} className="min-w-[200px] flex-1">
-                <input
-                  autoFocus
-                  value={newName}
-                  onChange={(event) => setNewName(event.target.value)}
-                  className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-                />
-              </FormField>
-              <button
-                type="submit"
-                disabled={isCreating}
-                className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+                  )
+                }}
+                className="bg-card lift-shadow flex flex-wrap items-end gap-2 rounded-lg p-3"
               >
-                {isCreating ? m.act_saving() : m.act_add()}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAdding(false)}
-                className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
-              >
-                {m.act_cancel()}
-              </button>
-            </form>
+                <FormField
+                  label={m.cat_name()}
+                  className="min-w-[200px] flex-1"
+                >
+                  <input
+                    autoFocus
+                    value={newName}
+                    onChange={(event) => setNewName(event.target.value)}
+                    className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
+                  />
+                </FormField>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdding(false)}
+                    className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
+                  >
+                    {m.act_cancel()}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreating}
+                    className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+                  >
+                    {isCreating ? m.act_saving() : m.act_add()}
+                  </button>
+                </div>
+              </form>
+            </DismissablePanel>
           </li>
         )}
 
         {categories?.map((category) => {
           const isOpen = openId === category.id
           const used = usageOf(category.id)
+          const isArchived = Boolean(category.archivedAt)
           return (
             <SettingPlate
               key={category.id}
               title={category.name}
               meta={used > 0 ? m.cat_in_use({ n: used }) : undefined}
               rim={rimFor(category.order)}
-              muted={Boolean(category.archivedAt)}
+              muted={isArchived}
               trailing={
-                category.archivedAt ? (
+                isArchived ? (
                   <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
                     {m.cat_archived()}
                   </span>
@@ -156,7 +166,7 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
                 >
                   <input
                     value={draftName}
-                    disabled={!canManage}
+                    disabled={!canManage || isArchived}
                     onChange={(event) => setDraftName(event.target.value)}
                     className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
                   />
@@ -164,18 +174,19 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
                 {canManage && (
                   <RowActions
                     onSave={() => {
-                      if (draftName.trim() && draftName !== category.name) {
-                        update({ id: category.id, name: draftName.trim() })
+                      const name = capitalizeFirst(draftName.trim())
+                      if (name && name !== category.name) {
+                        update({ id: category.id, name })
                       }
                       setOpenId(null)
                     }}
                     onArchive={
-                      category.archivedAt
+                      isArchived
                         ? undefined
                         : () => setCategoryToArchive(category)
                     }
                     onRestore={
-                      category.archivedAt
+                      isArchived
                         ? () => update({ id: category.id, archivedAt: null })
                         : undefined
                     }

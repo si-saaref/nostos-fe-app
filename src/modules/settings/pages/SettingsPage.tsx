@@ -46,7 +46,19 @@ export const SettingsPage = () => {
   const navigate = useNavigate()
   const canManage = canManageExpenses(role)
 
+  // Household first: it owns the accounts and people the other two groups
+  // spend and receive through, and it is where an admin arrives from the
+  // profile row.
   const groups: SettingsGroup[] = [
+    {
+      id: 'household',
+      label: m.group_household(),
+      sections: [
+        { id: SETTINGS_ANCHORS.accounts, label: m.acc_title() },
+        { id: SETTINGS_ANCHORS.members, label: m.mem_title() },
+        { id: SETTINGS_ANCHORS.household, label: m.pref_title() },
+      ],
+    },
     {
       id: 'expense',
       label: m.group_expense(),
@@ -58,15 +70,6 @@ export const SettingsPage = () => {
       id: 'income',
       label: m.group_income(),
       sections: [{ id: SETTINGS_ANCHORS.incomeTypes, label: m.itype_title() }],
-    },
-    {
-      id: 'household',
-      label: m.group_household(),
-      sections: [
-        { id: SETTINGS_ANCHORS.accounts, label: m.acc_title() },
-        { id: SETTINGS_ANCHORS.members, label: m.mem_title() },
-        { id: SETTINGS_ANCHORS.household, label: m.pref_title() },
-      ],
     },
   ]
   const allSections = groups.flatMap((group) => group.sections)
@@ -155,19 +158,23 @@ export const SettingsPage = () => {
           {groups.map((group) => {
             const isCurrentGroup = group.id === activeGroup.id
             return (
-              <div key={group.id} className="mb-2 last:mb-0">
+              <div key={group.id} className="mb-3 last:mb-0">
+                {/* A scope and a section are two ranks, so they read as two:
+                    the scope is a small caps label, its sections hang off a
+                    hairline beneath it. Without the indent the rail was one
+                    flat list wearing two type sizes. */}
                 <button
                   type="button"
                   onClick={() => goTo(group.sections[0].id)}
                   aria-current={isCurrentGroup ? 'true' : undefined}
                   className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[9px] font-bold tracking-[0.13em] uppercase ${
-                    isCurrentGroup ? 'text-ink' : 'text-muted'
+                    isCurrentGroup ? 'text-ink' : 'text-muted hover:text-ink'
                   }`}
                 >
                   {group.label}
                 </button>
                 {isCurrentGroup && (
-                  <ul className="flex flex-col gap-0.5">
+                  <ul className="border-hair mt-1 ml-3.5 flex flex-col gap-0.5 border-l pl-1.5">
                     {group.sections.map((section) => (
                       <li key={section.id}>
                         <button
@@ -176,10 +183,10 @@ export const SettingsPage = () => {
                           aria-current={
                             activeSectionId === section.id ? 'true' : undefined
                           }
-                          className={`w-full rounded-lg px-2.5 py-2 text-left text-[12px] font-medium ${
+                          className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] font-medium ${
                             activeSectionId === section.id
-                              ? 'bg-card text-ink font-semibold'
-                              : 'text-muted'
+                              ? 'bg-card plate-shadow text-ink font-semibold'
+                              : 'text-muted hover:text-ink'
                           }`}
                         >
                           {section.label}

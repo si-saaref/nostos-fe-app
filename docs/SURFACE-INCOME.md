@@ -1,7 +1,7 @@
 # Surface brief — Income
 
 Confirmed 2026-09-08. Source PRD: `notes/MASTER_PRD_INCOME.md` v1.0.
-Route: `/financial/income`. Mode: **Operate**. Visual world: inherited unchanged.
+Route: `/income`. Mode: **Operate**. Visual world: inherited unchanged.
 
 This document owns the income surface's structure and its rules. `PRODUCT.md` owns product
 truth; `src/styles/globals.css` owns the visual system. Where this disagrees with shipped

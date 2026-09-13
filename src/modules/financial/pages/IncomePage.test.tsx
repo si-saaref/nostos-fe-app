@@ -9,7 +9,7 @@ import { db, resetMockState } from '@/mocks/db'
 import { MOCK_ME } from '@/mocks/fixtures/household'
 import { IncomePage } from '@/modules/financial/pages/IncomePage'
 import { Role } from '@/types/household'
-import { isoDay, monthRange } from '@/utils/dates'
+import { monthRange } from '@/utils/dates'
 
 const thisMonth = monthRange(new Date())
 
@@ -20,9 +20,29 @@ beforeEach(() => {
 const renderPage = (household?: Parameters<typeof renderWithProviders>[1]) =>
   renderWithProviders(<IncomePage />, household)
 
+/**
+ * The income list has answered.
+ *
+ * This used to wait for the loading indicator to disappear, which stopped
+ * meaning anything the moment that indicator was commented out of the page
+ * (87489fa): `queryByText` returned null on the very first render, so every
+ * test that queried synchronously afterwards was racing the response and
+ * passing only by luck.
+ *
+ * The scope line is the honest signal. It is the one element that states what
+ * the list actually returned — a count once rows are in, and otherwise one of
+ * the two stated empty months. All three are unreachable before the response
+ * lands, which is exactly the property a settle helper needs.
+ */
+const SETTLED =
+  /·\s*\d+\s*(entri|entries)|tidak ada catatan|nothing recorded|pemasukan pertama|first income/i
+
 const settled = async () =>
   waitFor(() =>
-    expect(screen.queryByText(/memuat pemasukan|loading income/i)).toBeNull(),
+    // `queryAll`, not `query`: a settled page states its count in the scope
+    // line and again on every day shelf, and how many places say so is not
+    // what is being asked. One is enough.
+    expect(screen.queryAllByText(SETTLED).length).toBeGreaterThan(0),
   )
 
 describe('IncomePage', () => {
@@ -72,7 +92,7 @@ describe('IncomePage', () => {
     await settled()
 
     const day = await screen.findByRole('region', {
-      name: /1 September|September 1/i,
+      name: /\b1 September|September 1\b/i,
     })
     // 8.600.000 arrived, 1.200.000 only changed pockets. Their sum, 9.800.000,
     // is money the household never gained and must appear nowhere.
@@ -88,7 +108,7 @@ describe('IncomePage', () => {
 
     // The 2nd carries one deposit and nothing from outside.
     const day = await screen.findByRole('region', {
-      name: /2 September|September 2/i,
+      name: /\b2 September|September 2\b/i,
     })
     expect(day.textContent).toMatch(/pindah|moved/i)
     expect(day.textContent).not.toMatch(/\+/)
@@ -276,7 +296,12 @@ describe('IncomePage', () => {
     await userEvent.type(description, 'Gaji ke-13')
     await userEvent.type(screen.getByLabelText(/jumlah|amount/i), '3000000')
 
-    const typeTrigger = screen.getByRole('combobox', { name: /jenis|type/i })
+    // Two type pickers on the page now — the statement's filter and the
+    // form's own — so this one is addressed inside the form.
+    const form = screen.getByRole('form', { name: /catat|record/i })
+    const typeTrigger = within(form).getByRole('combobox', {
+      name: /jenis|type/i,
+    })
     await userEvent.click(typeTrigger)
     await userEvent.click(
       within(await screen.findByRole('listbox')).getAllByRole('option')[1],
@@ -329,6 +354,8 @@ describe('IncomePage', () => {
     ).toBeInTheDocument()
   })
 
+  // A future day is unreachable rather than rejected after the fact: the
+  // picker will not hand one over.
   it('will not offer a future date', async () => {
     renderPage()
     await settled()
@@ -336,9 +363,118 @@ describe('IncomePage', () => {
     await userEvent.click(
       screen.getByRole('button', { name: /catat pemasukan|record income/i }),
     )
-    expect(screen.getByLabelText(/tanggal|date/i)).toHaveAttribute(
-      'max',
-      isoDay(new Date()),
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    await userEvent.click(screen.getByRole('button', { name: /tanggal|date/i }))
+    const cells = await screen.findAllByRole('button', {
+      name: String(tomorrow.getDate()),
+    })
+    expect(cells.some((cell) => !(cell as HTMLButtonElement).disabled)).toBe(
+      false,
     )
+  })
+})
+
+/**
+ * `meta.summary` carries no flag — its presence in the response IS the
+ * signal, and the only way to know the wiring works is to count the requests
+ * the page actually makes. Before it, the strip and the empty-state card each
+ * needed the previous month at `limit=1`
+ * (`notes/FE-App/API-CHANGES-REFACTOR-EXPENSE-INCOME-2026-09-10.md` §3).
+ */
+describe('IncomePage — requests', () => {
+  const countIncomeCalls = () => {
+    const urls: string[] = []
+    const listen = ({ request }: { request: Request }) => {
+      const url = new URL(request.url)
+      if (request.method === 'GET' && url.pathname.endsWith('/income')) {
+        urls.push(url.search)
+      }
+    }
+    server.events.on('request:start', listen)
+    return {
+      urls,
+      stop: () => server.events.removeListener('request:start', listen),
+    }
+  }
+
+  it('asks for the month once and never for the month before it', async () => {
+    const { urls, stop } = countIncomeCalls()
+    try {
+      renderPage()
+      await settled()
+      await waitFor(() => expect(urls.length).toBeGreaterThan(0))
+      // Give any second request a chance to be made before asserting it wasn't.
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(urls).toHaveLength(1)
+      expect(urls[0]).toContain(`date_from=${thisMonth.from}`)
+      expect(urls.some((search) => search.includes('limit=1&'))).toBe(false)
+    } finally {
+      stop()
+    }
+  })
+
+  // The narrowing reaches the server, which is what keeps `meta.summary`
+  // scoped with the rows: a strip stating the whole month above a list
+  // showing one type is the disagreement this page exists to prevent.
+  it('sends the type narrowing to the server rather than filtering on hand', async () => {
+    const { urls, stop } = countIncomeCalls()
+    try {
+      renderPage()
+      await settled()
+
+      const type = db.incomeTypes[0]
+      await userEvent.click(
+        screen.getByRole('combobox', { name: /jenis pemasukan|income type/i }),
+      )
+      await userEvent.click(
+        await screen.findByRole('option', { name: type.name }),
+      )
+
+      await waitFor(() =>
+        expect(
+          urls.some((search) => search.includes(`type_id=${type.id}`)),
+        ).toBe(true),
+      )
+    } finally {
+      stop()
+    }
+  })
+
+  it('falls back to the extra request when no summary is sent', async () => {
+    // A deployment mid-migration: rows and the legacy totals, no summary.
+    // Built here rather than by re-fetching the real handler, which would
+    // re-enter this override and recurse.
+    server.use(
+      http.get('*/api/v1/income', () =>
+        Response.json({
+          success: true,
+          data: [],
+          meta: {
+            pagination: { page: 1, limit: 400, total: 0, total_pages: 1 },
+            totals: {
+              sum: 0,
+              count: 0,
+              average: 0,
+              moved: 0,
+              external_count: 0,
+              transfer_count: 0,
+            },
+          },
+        }),
+      ),
+    )
+    const { urls, stop } = countIncomeCalls()
+    try {
+      renderPage()
+      await settled()
+      await waitFor(() =>
+        expect(urls.some((search) => search.includes('limit=1'))).toBe(true),
+      )
+    } finally {
+      stop()
+    }
   })
 })

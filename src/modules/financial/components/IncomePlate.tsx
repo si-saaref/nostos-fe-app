@@ -1,7 +1,8 @@
-import { memo, useId } from 'react'
+import { memo, useId, useRef } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { formatCurrency } from '@/utils/formatters'
+import { useDismiss } from '@/hooks/useDismiss'
 import { RIM_CLASS } from '@/theme/rims'
 import type { RimIndex } from '@/theme/rims'
 import type { Income } from '@/types/income'
@@ -67,9 +68,15 @@ const IncomePlateBase = ({
   const isTransfer = income.fromSourceId !== null
   const amount = formatCurrency(income.amount, currency, locale)
 
+  // Opening a row to read it is not a commitment: a click away or Escape
+  // closes it again, the same gesture every editor in the app answers.
+  const plateRef = useRef<HTMLElement>(null)
+  useDismiss(plateRef, () => onToggle(income.id), isOpen)
+
   return (
     <li>
       <article
+        ref={plateRef}
         className={`bg-card relative overflow-hidden rounded-lg ${
           isOpen ? 'lift-shadow' : 'plate-shadow'
         }`}
@@ -87,7 +94,7 @@ const IncomePlateBase = ({
           onClick={() => onToggle(income.id)}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:grid sm:h-[42px] sm:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_13rem_8rem] sm:items-center sm:gap-3 sm:py-0"
+          className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:grid sm:h-[42px] sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_13rem_8rem] sm:items-center sm:gap-3 sm:py-0"
         >
           <span className="flex items-baseline justify-between gap-3 sm:min-w-0 sm:items-center">
             <span className="truncate pl-1 text-[12.5px] font-medium">
@@ -114,7 +121,11 @@ const IncomePlateBase = ({
             </span>
           </span>
 
-          <span className="flex items-center gap-1.5 pl-1 sm:justify-end sm:pl-0">
+          {/* A three-track sub-grid, not a flex row: right-aligned as flex,
+              every row put its arrow at a different x and the column read as
+              ragged. From-chip ends on one line, arrow on one, to-chip starts
+              on one. */}
+          <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 pl-1 sm:pl-0">
             <Route fromName={fromName} toName={toName} />
           </span>
 
@@ -129,6 +140,12 @@ const IncomePlateBase = ({
 
         {isOpen && (
           <div id={panelId} className="border-hair border-t px-3 pt-3 pb-3">
+            {income.description && (
+              <p className="text-muted mb-3 max-w-prose text-[11.5px] leading-relaxed whitespace-pre-line">
+                {income.description}
+              </p>
+            )}
+
             <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <DetailField label={m.inc_plate_type()} value={typeName} />
               <DetailField
@@ -242,20 +259,24 @@ const Route = ({
   const m = useMessages()
   return (
     <>
-      <span
-        className={
-          fromName === null
-            ? 'border-hair text-muted shrink-0 rounded-md border border-dashed px-1.5 py-0.5 text-[9.5px] font-bold whitespace-nowrap'
-            : 'bg-chip max-w-[8.5rem] truncate rounded-md px-1.5 py-0.5 text-[9.5px] font-bold'
-        }
-      >
-        {fromName ?? m.inc_external()}
+      <span className="flex min-w-0 justify-end">
+        <span
+          className={`truncate rounded-md px-1.5 py-0.5 text-[9.5px] font-bold ${
+            fromName === null
+              ? 'border-hair text-muted border border-dashed'
+              : 'bg-chip'
+          }`}
+        >
+          {fromName ?? m.inc_external()}
+        </span>
       </span>
       <span aria-hidden="true" className="text-muted text-[10px]">
         →
       </span>
-      <span className="bg-chip max-w-[8.5rem] truncate rounded-md px-1.5 py-0.5 text-[9.5px] font-bold">
-        {toName}
+      <span className="flex min-w-0 justify-start">
+        <span className="bg-chip truncate rounded-md px-1.5 py-0.5 text-[9.5px] font-bold">
+          {toName}
+        </span>
       </span>
     </>
   )

@@ -1,7 +1,13 @@
 import axios from 'axios'
 import type { AxiosResponse } from 'axios'
 import { queryClient } from '@/api/queryClient'
-import type { ApiEnvelope, Paginated, Pagination } from '@/types/api'
+import type {
+  ApiEnvelope,
+  Paginated,
+  Pagination,
+  Summary,
+  WireSummary,
+} from '@/types/api'
 
 let currentHouseholdId = ''
 
@@ -80,14 +86,34 @@ export const unwrapPage = <W, T>(
     total: wire.total,
     totalPages: wire.total_pages,
   }
+  const summary = meta?.summary && toSummary(meta.summary)
   return {
     items: rows.map(mapRow),
     pagination,
-    // Left undefined rather than zeroed when absent: a total of 0 is a claim
-    // about the household's money, and "not sent" is not that claim.
-    totals: meta?.totals && { ...meta.totals },
+    // `meta.summary.current` wins over the legacy `meta.totals` when both are
+    // sent, so a deployment mid-migration reports one set of figures rather
+    // than two that can disagree. Left undefined rather than zeroed when
+    // neither arrives: a total of 0 is a claim about the household's money,
+    // and "not sent" is not that claim.
+    totals: summary?.current ?? (meta?.totals && { ...meta.totals }),
+    summary,
   }
 }
+
+/**
+ * Wire → domain for the summary block. Only the two nested keys are renamed;
+ * `current`, `previous` and the slice rows are already camel-safe, and
+ * spreading them keeps `WireTotals` and `Totals` honest about being the same
+ * shape.
+ */
+const toSummary = (wire: WireSummary): Summary => ({
+  current: { ...wire.current },
+  previous: wire.previous && { ...wire.previous },
+  breakdown: wire.breakdown && {
+    byType: wire.breakdown.by_type?.map((slice) => ({ ...slice })),
+    byMember: wire.breakdown.by_member?.map((slice) => ({ ...slice })),
+  },
+})
 
 /**
  * Endpoints whose 401 is an answer, not a lost session.

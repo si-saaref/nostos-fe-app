@@ -1,5 +1,6 @@
-import { useId } from 'react'
+import { useId, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { useDismiss } from '@/hooks/useDismiss'
 import { RIM_CLASS } from '@/theme/rims'
 import type { RimIndex } from '@/theme/rims'
 
@@ -32,10 +33,15 @@ export const SettingPlate = ({
   children,
 }: Props) => {
   const panelId = useId()
+  // Opening a row to look at it is not a commitment: clicking away or pressing
+  // Escape puts it back, and the draft it held is discarded with it.
+  const ref = useRef<HTMLElement>(null)
+  useDismiss(ref, onToggle, isOpen)
 
   return (
     <li>
       <article
+        ref={ref}
         className={`bg-card relative overflow-hidden rounded-lg ${
           isOpen ? 'lift-shadow' : 'plate-shadow'
         } ${muted ? 'opacity-65' : ''}`}
