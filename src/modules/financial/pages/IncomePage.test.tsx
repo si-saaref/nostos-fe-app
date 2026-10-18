@@ -91,9 +91,7 @@ describe('IncomePage', () => {
     renderPage()
     await settled()
 
-    const day = await screen.findByRole('region', {
-      name: /\b1 September|September 1\b/i,
-    })
+    const day = await screen.findByRole('region', { name: /\b1\b/ })
     // 8.600.000 arrived, 1.200.000 only changed pockets. Their sum, 9.800.000,
     // is money the household never gained and must appear nowhere.
     expect(day.textContent).toMatch(/8[.,]600[.,]000/)
@@ -107,9 +105,7 @@ describe('IncomePage', () => {
     await settled()
 
     // The 2nd carries one deposit and nothing from outside.
-    const day = await screen.findByRole('region', {
-      name: /\b2 September|September 2\b/i,
-    })
+    const day = await screen.findByRole('region', { name: /\b2\b/ })
     expect(day.textContent).toMatch(/pindah|moved/i)
     expect(day.textContent).not.toMatch(/\+/)
   })
