@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { chooseOption, renderWithProviders } from '@/test/test-utils'
 import { server } from '@/mocks/server'
@@ -102,20 +102,24 @@ describe('IncomeForm when the household is not set up', () => {
 })
 
 describe('IncomeForm layout contracts', () => {
-  // The hint used to sit in the action row, ~600px from the picker it
-  // describes, where nothing connected it to the field and a screen reader
-  // never reached it at all.
-  it('describes the From source picker from the field, not the button row', async () => {
+  it('shows an origin source only after the user chooses a transfer', async () => {
     renderWithProviders(<IncomeForm />)
 
+    expect(
+      screen.queryByRole('combobox', { name: /dari sumber/i }),
+    ).not.toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('combobox', { name: /uang ini dari mana/i }),
+    )
+    await userEvent.click(
+      within(await screen.findByRole('listbox')).getByRole('option', {
+        name: /pindah antar akun/i,
+      }),
+    )
     const fromSource = await screen.findByRole('combobox', {
       name: /dari sumber/i,
     })
-    const describedBy = fromSource.getAttribute('aria-describedby')
-    expect(describedBy).toBeTruthy()
-    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
-      /dari luar rumah/i,
-    )
+    expect(fromSource).toBeInTheDocument()
 
     // And the actions carry nothing but actions.
     const submit = screen.getByRole('button', { name: /catat/i })

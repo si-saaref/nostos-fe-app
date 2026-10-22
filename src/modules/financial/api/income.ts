@@ -74,6 +74,7 @@ export const toIncome = (row: WireIncome): Income => ({
  * household" is spelled, and leaving the key out would ask the server to guess.
  */
 const toIncomeBody = (input: CreateIncomeInput) => ({
+  kind: input.kind,
   name: input.name,
   // Blank is absent — see `toExpenseBody`.
   description: input.description?.trim() || null,
@@ -106,6 +107,7 @@ const toIncomePatch = (patch: UpdateIncomeInput) => {
     body.description = patch.description?.trim() || null
   }
   if (patch.amount !== undefined) body.amount = patch.amount
+  if (patch.kind !== undefined) body.kind = patch.kind
   if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.fromSourceId !== undefined) {
     body.from_source_id = patch.fromSourceId
@@ -261,7 +263,6 @@ export const useCreateIncome = (householdId: string) => {
         id: `${OPTIMISTIC_PREFIX}${crypto.randomUUID()}`,
         householdId,
         ...input,
-        kind: input.fromSourceId === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
       }
       // Only into caches the row actually belongs to: a list scoped to last
       // month must not sprout today's entry.

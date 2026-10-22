@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useMessages } from '@/i18n/useMessages'
 import {
   useCreateIncome,
@@ -86,9 +86,11 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     reset,
     setError,
     clearErrors,
+    setValue,
     formState: { errors },
   } = useForm<CreateIncomeInput>({
     defaultValues: {
+      kind: income?.kind ?? 'EXTERNAL_INCOME',
       name: income?.name ?? '',
       description: income?.description ?? '',
       // No zero seed: an empty field asks for the amount, a `0` states one.
@@ -99,6 +101,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
       date: income?.date ?? today,
     },
   })
+  const kind = useWatch({ control, name: 'kind' })
 
   const [handledOnField, setHandledOnField] = useState(false)
 
@@ -118,7 +121,10 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
       // It has to reach the wire as an explicit null: on this field null is a
       // value — money from outside the household — and an empty string would
       // be a source id that does not exist.
-      fromSourceId: data.fromSourceId ? data.fromSourceId : null,
+      fromSourceId:
+        data.kind === 'TRANSFER' && data.fromSourceId
+          ? data.fromSourceId
+          : null,
     }
     if (isEdit) {
       update.mutate(
@@ -216,6 +222,26 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     >
       <FormBlockers blockers={blockers} />
 
+      <Controller
+        control={control}
+        name="kind"
+        render={({ field }) => (
+          <Select
+            label={m.inc_form_kind()}
+            value={field.value}
+            onChange={(value) => {
+              field.onChange(value)
+              clearErrors('fromSourceId')
+              if (value === 'EXTERNAL_INCOME') setValue('fromSourceId', null)
+            }}
+            options={[
+              { value: 'EXTERNAL_INCOME', label: m.inc_form_kind_external() },
+              { value: 'TRANSFER', label: m.inc_form_kind_transfer() },
+            ]}
+          />
+        )}
+      />
+
       <FormField label={m.inc_form_name()} error={errors.name?.message}>
         <input
           maxLength={NAME_MAX}
@@ -283,25 +309,24 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
         )}
       />
 
-      {/* Optional, and the placeholder is the meaning rather than an absence:
-          "From outside the household" is a choice a member makes, not a field
-          they failed to fill in. */}
-      <Controller
-        control={control}
-        name="fromSourceId"
-        render={({ field, fieldState }) => (
-          <Select
-            label={m.inc_form_from()}
-            placeholder={m.inc_form_from_external()}
-            value={field.value ?? ''}
-            onChange={changeAndClear('fromSourceId', field.onChange)}
-            error={fieldState.error?.message}
-            hint={m.inc_form_from_hint()}
-            disabled={sourceOptions.length === 0}
-            options={sourceOptions}
-          />
-        )}
-      />
+      {kind === 'TRANSFER' && (
+        <Controller
+          control={control}
+          name="fromSourceId"
+          rules={{ required: m.inc_err_from_transfer() }}
+          render={({ field, fieldState }) => (
+            <Select
+              label={m.inc_form_from()}
+              placeholder={m.form_choose()}
+              value={field.value ?? ''}
+              onChange={changeAndClear('fromSourceId', field.onChange)}
+              error={fieldState.error?.message}
+              disabled={sourceOptions.length === 0}
+              options={sourceOptions}
+            />
+          )}
+        />
+      )}
 
       <Controller
         control={control}

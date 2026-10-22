@@ -40,6 +40,7 @@ export interface Income {
 }
 
 export interface CreateIncomeInput {
+  kind: 'EXTERNAL_INCOME' | 'TRANSFER'
   name: string
   description?: string | null
   amount: number

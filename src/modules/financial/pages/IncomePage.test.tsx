@@ -338,6 +338,16 @@ describe('IncomePage', () => {
       const listbox = await screen.findByRole('listbox')
       await userEvent.click(within(listbox).getAllByRole('option')[1])
     }
+    await userEvent.click(
+      screen.getByRole('combobox', {
+        name: /uang ini dari mana|where did this money come from/i,
+      }),
+    )
+    await userEvent.click(
+      within(await screen.findByRole('listbox')).getByRole('option', {
+        name: /pindah antar akun|move between accounts/i,
+      }),
+    )
     await pickFirstSource(/dari sumber|from source/i)
     await pickFirstSource(/masuk ke sumber|into source/i)
 

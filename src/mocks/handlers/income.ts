@@ -156,6 +156,21 @@ const badRef = (
     body.from_source_id !== undefined
       ? body.from_source_id
       : (current?.fromSourceId ?? null)
+  if (body.from_source_id !== undefined && current && body.kind === undefined) {
+    return errorBody(
+      400,
+      'VALIDATION_ERROR',
+      'kind is required when changing the origin source',
+    )
+  }
+  const kind = body.kind ?? current?.kind
+  if ((kind === 'TRANSFER') !== (from !== null)) {
+    return errorBody(
+      400,
+      'VALIDATION_ERROR',
+      'Transaction kind does not match its origin source',
+    )
+  }
   const to =
     body.to_source_id !== undefined ? body.to_source_id : current?.toSourceId
   if (from !== null && to !== undefined && from === to) {
@@ -249,6 +264,9 @@ export const incomeHandlers = [
         },
       ])
     }
+    if (body.kind === undefined) {
+      return errorBody(400, 'VALIDATION_ERROR', 'kind is required')
+    }
     const rejected = badBody(body) ?? badRef(body)
     if (rejected) return rejected
 
@@ -258,7 +276,7 @@ export const incomeHandlers = [
       // Blank is coerced to null on write — see the expense handler.
       description: body.description?.trim() || null,
       amount: body.amount ?? 0,
-      kind: body.from_source_id == null ? 'EXTERNAL_INCOME' : 'TRANSFER',
+      kind: body.kind,
       typeId: body.type_id ?? '',
       fromSourceId: body.from_source_id ?? null,
       toSourceId: body.to_source_id,
@@ -315,8 +333,8 @@ export const incomeHandlers = [
       ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.from_source_id !== undefined && {
         fromSourceId: body.from_source_id,
-        kind: body.from_source_id === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
       }),
+      ...(body.kind !== undefined && { kind: body.kind }),
       ...(body.to_source_id !== undefined && {
         toSourceId: body.to_source_id,
       }),

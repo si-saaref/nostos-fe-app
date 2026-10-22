@@ -143,6 +143,7 @@ describe('useCreateIncome', () => {
 
     result.current.mutate({
       name: 'Salary Sep',
+      kind: 'EXTERNAL_INCOME',
       amount: 5000000,
       typeId: INCOME_TYPE_IDS[0],
       fromSourceId: null,
@@ -169,6 +170,7 @@ describe('useCreateIncome', () => {
     })
     result.current.mutate({
       name: 'Gaji',
+      kind: 'EXTERNAL_INCOME',
       amount: 5000000,
       typeId: INCOME_TYPE_IDS[0],
       fromSourceId: null,
@@ -178,7 +180,10 @@ describe('useCreateIncome', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     server.events.removeListener('request:start', record)
 
-    expect(bodies[0]).toMatchObject({ type_id: INCOME_TYPE_IDS[0] })
+    expect(bodies[0]).toMatchObject({
+      type_id: INCOME_TYPE_IDS[0],
+      kind: 'EXTERNAL_INCOME',
+    })
     expect(bodies[0]).not.toHaveProperty('type')
     // null is a value on this field, not an omission — the key must be present.
     expect(bodies[0]).toHaveProperty('from_source_id', null)
@@ -191,6 +196,7 @@ describe('useCreateIncome', () => {
     })
     result.current.mutate({
       name: 'Mystery',
+      kind: 'EXTERNAL_INCOME',
       amount: 1000,
       typeId: 'itype-does-not-exist',
       fromSourceId: null,
@@ -209,6 +215,7 @@ describe('useCreateIncome', () => {
 
     result.current.mutate({
       name: 'Nowhere',
+      kind: 'TRANSFER',
       amount: 1000,
       typeId: INCOME_TYPE_IDS[0],
       fromSourceId: ACCOUNT_IDS[0],
@@ -226,6 +233,7 @@ describe('useCreateIncome', () => {
 
     result.current.mutate({
       name: 'Odd',
+      kind: 'EXTERNAL_INCOME',
       amount: 10.999,
       typeId: INCOME_TYPE_IDS[0],
       fromSourceId: null,
@@ -251,7 +259,11 @@ describe('useUpdateIncome', () => {
     const { result } = renderHook(() => useUpdateIncome(HOUSEHOLD), {
       wrapper: createWrapper(),
     })
-    result.current.mutate({ id: transfer!.id, fromSourceId: null })
+    result.current.mutate({
+      id: transfer!.id,
+      fromSourceId: null,
+      kind: 'EXTERNAL_INCOME',
+    })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data?.fromSourceId).toBeNull()
