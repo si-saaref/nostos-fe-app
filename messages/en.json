@@ -23,6 +23,7 @@
   "acc_kind_ewallet": "e-Wallet",
   "acc_name": "Account name",
   "acc_opening": "Opening balance",
+  "acc_opening_invalid": "Opening balance must be 0 or a valid amount up to 999,999,999,999.99.",
   "acc_title": "Accounts",
   "act_add": "Add",
   "act_archive": "Archive",

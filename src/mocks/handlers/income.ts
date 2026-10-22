@@ -1,5 +1,11 @@
 import { http } from 'msw'
-import { fromWireMoney, toWireMoney } from '@/utils/money'
+import {
+  averageMoneyText,
+  fromWireMoney,
+  isCanonicalWireInputMoney,
+  sumMoneyText,
+  toWireMoney,
+} from '@/utils/money'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
@@ -13,7 +19,6 @@ import {
   previousPeriod,
 } from '@/mocks/handlers/shared'
 import type { WireMeta } from '@/mocks/handlers/shared'
-import { averageMoney, isValidMoney, sumMoney } from '@/utils/money'
 import type { StoredIncome, WireIncome } from '@/types/income'
 
 const toWire = (income: StoredIncome): WireIncome => ({
@@ -47,15 +52,15 @@ const live = (): StoredIncome[] =>
  * total that changes when you turn the page is reporting nothing.
  */
 const totalsFor = (items: StoredIncome[]) => {
-  const into = sumMoney(items.map((row) => row.amount))
+  const into = sumMoneyText(items.map((row) => row.amount))
   const transfers = items.filter((row) => row.fromSourceId !== null)
-  const outOf = sumMoney(transfers.map((row) => row.amount))
-  const sum = sumMoney([into, -outOf])
+  const outOf = sumMoneyText(transfers.map((row) => row.amount))
+  const sum = sumMoneyText([into, `-${outOf}`])
   return {
-    sum: toWireMoney(sum),
+    sum,
     count: items.length,
-    average: toWireMoney(averageMoney(sum, items.length)),
-    moved: toWireMoney(outOf),
+    average: averageMoneyText(sum, items.length - transfers.length),
+    moved: outOf,
     external_count: items.length - transfers.length,
     transfer_count: transfers.length,
   }
@@ -114,12 +119,7 @@ const badBody = (body: Partial<WireIncome> & Record<string, unknown>) => {
       },
     ])
   }
-  if (
-    body.amount !== undefined &&
-    (typeof body.amount !== 'string' ||
-      !/^(0|[1-9]\d{0,11})\.\d{2}$/.test(body.amount) ||
-      !isValidMoney(fromWireMoney(body.amount)))
-  ) {
+  if (body.amount !== undefined && !isCanonicalWireInputMoney(body.amount)) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
       {
         field: 'amount',

@@ -18,6 +18,7 @@ import {
 } from '@/modules/settings/api/accounts'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { formatCurrency } from '@/utils/formatters'
+import { isValidMoney } from '@/utils/money'
 import { fromIsoDay, isoDay } from '@/utils/dates'
 import { rimFor } from '@/theme/rims'
 import type { Account, AccountKind } from '@/types/catalog'
@@ -59,6 +60,8 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
   const [newDraft, setNewDraft] = useState<AccountInput>(emptyDraft)
   const [editDraft, setEditDraft] = useState<AccountInput>(emptyDraft)
   const [accountToArchive, setAccountToArchive] = useState<Account | null>(null)
+
+  const openingIsValid = (value: number) => value === 0 || isValidMoney(value)
 
   const KINDS: Array<{ value: AccountKind; label: string }> = [
     { value: 'cash', label: m.acc_kind_cash() },
@@ -105,6 +108,11 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             label={m.acc_opening()}
             className="w-[150px]"
             value={draft.openingBalance}
+            error={
+              openingIsValid(draft.openingBalance)
+                ? undefined
+                : m.acc_opening_invalid()
+            }
             disabled={disabled}
             onChange={(value) =>
               setDraft({ ...draft, openingBalance: value ?? 0 })
@@ -169,7 +177,11 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                       { onSuccess: () => setIsAdding(false) },
                     )
                   }
-                  disabled={isCreating || !newDraft.name.trim()}
+                  disabled={
+                    isCreating ||
+                    !newDraft.name.trim() ||
+                    !openingIsValid(newDraft.openingBalance)
+                  }
                   className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
                 >
                   {isCreating ? m.act_saving() : m.act_add()}

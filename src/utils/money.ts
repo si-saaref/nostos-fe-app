@@ -23,27 +23,52 @@ export const MONEY_STEP = 0.01
 export const roundMoney = (value: number): number =>
   Math.round((value + Number.EPSILON) * 100) / 100
 
-/** Parse a single display amount to integer cents before any aggregate math. */
-const centsOf = (value: number): bigint => {
-  if (!Number.isFinite(value)) throw new RangeError('Invalid money amount')
-  return BigInt(value.toFixed(2).replace('.', ''))
+/** Convert one canonical decimal or UI amount to integer cents. */
+const centsOf = (value: number | string): bigint => {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new RangeError('Invalid money amount')
+    return BigInt(value.toFixed(2).replace('.', ''))
+  }
+  if (!/^-?(0|[1-9]\d*)\.\d{2}$/.test(value)) {
+    throw new RangeError('Invalid money amount')
+  }
+  return BigInt(value.replace('.', ''))
 }
 
-/** Add rows in integer cents; summing binary floats can lose the last cent. */
-export const sumMoney = (values: number[]): number =>
-  Number(values.reduce((total, value) => total + centsOf(value), 0n)) / 100
+const textOfCents = (cents: bigint): string => {
+  const digits = (cents < 0n ? -cents : cents).toString().padStart(3, '0')
+  return `${cents < 0n ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`
+}
 
-/** The mean of a set, rounded to cents, or 0 for an empty one. */
-export const averageMoney = (sum: number, count: number): number => {
-  if (count <= 0) return 0
+/** Exact aggregate text, including sums above the per-entry database limit. */
+export const sumMoneyText = (values: Array<number | string>): string =>
+  textOfCents(values.reduce((total, value) => total + centsOf(value), 0n))
+
+/** Decimal's half-up rounding for an aggregate mean. */
+export const averageMoneyText = (sum: string, count: number): string => {
+  if (count <= 0) return '0.00'
   const cents = centsOf(sum)
   const divisor = BigInt(count)
   const rounded =
     cents >= 0n
       ? (cents + divisor / 2n) / divisor
       : -((-cents + divisor / 2n) / divisor)
-  return Number(rounded) / 100
+  return textOfCents(rounded)
 }
+
+/** Compare canonical decimal text without converting to a float. */
+export const compareMoneyText = (a: string, b: string): number => {
+  const difference = centsOf(a) - centsOf(b)
+  return difference < 0n ? -1 : difference > 0n ? 1 : 0
+}
+
+/** Add UI amounts in cents; the view model still renders the result as number. */
+export const sumMoney = (values: number[]): number =>
+  Number(sumMoneyText(values))
+
+/** The mean of a set, rounded to cents, or 0 for an empty one. */
+export const averageMoney = (sum: number, count: number): number =>
+  Number(averageMoneyText(sum.toFixed(2), count))
 
 /**
  * Does this amount fit the column? Rejects a third decimal place, which the
@@ -61,6 +86,15 @@ export const isValidMoney = (value: number): boolean =>
 
 /** Decimal places the column holds. Two, per `API-SPEC-EXPENSE.md` §3.2. */
 export const MONEY_PLACES = 2
+
+/** The write contract for a DECIMAL(14,2) amount. */
+export const isCanonicalWireInputMoney = (
+  value: unknown,
+  allowZero = false,
+): value is string =>
+  typeof value === 'string' &&
+  /^(0|[1-9]\d{0,11})\.\d{2}$/.test(value) &&
+  (allowZero || value !== '0.00')
 
 /** The API carries fixed-scale decimal text so JSON never parses money as a float. */
 export const fromWireMoney = (value: string): number => {

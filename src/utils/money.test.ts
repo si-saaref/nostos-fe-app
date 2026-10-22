@@ -5,6 +5,9 @@ import {
   isValidMoney,
   roundMoney,
   sumMoney,
+  sumMoneyText,
+  averageMoneyText,
+  isCanonicalWireInputMoney,
 } from '@/utils/money'
 import { formatCurrency } from '@/utils/formatters'
 
@@ -32,6 +35,23 @@ describe('sumMoney', () => {
 
   it('is 0 for an empty set', () => {
     expect(sumMoney([])).toBe(0)
+  })
+})
+
+describe('exact wire arithmetic', () => {
+  it('retains cents beyond the safe integer-cent range', () => {
+    expect(sumMoneyText([999999999999.98, 999999999999.99])).toBe(
+      '1999999999999.97',
+    )
+    expect(averageMoneyText('1999999999999.97', 2)).toBe('999999999999.99')
+  })
+
+  it('rejects noncanonical and out-of-range input amounts', () => {
+    expect(isCanonicalWireInputMoney('999999999999.99')).toBe(true)
+    expect(isCanonicalWireInputMoney('0.00', true)).toBe(true)
+    expect(isCanonicalWireInputMoney('0.00')).toBe(false)
+    expect(isCanonicalWireInputMoney('01.00')).toBe(false)
+    expect(isCanonicalWireInputMoney('1000000000000.00')).toBe(false)
   })
 })
 

@@ -1,5 +1,10 @@
 import { http } from 'msw'
-import { fromWireMoney, toWireMoney, toWireSignedMoney } from '@/utils/money'
+import {
+  fromWireMoney,
+  isCanonicalWireInputMoney,
+  toWireMoney,
+  toWireSignedMoney,
+} from '@/utils/money'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
@@ -91,7 +96,7 @@ export const accountHandlers = [
         reason: string
       }
       if (
-        !/^\d+\.\d{2}$/.test(body.amount) ||
+        !isCanonicalWireInputMoney(body.amount) ||
         fromWireMoney(body.amount) <= 0 ||
         !body.reason?.trim() ||
         body.date < source.asOf
@@ -126,6 +131,12 @@ export const accountHandlers = [
     const body = (await request.json()) as Partial<WireAccount>
     const name = (body.name ?? '').trim()
     if (nameTaken(name)) return conflict(name)
+    if (
+      body.opening_balance !== undefined &&
+      !isCanonicalWireInputMoney(body.opening_balance, true)
+    ) {
+      return errorBody(400, 'VALIDATION_ERROR', 'Invalid opening balance')
+    }
     const created: Account = {
       id: nextId('source'),
       name,

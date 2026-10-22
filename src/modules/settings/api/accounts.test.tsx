@@ -53,6 +53,7 @@ import { createTestQueryClient } from '@/test/test-utils'
 import { useCreateAccount } from '@/modules/settings/api/accounts'
 import { getErrorCode, getErrorMessage } from '@/utils/errors'
 import { db } from '@/mocks/db'
+import { apiClient } from '@/api/client'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={createTestQueryClient()}>
@@ -84,4 +85,21 @@ describe('creating an account with a name already in use', () => {
       `Akun "${taken}" sudah ada`,
     )
   })
+})
+
+describe('mock financial validation', () => {
+  it.each(['01.00', '1000000000000.00'])(
+    'rejects invalid adjustment %s with a 400',
+    async (amount) => {
+      const source = db.accounts[0]
+      await expect(
+        apiClient.post(`/payment-sources/${source.id}/adjustments`, {
+          direction: 'INCREASE',
+          amount,
+          date: source.asOf,
+          reason: 'Counted again',
+        }),
+      ).rejects.toMatchObject({ response: { status: 400 } })
+    },
+  )
 })

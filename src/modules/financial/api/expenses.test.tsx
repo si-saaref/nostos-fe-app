@@ -14,6 +14,7 @@ import {
   useUpdateExpense,
 } from '@/modules/financial/api/expenses'
 import { db } from '@/mocks/db'
+import { apiClient } from '@/api/client'
 import { getErrorCode } from '@/utils/errors'
 import type { Paginated } from '@/types/api'
 import type { Expense, ExpenseFilters } from '@/types/expense'
@@ -62,6 +63,14 @@ const NEW_EXPENSE = {
 }
 
 describe('useExpenses', () => {
+  it('mock API preserves cents when summary exceeds one entry limit', async () => {
+    db.expenses = db.expenses.slice(0, 2)
+    db.expenses[0].value = 999999999999.98
+    db.expenses[1].value = 999999999999.99
+    const response = await apiClient.get('/expenses')
+    expect(response.data.meta.summary.current.sum).toBe('1999999999999.97')
+  })
+
   it('fetches the seeded expenses for a household', async () => {
     const { result } = renderHook(() => useExpenses(HOUSEHOLD_ID, BASE), {
       wrapper: createWrapper(),

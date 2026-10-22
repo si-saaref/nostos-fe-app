@@ -1,7 +1,7 @@
 import { http } from 'msw'
 import { db } from '@/mocks/db'
 import { READ_LATENCY_MS, errorBody, ok, pause } from '@/mocks/handlers/shared'
-import { sumMoney, toWireSignedMoney } from '@/utils/money'
+import { sumMoneyText } from '@/utils/money'
 import { fromIsoDay, isoDay, shiftDays } from '@/utils/dates'
 import type { WirePosition } from '@/types/income'
 
@@ -14,15 +14,15 @@ import type { WirePosition } from '@/types/income'
  * that. A frontend that summed what it happened to have fetched would be
  * exactly right for a new household and quietly wrong for an old one.
  */
-const balanceAt = (sourceId: string, upTo: string): number => {
+const balanceAt = (sourceId: string, upTo: string): string => {
   const account = db.accounts.find((row) => row.id === sourceId)
-  if (!account) return 0
+  if (!account) return '0.00'
   // Rows before `as_of` are already inside the opening balance; counting them
   // again would double every rupiah recorded before the household started
   // using the app.
   const inWindow = (date: string) => date >= account.asOf && date <= upTo
 
-  const into = sumMoney(
+  const into = sumMoneyText(
     db.income
       .filter(
         (row) =>
@@ -32,7 +32,7 @@ const balanceAt = (sourceId: string, upTo: string): number => {
       )
       .map((row) => row.amount),
   )
-  const outOf = sumMoney(
+  const outOf = sumMoneyText(
     db.income
       .filter(
         (row) =>
@@ -42,7 +42,7 @@ const balanceAt = (sourceId: string, upTo: string): number => {
       )
       .map((row) => row.amount),
   )
-  const spent = sumMoney(
+  const spent = sumMoneyText(
     db.expenses
       .filter(
         (row) =>
@@ -52,7 +52,7 @@ const balanceAt = (sourceId: string, upTo: string): number => {
       )
       .map((row) => row.value),
   )
-  const corrections = sumMoney(
+  const corrections = sumMoneyText(
     db.adjustments
       .filter((row) => row.sourceId === sourceId && inWindow(row.date))
       .map((row) => row.delta),
@@ -61,7 +61,13 @@ const balanceAt = (sourceId: string, upTo: string): number => {
   // No clamp at zero. A source can genuinely go negative — the household
   // overspent an e-wallet, or is carrying a debt — and a floor would report a
   // comfortable Rp 0 for a source that is actually short (PRD §Risks).
-  return sumMoney([account.openingBalance, into, -outOf, -spent, corrections])
+  return sumMoneyText([
+    account.openingBalance,
+    into,
+    `-${outOf}`,
+    `-${spent}`,
+    corrections,
+  ])
 }
 
 export const positionHandlers = [
@@ -96,8 +102,8 @@ export const positionHandlers = [
     const rows: WirePosition[] = db.accounts
       .map((account) => ({
         source_id: account.id,
-        opening_balance: toWireSignedMoney(balanceAt(account.id, openingAt)),
-        balance: toWireSignedMoney(balanceAt(account.id, asOf)),
+        opening_balance: balanceAt(account.id, openingAt),
+        balance: balanceAt(account.id, asOf),
       }))
       // An archived source that still holds money is history with a balance,
       // and dropping it would make the household total disagree with its own

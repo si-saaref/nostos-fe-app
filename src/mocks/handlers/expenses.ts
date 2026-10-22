@@ -1,5 +1,12 @@
 import { http } from 'msw'
-import { fromWireMoney, toWireMoney } from '@/utils/money'
+import {
+  averageMoneyText,
+  compareMoneyText,
+  fromWireMoney,
+  isCanonicalWireInputMoney,
+  sumMoneyText,
+  toWireMoney,
+} from '@/utils/money'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
@@ -13,7 +20,6 @@ import {
   previousPeriod,
 } from '@/mocks/handlers/shared'
 import type { WireMeta } from '@/mocks/handlers/shared'
-import { averageMoney, isValidMoney, sumMoney } from '@/utils/money'
 import type { StoredExpense, WireExpense } from '@/types/expense'
 
 /**
@@ -46,11 +52,11 @@ const live = (): StoredExpense[] =>
   db.expenses.filter((expense) => expense.deletedAt === null)
 
 const totalsFor = (items: StoredExpense[]) => {
-  const sum = sumMoney(items.map((expense) => expense.value))
+  const sum = sumMoneyText(items.map((expense) => expense.value))
   return {
-    sum: toWireMoney(sum),
+    sum,
     count: items.length,
-    average: toWireMoney(averageMoney(sum, items.length)),
+    average: averageMoneyText(sum, items.length),
   }
 }
 
@@ -69,12 +75,12 @@ const rank = (
   return [...byKey.entries()]
     .map(([id, bucket]) => ({
       id,
-      sum: toWireMoney(sumMoney(bucket)),
+      sum: sumMoneyText(bucket),
       count: bucket.length,
     }))
     .sort(
       (a, b) =>
-        fromWireMoney(b.sum) - fromWireMoney(a.sum) ||
+        compareMoneyText(b.sum, a.sum) ||
         b.count - a.count ||
         a.id.localeCompare(b.id),
     )
@@ -201,12 +207,7 @@ const badBody = (body: Partial<WireExpense> & Record<string, unknown>) => {
       },
     ])
   }
-  if (
-    body.value !== undefined &&
-    (typeof body.value !== 'string' ||
-      !/^(0|[1-9]\d{0,11})\.\d{2}$/.test(body.value) ||
-      !isValidMoney(fromWireMoney(body.value)))
-  ) {
+  if (body.value !== undefined && !isCanonicalWireInputMoney(body.value)) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
       {
         field: 'value',

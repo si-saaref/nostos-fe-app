@@ -23,6 +23,7 @@
   "acc_kind_ewallet": "e-Wallet",
   "acc_name": "Nama akun",
   "acc_opening": "Saldo awal",
+  "acc_opening_invalid": "Saldo awal harus 0 atau nominal valid, maksimal 999.999.999.999,99.",
   "acc_title": "Akun",
   "act_add": "Tambah",
   "act_archive": "Arsipkan",
