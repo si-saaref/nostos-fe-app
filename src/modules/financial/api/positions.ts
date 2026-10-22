@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import { fromWireMoney, sumMoney } from '@/utils/money'
+import { fromWireMoney, sumMoney, sumMoneyText } from '@/utils/money'
 import type { ApiEnvelope } from '@/types/api'
 import type { Positions, WirePosition } from '@/types/income'
 
@@ -35,7 +35,9 @@ export const positionKeys = {
 const toPosition = (row: WirePosition) => ({
   sourceId: row.source_id,
   openingBalance: fromWireMoney(row.opening_balance),
+  openingBalanceText: row.opening_balance,
   balance: fromWireMoney(row.balance),
+  balanceText: row.balance,
 })
 
 export const usePositions = (householdId: string, scope: PositionScope) =>
@@ -57,7 +59,13 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
         items: rows,
         totals: {
           opening: sumMoney(rows.map((row) => row.openingBalance)),
+          openingText: sumMoneyText(
+            rows.map((row) => row.openingBalanceText ?? row.openingBalance),
+          ),
           balance: sumMoney(rows.map((row) => row.balance)),
+          balanceText: sumMoneyText(
+            rows.map((row) => row.balanceText ?? row.balance),
+          ),
         },
       }
     },

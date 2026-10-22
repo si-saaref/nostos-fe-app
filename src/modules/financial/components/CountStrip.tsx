@@ -3,6 +3,7 @@ import { useExpenses } from '@/modules/financial/api/expenses'
 import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
 import { formatCurrency } from '@/utils/formatters'
+import { roundMoneyToWholeText } from '@/utils/money'
 import { fromIsoDay, isoDay, previousMonthRange } from '@/utils/dates'
 import { MonthStepper } from '@/modules/financial/components/MonthStepper'
 import { StripShell } from '@/modules/financial/components/StripShell'
@@ -121,7 +122,7 @@ export const CountStrip = ({
       id: 'total',
       isLoading,
       key: m.count_total(),
-      value: formatCurrency(sum, currency, locale),
+      value: formatCurrency(totals?.sumText ?? sum, currency, locale),
       note:
         deltaPct === null
           ? null
@@ -138,7 +139,11 @@ export const CountStrip = ({
       value:
         !previousTotals && previousQuery.isLoading
           ? '—'
-          : formatCurrency(previousSum, currency, locale),
+          : formatCurrency(
+              previousTotals?.sumText ?? previousSum,
+              currency,
+              locale,
+            ),
       note: previousTotals
         ? previousTotals.count === 1
           ? m.tape_entries_one()
@@ -154,7 +159,13 @@ export const CountStrip = ({
       // Rounded: an average is a summary figure, and printing it to the cent
       // ("avg IDR 73,842.11") claims a precision the number does not have.
       note: m.count_avg({
-        amount: formatCurrency(Math.round(average), currency, locale),
+        amount: formatCurrency(
+          totals?.averageText
+            ? roundMoneyToWholeText(totals.averageText)
+            : Math.round(average),
+          currency,
+          locale,
+        ),
       }),
       tone: 'muted',
       sub: m.count_per_day({ n: perDay.toLocaleString(locale) }),
@@ -166,7 +177,11 @@ export const CountStrip = ({
       value: slice ? slice.name : '—',
       note: slice
         ? m.count_slice({
-            amount: formatCurrency(slice.amount, currency, locale),
+            amount: formatCurrency(
+              slice.amountText ?? slice.amount,
+              currency,
+              locale,
+            ),
             pct: `${slice.pct}%`,
           })
         : count > 0

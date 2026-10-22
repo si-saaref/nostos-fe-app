@@ -237,7 +237,13 @@ describe('useCreateExpense', () => {
     const august = client.getQueryData<Paginated<Expense>>(
       expenseKeys.list(HOUSEHOLD_ID, AUGUST),
     )
-    expect(august?.totals).toEqual({ sum: 25000, count: 1, average: 25000 })
+    expect(august?.totals).toMatchObject({
+      sum: 25000,
+      sumText: '25000.00',
+      count: 1,
+      average: 25000,
+      averageText: '25000.00',
+    })
     expect(august?.pagination.total).toBe(1)
   })
 

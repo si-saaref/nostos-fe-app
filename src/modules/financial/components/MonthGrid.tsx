@@ -83,7 +83,8 @@ export const MonthGrid = ({
     cells[from + step]?.focus()
   }, [])
 
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
 
   return (
     <div>
@@ -321,7 +322,7 @@ const accessibleName = (
   }: {
     date: string
     isFuture: boolean
-    money: (value: number) => string
+    money: (value: number | string) => string
     m: ReturnType<typeof useMessages>
   },
 ): string => {
@@ -329,9 +330,13 @@ const accessibleName = (
   if (day.count === 0) return m.cal_day_quiet({ date })
 
   const facts: string[] = []
-  if (day.spent > 0) facts.push(m.cal_a11y_spent({ amount: money(day.spent) }))
+  if (day.spent > 0)
+    facts.push(m.cal_a11y_spent({ amount: money(day.spentText ?? day.spent) }))
   if (day.inflow > 0)
-    facts.push(m.cal_a11y_received({ amount: money(day.inflow) }))
-  if (day.moved > 0) facts.push(m.cal_a11y_moved({ amount: money(day.moved) }))
+    facts.push(
+      m.cal_a11y_received({ amount: money(day.inflowText ?? day.inflow) }),
+    )
+  if (day.moved > 0)
+    facts.push(m.cal_a11y_moved({ amount: money(day.movedText ?? day.moved) }))
   return m.cal_day_reads({ date, facts: facts.join(', ') })
 }

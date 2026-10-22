@@ -135,6 +135,7 @@ describe('unwrapPage — meta.summary', () => {
       (row) => row,
     )
     expect(page.totals?.sum).toBe(250)
+    expect(page.totals?.sumText).toBe('250.00')
   })
 
   it('renames the nested wire keys and nothing else', () => {

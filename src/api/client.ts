@@ -112,8 +112,11 @@ export const unwrapPage = <W, T>(
 const toTotals = (wire: WireTotals): Totals => ({
   ...wire,
   sum: fromWireMoney(wire.sum),
+  sumText: wire.sum,
   average: fromWireMoney(wire.average),
+  averageText: wire.average,
   moved: wire.moved === undefined ? undefined : fromWireMoney(wire.moved),
+  movedText: wire.moved,
 })
 
 const toSummary = (wire: WireSummary): Summary => ({
@@ -123,10 +126,12 @@ const toSummary = (wire: WireSummary): Summary => ({
     byType: wire.breakdown.by_type?.map((slice) => ({
       ...slice,
       sum: fromWireMoney(slice.sum),
+      sumText: slice.sum,
     })),
     byMember: wire.breakdown.by_member?.map((slice) => ({
       ...slice,
       sum: fromWireMoney(slice.sum),
+      sumText: slice.sum,
     })),
   },
 })

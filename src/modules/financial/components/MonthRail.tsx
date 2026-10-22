@@ -16,6 +16,7 @@ interface Props {
   onJump: (date: string) => void
   /** Cumulative spend through the day currently in view. */
   cumulative: number
+  cumulativeText?: string
   monthTotal: number
   variant?: 'rail' | 'index'
 }
@@ -39,6 +40,7 @@ export const MonthRail = ({
   activeDate,
   onJump,
   cumulative,
+  cumulativeText,
   monthTotal,
   variant = 'rail',
 }: Props) => {
@@ -46,6 +48,10 @@ export const MonthRail = ({
   const { locale } = useSettings()
   const currency = useCurrency()
 
+  const textByDate = useMemo(
+    () => new Map(days.map((day) => [day.date, day.totalText])),
+    [days],
+  )
   const totalByDate = useMemo(
     () => new Map(days.map((day) => [day.date, day.total])),
     [days],
@@ -171,7 +177,7 @@ export const MonthRail = ({
                     day: 'numeric',
                     month: 'long',
                   }).format(fromIsoDay(date)),
-                })} — ${formatCurrency(total, currency, locale)}`}
+                })} — ${formatCurrency(textByDate.get(date) ?? total, currency, locale)}`}
                 className="group flex w-full items-center gap-1.5 rounded-sm"
               >
                 {label}
@@ -203,7 +209,7 @@ export const MonthRail = ({
           })}
         </p>
         <p className="font-display tnum mt-1 text-[13.5px] leading-none font-bold">
-          {formatCurrency(cumulative, currency, locale)}
+          {formatCurrency(cumulativeText ?? cumulative, currency, locale)}
         </p>
         <div className="mt-2 flex items-center gap-1.5">
           <span

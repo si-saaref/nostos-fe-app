@@ -1,5 +1,5 @@
 import { rimFor } from '@/theme/rims'
-import { sumMoney } from '@/utils/money'
+import { negateMoneyText, sumMoneyText } from '@/utils/money'
 import type { RimIndex } from '@/theme/rims'
 import type { Account, AccountKind } from '@/types/catalog'
 import type { Position } from '@/types/income'
@@ -16,9 +16,12 @@ export interface PositionSource {
   id: string
   name: string
   balance: number
+  balanceText?: string
   openingBalance: number
+  openingBalanceText?: string
   /** What the period changed. Derived, so the endpoint stays two figures wide. */
   movement: number
+  movementText?: string
   /** Source identity, from the row's stable `order` — never its array index. */
   rim: RimIndex
   /** History that still holds money. Kept, and said out loud. */
@@ -29,7 +32,9 @@ export interface PositionGroup {
   kind: AccountKind
   sources: PositionSource[]
   balance: number
+  balanceText?: string
   openingBalance: number
+  openingBalanceText?: string
 }
 
 /**
@@ -51,13 +56,22 @@ export const groupPositionsByKind = (
     // it has no name, no kind and no rim. Dropping it is honest; inventing an
     // "Unknown" group would put a real balance under a fake label.
     if (!account) return []
+    const movementText = sumMoneyText([
+      position.balanceText ?? position.balance,
+      negateMoneyText(
+        position.openingBalanceText ?? position.openingBalance.toFixed(2),
+      ),
+    ])
     return [
       {
         id: account.id,
         name: account.name,
         balance: position.balance,
+        balanceText: position.balanceText,
         openingBalance: position.openingBalance,
-        movement: sumMoney([position.balance, -position.openingBalance]),
+        openingBalanceText: position.openingBalanceText,
+        movement: Number(movementText),
+        movementText,
         rim: rimFor(account.order),
         isArchived: account.archivedAt !== null,
       },
@@ -71,6 +85,14 @@ export const groupPositionsByKind = (
       .filter((source) => byId.get(source.id)?.kind === kind)
       .sort((a, b) => orderOf(a.id) - orderOf(b.id))
     if (sources.length === 0) return []
+    const balanceText = sumMoneyText(
+      sources.map((source) => source.balanceText ?? source.balance),
+    )
+    const openingBalanceText = sumMoneyText(
+      sources.map(
+        (source) => source.openingBalanceText ?? source.openingBalance,
+      ),
+    )
     return [
       {
         kind,
@@ -78,10 +100,10 @@ export const groupPositionsByKind = (
         // Summed, never clamped: a kind can be collectively short, and a floor
         // at zero would make the kind subtotals disagree with the household
         // total they add up to.
-        balance: sumMoney(sources.map((source) => source.balance)),
-        openingBalance: sumMoney(
-          sources.map((source) => source.openingBalance),
-        ),
+        balance: Number(balanceText),
+        balanceText,
+        openingBalance: Number(openingBalanceText),
+        openingBalanceText,
       },
     ]
   })

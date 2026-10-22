@@ -48,7 +48,8 @@ export const CalendarStrip = ({
   const { locale } = useSettings()
   const currency = useCurrency()
 
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
   const figures = incomeMonthFigures(incomePage)
 
   const spent = expenseTotals?.sum ?? 0
@@ -63,7 +64,7 @@ export const CalendarStrip = ({
       id: 'out',
       isLoading,
       key: m.cal_out(),
-      value: money(spent),
+      value: money(expenseTotals?.sumText ?? spent),
       note:
         spentCount === 1
           ? m.cal_out_note_one()
@@ -74,7 +75,7 @@ export const CalendarStrip = ({
       id: 'in',
       isLoading,
       key: m.cal_in(),
-      value: money(received),
+      value: money(incomePage?.totals?.sumText ?? received),
       note:
         figures.externalCount === null
           ? m.inc_in_note_unknown()
@@ -87,7 +88,10 @@ export const CalendarStrip = ({
       id: 'moved',
       isLoading,
       key: m.cal_moved(),
-      value: figures.moved === null ? m.inc_unknown() : money(figures.moved),
+      value:
+        figures.moved === null
+          ? m.inc_unknown()
+          : money(figures.movedText ?? figures.moved),
       note:
         figures.transferCount === null
           ? m.inc_in_note_unknown()

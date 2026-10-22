@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import { averageMoney, sumMoney } from '@/utils/money'
+import { averageMoneyText, sumMoneyText } from '@/utils/money'
 import { fromWireMoney, toWireMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated, Totals } from '@/types/api'
 import type {
@@ -145,7 +145,11 @@ const adjustedTotals = (
   if (!totals) return undefined
   const transfer = income.kind === 'TRANSFER'
   const count = Math.max(0, totals.count + direction)
-  const sum = sumMoney([totals.sum, direction * netContribution(income)])
+  const sumText = sumMoneyText([
+    totals.sumText ?? totals.sum,
+    direction * netContribution(income),
+  ])
+  const sum = Number(sumText)
   const externalCount =
     totals.external_count === undefined
       ? undefined
@@ -154,18 +158,24 @@ const adjustedTotals = (
     totals.transfer_count === undefined
       ? undefined
       : Math.max(0, totals.transfer_count + (transfer ? direction : 0))
-  const moved =
+  const movedText =
     totals.moved === undefined
       ? undefined
-      : sumMoney([totals.moved, transfer ? direction * income.amount : 0])
+      : sumMoneyText([
+          totals.movedText ?? totals.moved,
+          transfer ? direction * income.amount : 0,
+        ])
+  const moved = movedText === undefined ? undefined : Number(movedText)
   return {
     ...totals,
     sum,
+    sumText,
     count,
-    average: averageMoney(sum, externalCount ?? count),
+    average: Number(averageMoneyText(sumText, externalCount ?? count)),
+    averageText: averageMoneyText(sumText, externalCount ?? count),
     ...(externalCount !== undefined && { external_count: externalCount }),
     ...(transferCount !== undefined && { transfer_count: transferCount }),
-    ...(moved !== undefined && { moved }),
+    ...(moved !== undefined && { moved, movedText }),
   }
 }
 

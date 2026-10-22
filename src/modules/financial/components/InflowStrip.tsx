@@ -34,6 +34,7 @@ interface Props {
   listLoaded: boolean
   /** What the month opened at — a carried balance, not a flow. */
   opening?: number
+  openingText?: string
   /** False while the position endpoint has not answered. */
   hasOpening: boolean
   figures: IncomeMonthFigures
@@ -68,6 +69,7 @@ export const InflowStrip = ({
   summary,
   listLoaded,
   opening,
+  openingText,
   hasOpening,
   figures,
 }: Props) => {
@@ -99,7 +101,8 @@ export const InflowStrip = ({
   const previousSum = previousTotals?.sum ?? 0
   const thisMonthLabel = monthLabel(month, locale)
   const previousLabel = monthLabel(fromIsoDay(previousMonth.from), locale)
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
 
   /**
    * The fresh-month rule.
@@ -127,7 +130,7 @@ export const InflowStrip = ({
       key: m.inc_opened_at({ month: thisMonthLabel }),
       // A dash rather than Rp 0: the position endpoint not having answered is
       // not the same claim as a household that opened the month with nothing.
-      value: hasOpening ? money(opening ?? 0) : m.inc_unknown(),
+      value: hasOpening ? money(openingText ?? opening ?? 0) : m.inc_unknown(),
       note: m.inc_carried_from({ month: previousLabel }),
       isNil: !hasOpening,
     },
@@ -135,7 +138,7 @@ export const InflowStrip = ({
       id: 'in',
       isLoading,
       key: m.inc_in(),
-      value: money(sum),
+      value: money(totals?.sumText ?? sum),
       note: countNote(
         figures.externalCount,
         m.inc_in_note_one(),
@@ -147,7 +150,10 @@ export const InflowStrip = ({
       id: 'moved',
       isLoading,
       key: m.inc_moved(),
-      value: figures.moved === null ? m.inc_unknown() : money(figures.moved),
+      value:
+        figures.moved === null
+          ? m.inc_unknown()
+          : money(figures.movedText ?? figures.moved),
       note: countNote(
         figures.transferCount,
         m.inc_moved_note_one(),
@@ -173,11 +179,11 @@ export const InflowStrip = ({
           : hasComparison
             ? m.inc_vs_note({
                 month: previousLabel,
-                amount: money(previousSum),
+                amount: money(previousTotals?.sumText ?? previousSum),
               })
             : m.inc_vs_closed({
                 month: previousLabel,
-                amount: money(previousSum),
+                amount: money(previousTotals?.sumText ?? previousSum),
               }),
       tone: deltaPct !== null && deltaPct > 0 ? 'delta' : 'muted',
       isNil: deltaPct === null || deltaPct === 0,

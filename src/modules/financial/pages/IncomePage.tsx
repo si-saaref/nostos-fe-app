@@ -21,7 +21,7 @@ import { rimFor } from '@/theme/rims'
 import type { Income } from '@/types/income'
 import { monthRange } from '@/utils/dates'
 import { getErrorMessage } from '@/utils/errors'
-import { sumMoney } from '@/utils/money'
+import { sumMoney, sumMoneyText } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -109,7 +109,15 @@ export const IncomePage = () => {
             .filter((row) => row.kind === 'EXTERNAL_INCOME')
             .map((r) => r.amount),
         ),
+        inflowText: sumMoneyText(
+          rows
+            .filter((row) => row.kind === 'EXTERNAL_INCOME')
+            .map((r) => r.amount),
+        ),
         moved: sumMoney(
+          rows.filter((row) => row.kind === 'TRANSFER').map((r) => r.amount),
+        ),
+        movedText: sumMoneyText(
           rows.filter((row) => row.kind === 'TRANSFER').map((r) => r.amount),
         ),
       }))
@@ -211,6 +219,7 @@ export const IncomePage = () => {
           summary={data?.summary}
           listLoaded={data !== undefined}
           opening={positions.data?.totals.opening}
+          openingText={positions.data?.totals.openingText}
           hasOpening={positions.isSuccess}
           figures={figures}
         />
@@ -218,6 +227,7 @@ export const IncomePage = () => {
         <PositionCard
           groups={positionGroups}
           total={positions.data?.totals.balance ?? 0}
+          totalText={positions.data?.totals.balanceText}
           asOf={asOf}
           isLoading={positions.isLoading}
           isUnavailable={positions.isError}

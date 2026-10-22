@@ -79,6 +79,19 @@ describe('buildCalendarMonth', () => {
     expect(third.count).toBe(2)
   })
 
+  it('keeps exact day totals when multiple entries exceed safe integer cents', () => {
+    const month = buildCalendarMonth(
+      SEPTEMBER,
+      page([
+        expense('2026-09-03', 999999999999.99),
+        expense('2026-09-03', 0.01, 'b'),
+      ]),
+      page([income('2026-09-03', 999999999999.99), income('2026-09-03', 0.01)]),
+    )
+    expect(month.days[2].spentText).toBe('1000000000000.00')
+    expect(month.days[2].inflowText).toBe('1000000000000.00')
+  })
+
   it('keeps arrival and movement apart on a day that holds both', () => {
     const month = buildCalendarMonth(
       SEPTEMBER,

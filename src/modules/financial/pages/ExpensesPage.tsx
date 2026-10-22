@@ -26,7 +26,7 @@ import { useRoster } from '@/modules/settings/api/members'
 import { rimFor } from '@/theme/rims'
 import type { Expense } from '@/types/expense'
 import { getErrorMessage } from '@/utils/errors'
-import { sumMoney } from '@/utils/money'
+import { sumMoney, sumMoneyText } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -99,6 +99,7 @@ export const ExpensesPage = () => {
         date,
         expenses: rows,
         total: sumMoney(rows.map((row) => row.value)),
+        totalText: sumMoneyText(rows.map((row) => row.value)),
       }))
   }, [expenses])
 
@@ -107,6 +108,7 @@ export const ExpensesPage = () => {
       groups.map((group) => ({
         date: group.date,
         total: group.total,
+        totalText: group.totalText,
         count: group.expenses.length,
       })),
     [groups],
@@ -139,6 +141,16 @@ export const ExpensesPage = () => {
       if (group.date === activeDate) break
     }
     return sumMoney(upToActive)
+  }, [groups, activeDate, data])
+
+  const cumulativeText = useMemo(() => {
+    if (!activeDate) return data?.totals?.sumText ?? '0.00'
+    const terms: string[] = []
+    for (const group of groups) {
+      terms.push(group.totalText ?? group.total.toFixed(2))
+      if (group.date === activeDate) break
+    }
+    return sumMoneyText(terms)
   }, [groups, activeDate, data])
 
   const registerDay = useCallback(
@@ -307,21 +319,29 @@ export const ExpensesPage = () => {
       kind === 'member'
         ? data?.summary?.breakdown?.byMember
         : data?.summary?.breakdown?.byType
-    const ranked: Array<[string, number]> = served
-      ? served.map((entry) => [entry.id, entry.sum])
+    const ranked: Array<[string, number, string?]> = served
+      ? served.map((entry) => [entry.id, entry.sum, entry.sumText])
       : (() => {
           // Summed from the rows on hand, which is honest only while the page
           // holds all of them.
           if (expenses.length < (data?.pagination?.total ?? expenses.length)) {
             return []
           }
-          const byKey = new Map<string, number>()
+          const byKey = new Map<string, number[]>()
           expenses.forEach((expense) => {
             const key =
               kind === 'member' ? expense.paidByUserId : expense.typeId
-            byKey.set(key, sumMoney([byKey.get(key) ?? 0, expense.value]))
+            const bucket = byKey.get(key) ?? []
+            bucket.push(expense.value)
+            byKey.set(key, bucket)
           })
-          return [...byKey.entries()].sort((a, b) => b[1] - a[1])
+          return [...byKey.entries()]
+            .map(([id, values]): [string, number, string] => [
+              id,
+              sumMoney(values),
+              sumMoneyText(values),
+            ])
+            .sort((a, b) => b[1] - a[1])
         })()
 
     const top = ranked[0]
@@ -332,6 +352,7 @@ export const ExpensesPage = () => {
       kind,
       name: nameOf(top[0]),
       amount: sumMoney([top[1]]),
+      amountText: top[2],
       pct: share(top[1]),
       runnerUp: second
         ? { name: nameOf(second[0]), pct: share(second[1]) }
@@ -427,6 +448,7 @@ export const ExpensesPage = () => {
           activeDate={activeDate}
           onJump={jumpTo}
           cumulative={cumulative}
+          cumulativeText={cumulativeText}
           monthTotal={data?.totals?.sum ?? 0}
         />
 
@@ -499,6 +521,7 @@ export const ExpensesPage = () => {
             activeDate={activeDate}
             onJump={jumpTo}
             cumulative={cumulative}
+            cumulativeText={cumulativeText}
             monthTotal={data?.totals?.sum ?? 0}
           />
         </div>

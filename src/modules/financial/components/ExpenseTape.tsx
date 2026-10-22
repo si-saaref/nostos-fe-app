@@ -104,7 +104,11 @@ export const ExpenseTape = ({
                 set smaller than the amounts it adds up. */}
             <span className="tnum text-[12px] whitespace-nowrap">
               <span className="font-semibold">
-                {formatCurrency(group.total, currency, locale)}
+                {formatCurrency(
+                  group.totalText ?? group.total,
+                  currency,
+                  locale,
+                )}
               </span>
               <span className="text-muted font-medium">
                 {' · '}

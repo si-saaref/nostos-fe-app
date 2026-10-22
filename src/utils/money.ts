@@ -44,6 +44,9 @@ const textOfCents = (cents: bigint): string => {
 export const sumMoneyText = (values: Array<number | string>): string =>
   textOfCents(values.reduce((total, value) => total + centsOf(value), 0n))
 
+export const negateMoneyText = (value: string): string =>
+  textOfCents(-centsOf(value))
+
 /** Decimal's half-up rounding for an aggregate mean. */
 export const averageMoneyText = (sum: string, count: number): string => {
   if (count <= 0) return '0.00'
@@ -54,6 +57,12 @@ export const averageMoneyText = (sum: string, count: number): string => {
       ? (cents + divisor / 2n) / divisor
       : -((-cents + divisor / 2n) / divisor)
   return textOfCents(rounded)
+}
+
+export const roundMoneyToWholeText = (value: string): string => {
+  const cents = centsOf(value)
+  const rounded = cents >= 0n ? (cents + 50n) / 100n : -((-cents + 50n) / 100n)
+  return rounded.toString()
 }
 
 /** Compare canonical decimal text without converting to a float. */

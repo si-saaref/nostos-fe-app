@@ -54,7 +54,8 @@ export const IncomeStatement = ({
   const countLabel = (n: number) =>
     n === 1 ? m.tape_entries_one() : m.tape_entries_short({ n })
 
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
 
   /**
    * What the day did, in the terms the strip already established.
@@ -67,13 +68,19 @@ export const IncomeStatement = ({
   const dayFigures = (group: DayIncomeGroup): string[] => {
     const parts: string[] = []
     if (group.inflow > 0 && group.moved > 0) {
-      parts.push(m.inc_day_in({ amount: `+${money(group.inflow)}` }))
-      parts.push(m.inc_day_moved({ amount: money(group.moved) }))
+      parts.push(
+        m.inc_day_in({ amount: `+${money(group.inflowText ?? group.inflow)}` }),
+      )
+      parts.push(
+        m.inc_day_moved({ amount: money(group.movedText ?? group.moved) }),
+      )
     } else if (group.inflow > 0) {
       // The `+` already says which it is, so the word would be noise.
-      parts.push(`+${money(group.inflow)}`)
+      parts.push(`+${money(group.inflowText ?? group.inflow)}`)
     } else if (group.moved > 0) {
-      parts.push(m.inc_day_moved({ amount: money(group.moved) }))
+      parts.push(
+        m.inc_day_moved({ amount: money(group.movedText ?? group.moved) }),
+      )
     }
     return parts
   }

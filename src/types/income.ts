@@ -132,8 +132,10 @@ export interface Position {
   sourceId: string
   /** What the source held at the end of the day before the period started. */
   openingBalance: number
+  openingBalanceText?: string
   /** What it holds at `as_of`. */
   balance: number
+  balanceText?: string
 }
 
 export interface WirePosition {
@@ -144,7 +146,9 @@ export interface WirePosition {
 
 export interface PositionTotals {
   opening: number
+  openingText?: string
   balance: number
+  balanceText?: string
 }
 
 export interface Positions {

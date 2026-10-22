@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import { averageMoney, sumMoney } from '@/utils/money'
+import { averageMoneyText, sumMoneyText } from '@/utils/money'
 import { fromWireMoney, toWireMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated } from '@/types/api'
 import type {
@@ -165,13 +165,23 @@ const withRow = (
   expense: Expense,
 ): Paginated<Expense> => {
   const count = (page.totals?.count ?? page.items.length) + 1
-  const sum = sumMoney([page.totals?.sum ?? 0, expense.value])
+  const sumText = sumMoneyText([
+    page.totals?.sumText ?? page.totals?.sum ?? 0,
+    expense.value,
+  ])
+  const sum = Number(sumText)
   return {
     ...page,
     items: [expense, ...page.items],
     pagination: { ...page.pagination, total: page.pagination.total + 1 },
     totals: page.totals
-      ? { sum, count, average: averageMoney(sum, count) }
+      ? {
+          sum,
+          sumText,
+          count,
+          average: Number(averageMoneyText(sumText, count)),
+          averageText: averageMoneyText(sumText, count),
+        }
       : undefined,
   }
 }
@@ -183,7 +193,11 @@ const withoutRow = (
   const removed = page.items.find((item) => item.id === id)
   if (!removed) return page
   const count = Math.max(0, (page.totals?.count ?? page.items.length) - 1)
-  const sum = Math.max(0, sumMoney([page.totals?.sum ?? 0, -removed.value]))
+  const sumText = sumMoneyText([
+    page.totals?.sumText ?? page.totals?.sum ?? 0,
+    -removed.value,
+  ])
+  const sum = Math.max(0, Number(sumText))
   return {
     ...page,
     items: page.items.filter((item) => item.id !== id),
@@ -192,7 +206,13 @@ const withoutRow = (
       total: Math.max(0, page.pagination.total - 1),
     },
     totals: page.totals
-      ? { sum, count, average: averageMoney(sum, count) }
+      ? {
+          sum,
+          sumText,
+          count,
+          average: Number(averageMoneyText(sumText, count)),
+          averageText: averageMoneyText(sumText, count),
+        }
       : undefined,
   }
 }

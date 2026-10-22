@@ -1,4 +1,4 @@
-import { sumMoney } from '@/utils/money'
+import { sumMoney, sumMoneyText } from '@/utils/money'
 import type { Paginated } from '@/types/api'
 import type { Income } from '@/types/income'
 
@@ -23,6 +23,7 @@ export interface IncomeMonthFigures {
   transferCount: number | null
   /** How much those transfers moved. Never part of net inflow. */
   moved: number | null
+  movedText?: string
   isComplete: boolean
 }
 
@@ -55,6 +56,7 @@ export const incomeMonthFigures = (
       externalCount: external,
       transferCount: transfers,
       moved,
+      movedText: page.totals?.movedText,
       isComplete: true,
     }
   }
@@ -66,6 +68,7 @@ export const incomeMonthFigures = (
     externalCount: page.items.length - moving.length,
     transferCount: moving.length,
     moved: sumMoney(moving.map((row) => row.amount)),
+    movedText: sumMoneyText(moving.map((row) => row.amount)),
     isComplete: true,
   }
 }

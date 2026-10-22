@@ -1,5 +1,5 @@
 import { isoDay, monthRange } from '@/utils/dates'
-import { sumMoney } from '@/utils/money'
+import { sumMoney, sumMoneyText } from '@/utils/money'
 import type { Paginated } from '@/types/api'
 import type { Expense } from '@/types/expense'
 import type { Income } from '@/types/income'
@@ -13,10 +13,13 @@ export interface CalendarDay {
   date: string
   /** What left the household that day. */
   spent: number
+  spentText?: string
   /** What arrived from outside it. Raises what it holds. */
   inflow: number
+  inflowText?: string
   /** What only changed pockets. Never added to `inflow`. */
   moved: number
+  movedText?: string
   expenses: Expense[]
   income: Income[]
   count: number
@@ -111,8 +114,11 @@ export const buildCalendarMonth = (
     return {
       ...day,
       spent: sumMoney(day.expenses.map((row) => row.value)),
+      spentText: sumMoneyText(day.expenses.map((row) => row.value)),
       inflow: sumMoney(arriving.map((row) => row.amount)),
+      inflowText: sumMoneyText(arriving.map((row) => row.amount)),
       moved: sumMoney(moving.map((row) => row.amount)),
+      movedText: sumMoneyText(moving.map((row) => row.amount)),
       count: day.expenses.length + day.income.length,
     }
   })

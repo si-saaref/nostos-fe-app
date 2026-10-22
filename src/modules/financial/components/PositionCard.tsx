@@ -6,6 +6,7 @@ import { useCurrency } from '@/hooks/useCurrency'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { RIM_CLASS } from '@/theme/rims'
 import { formatCurrency } from '@/utils/formatters'
+import { compareMoneyText } from '@/utils/money'
 import { fromIsoDay } from '@/utils/dates'
 import type {
   PositionGroup,
@@ -29,6 +30,7 @@ interface Props {
   groups: PositionGroup[]
   /** Household total. Passed rather than re-summed, so it cannot disagree. */
   total: number
+  totalText?: string
   /** The day every figure here is true as of. */
   asOf: string
   isLoading: boolean
@@ -52,6 +54,7 @@ interface Props {
 export const PositionCard = ({
   groups,
   total,
+  totalText,
   asOf,
   isLoading,
   isUnavailable,
@@ -59,7 +62,8 @@ export const PositionCard = ({
   const m = useMessages()
   const { locale } = useSettings()
   const currency = useCurrency()
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
 
   const kindLabel: Record<AccountKind, string> = {
     bank: m.acc_kind_bank(),
@@ -138,7 +142,7 @@ export const PositionCard = ({
         <p className="text-muted ml-auto text-[11px] font-semibold whitespace-nowrap">
           {m.pos_holds()}
           <span className="font-display tnum text-ink ml-1.5 text-base font-bold">
-            {money(total)}
+            {money(totalText ?? total)}
           </span>
         </p>
       </header>
@@ -169,18 +173,32 @@ export const PositionCard = ({
                   total the header already states: the same figure twice, one
                   line apart, reads as a rendering fault. A shortfall still
                   speaks, because that word is not a duplicate of anything. */}
-              {(groups.length > 1 || group.balance < 0) && (
+              {(groups.length > 1 ||
+                compareMoneyText(
+                  group.balanceText ?? group.balance.toFixed(2),
+                  '0.00',
+                ) < 0) && (
                 <p
                   className={`ml-auto flex items-baseline gap-1 text-[11px] font-bold ${
-                    group.balance < 0 ? 'text-danger' : ''
+                    compareMoneyText(
+                      group.balanceText ?? group.balance.toFixed(2),
+                      '0.00',
+                    ) < 0
+                      ? 'text-danger'
+                      : ''
                   }`}
                 >
-                  {group.balance < 0 && (
+                  {compareMoneyText(
+                    group.balanceText ?? group.balance.toFixed(2),
+                    '0.00',
+                  ) < 0 && (
                     <span className="text-[8.5px] font-bold tracking-[0.09em] uppercase">
                       {m.pos_short()}
                     </span>
                   )}
-                  <span className="tnum">{money(group.balance)}</span>
+                  <span className="tnum">
+                    {money(group.balanceText ?? group.balance)}
+                  </span>
                 </p>
               )}
             </div>
@@ -215,17 +233,33 @@ const SourceRow = ({
   money,
 }: {
   source: PositionSource
-  money: (value: number) => string
+  money: (value: number | string) => string
 }) => {
   const m = useMessages()
-  const isShort = source.balance < 0
-  const isEmpty = source.balance === 0
+  const balanceSign = compareMoneyText(
+    source.balanceText ?? source.balance.toFixed(2),
+    '0.00',
+  )
+  const movementSign = compareMoneyText(
+    source.movementText ?? source.movement.toFixed(2),
+    '0.00',
+  )
+  const isShort = balanceSign < 0
+  const isEmpty = balanceSign === 0
 
   const movement =
-    source.movement > 0
-      ? m.pos_movement_up({ amount: money(source.movement) })
-      : source.movement < 0
-        ? m.pos_movement_down({ amount: money(Math.abs(source.movement)) })
+    movementSign > 0
+      ? m.pos_movement_up({
+          amount: money(source.movementText ?? source.movement),
+        })
+      : movementSign < 0
+        ? m.pos_movement_down({
+            amount: money(
+              source.movementText
+                ? source.movementText.slice(1)
+                : Math.abs(source.movement),
+            ),
+          })
         : m.pos_movement_flat()
 
   const state = isShort ? m.pos_negative() : isEmpty ? m.pos_zero() : null
@@ -244,7 +278,7 @@ const SourceRow = ({
           isShort ? 'text-danger' : isEmpty ? 'text-muted' : ''
         }`}
       >
-        {money(source.balance)}
+        {money(source.balanceText ?? source.balance)}
       </span>
       <span
         className={`col-start-2 col-end-4 -mt-0.5 text-[9px] font-bold ${

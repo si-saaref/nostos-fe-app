@@ -158,6 +158,7 @@ export interface Summary {
 export interface SummarySlice {
   id: string
   sum: number
+  sumText?: string
   count: number
 }
 
@@ -169,8 +170,11 @@ export interface SummarySlice {
  */
 export interface Totals {
   sum: number
+  /** Exact server decimal text for display; arithmetic uses cent helpers. */
+  sumText?: string
   count: number
   average: number
+  averageText?: string
   /**
    * Income only, and spelled as they arrive on the wire: `unwrapPage` spreads
    * `meta.totals` rather than mapping it key by key, so keeping the two shapes
@@ -178,6 +182,7 @@ export interface Totals {
    * dropped a key is the failure this contract is arranged to avoid.
    */
   moved?: number
+  movedText?: string
   external_count?: number
   transfer_count?: number
 }
