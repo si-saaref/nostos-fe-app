@@ -6,6 +6,7 @@ export const SETTINGS_ANCHORS = {
   expenseCategories: 'kategori-pengeluaran',
   incomeTypes: 'jenis-pemasukan',
   accounts: 'akun',
+  profile: 'profil',
   members: 'anggota',
   household: 'rumah',
 } as const

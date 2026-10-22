@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { PublicOnlyRoute } from '@/routes/PublicOnlyRoute'
 import { SigninPage } from '@/modules/auth/pages/SigninPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { EmailChangePage } from '@/modules/auth/pages/EmailChangePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { Loading } from '@/components/Loading'
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
       // The only public route. The backend hardcodes `/signin` onto APP_URL
       // when it redirects a spent magic link, so this path is not ours to
       // rename.
+      { path: '/email-change', element: <EmailChangePage /> },
       {
         path: '/signin',
         element: (

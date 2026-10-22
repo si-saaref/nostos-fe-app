@@ -362,5 +362,22 @@
   "tape_error": "Gagal memuat pengeluaran.",
   "tape_loading": "Memuat pengeluaran…",
   "tape_retry": "Coba lagi",
-  "theme_label": "Tema"
+  "theme_label": "Tema",
+  "group_personal": "Pribadi",
+  "profile_title": "Email login",
+  "profile_description": "Ganti alamat untuk masuk ke Nostos. Konfirmasi harus lewat email lama, lalu email baru.",
+  "profile_current": "Email sekarang",
+  "profile_new_email": "Email baru",
+  "profile_send": "Kirim konfirmasi",
+  "profile_sending": "Mengirim…",
+  "profile_sent": "Cek email lama untuk menyetujui perubahan. Setelah itu, buka tautan di email baru untuk konfirmasi dan masuk.",
+  "email_change_title": "Perubahan email",
+  "email_change_approved": "Email lama sudah menyetujui. Cek email baru untuk tautan konfirmasi yang sekaligus membuat sesi login.",
+  "email_change_done": "Email baru sudah dikonfirmasi. Browser ini sudah masuk dengan alamat baru.",
+  "email_change_delivery_failed": "Konfirmasi disetujui, tetapi email ke alamat baru gagal dikirim. Masuk dengan email lama lalu ajukan perubahan lagi.",
+  "email_change_address_taken": "Alamat baru sudah dipakai. Masuk dengan email lama lalu pilih alamat lain.",
+  "email_change_invalid": "Tautan tidak berlaku atau sudah dipakai. Ajukan perubahan lagi dari pengaturan.",
+  "email_change_unknown": "Status perubahan email tidak dikenal. Periksa akunmu sebelum mencoba lagi.",
+  "email_change_settings": "Kembali ke pengaturan",
+  "email_change_signin": "Ke halaman masuk"
 }

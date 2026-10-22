@@ -362,5 +362,22 @@
   "tape_error": "Could not load expenses.",
   "tape_loading": "Loading expenses…",
   "tape_retry": "Try again",
-  "theme_label": "Theme"
+  "theme_label": "Theme",
+  "group_personal": "Personal",
+  "profile_title": "Login email",
+  "profile_description": "Change the address you use to sign in to Nostos. Confirm through your old inbox, then your new inbox.",
+  "profile_current": "Current email",
+  "profile_new_email": "New email",
+  "profile_send": "Send confirmation",
+  "profile_sending": "Sending…",
+  "profile_sent": "Check your old inbox to approve the change. Then open the link in your new inbox to confirm and sign in.",
+  "email_change_title": "Email change",
+  "email_change_approved": "Your old inbox approved the change. Check your new inbox for a link that confirms the address and signs you in.",
+  "email_change_done": "Your new address is confirmed. This browser is signed in with it.",
+  "email_change_delivery_failed": "The change was approved, but we could not send the new-inbox email. Sign in with your old address and request the change again.",
+  "email_change_address_taken": "The new address is already in use. Sign in with your old address and choose another.",
+  "email_change_invalid": "This link is invalid or has already been used. Request the change again in settings.",
+  "email_change_unknown": "Unknown email-change status. Check your account before trying again.",
+  "email_change_settings": "Back to settings",
+  "email_change_signin": "Go to sign in"
 }

@@ -5,6 +5,7 @@ import { useHousehold } from '@/contexts/useHousehold'
 import { CategorySection } from '@/modules/settings/components/CategorySection'
 import { IncomeTypeSection } from '@/modules/settings/components/IncomeTypeSection'
 import { AccountSection } from '@/modules/settings/components/AccountSection'
+import { ProfileSection } from '@/modules/settings/components/ProfileSection'
 import { MemberSection } from '@/modules/settings/components/MemberSection'
 import { PreferencesSection } from '@/modules/settings/components/PreferencesSection'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
@@ -15,7 +16,7 @@ interface IndexEntry {
   label: string
 }
 
-type GroupId = 'expense' | 'income' | 'household'
+type GroupId = 'expense' | 'income' | 'household' | 'personal'
 
 interface SettingsGroup {
   id: GroupId
@@ -58,6 +59,11 @@ export const SettingsPage = () => {
         { id: SETTINGS_ANCHORS.members, label: m.mem_title() },
         { id: SETTINGS_ANCHORS.household, label: m.pref_title() },
       ],
+    },
+    {
+      id: 'personal',
+      label: m.group_personal(),
+      sections: [{ id: SETTINGS_ANCHORS.profile, label: m.profile_title() }],
     },
     {
       id: 'expense',
@@ -244,6 +250,8 @@ export const SettingsPage = () => {
             ref={scrollRef}
             className="h-full overflow-y-auto pr-1 pb-24 lg:pb-4"
           >
+            {activeGroup.id === 'personal' && <ProfileSection />}
+
             {activeGroup.id === 'expense' && (
               <CategorySection
                 householdId={householdId}
