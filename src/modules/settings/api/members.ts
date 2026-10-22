@@ -95,7 +95,9 @@ export const useActivePayers = (householdId: string) =>
     queryFn: () => fetchMembers(householdId),
     enabled: Boolean(householdId),
     select: (members: Member[]) =>
-      members.filter((member) => !member.deletedAt).map(toRosterUser),
+      members
+        .filter((member) => member.status === 'joined' && !member.deletedAt)
+        .map(toRosterUser),
   })
 
 const invalidates = (householdId: string) => [memberKeys.all(householdId)]

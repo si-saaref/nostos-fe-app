@@ -89,7 +89,7 @@ describe('useMembers', () => {
 })
 
 describe('useInviteMember', () => {
-  it('reaches both the members list and the payer picker from one write', async () => {
+  it('keeps a new pending invite off the payer picker', async () => {
     const { result } = setup()
     await waitFor(() => expect(result.current.payers.isSuccess).toBe(true))
 
@@ -100,8 +100,8 @@ describe('useInviteMember', () => {
       })
     })
 
-    // One key, so a single invalidation cannot leave the picker a session
-    // behind the list — the failure mode two endpoints had.
+    // The roster updates from one cache key, but pending members cannot
+    // be named as payers until they accept the invitation.
     await waitFor(() =>
       expect(
         result.current.members.data?.some((row) => row.name === 'Nadia'),
@@ -109,7 +109,7 @@ describe('useInviteMember', () => {
     )
     expect(
       result.current.payers.data?.some((row) => row.name === 'Nadia'),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('returns the invite with its pending status and expiry', async () => {
