@@ -49,6 +49,28 @@ export interface Account {
   householdId: string
 }
 
+export interface BalanceAdjustment {
+  id: string
+  householdId: string
+  sourceId: string
+  createdByUserId: string
+  delta: number
+  date: string
+  reason: string
+  createdAt: string
+}
+
+export interface WireBalanceAdjustment {
+  id: string
+  household_id: string
+  source_id: string
+  created_by_user_id: string
+  delta: number
+  date: string
+  reason: string
+  created_at: string
+}
+
 /**
  * `/expense-types` and `/payment-sources` on the wire, snake_case as sent.
  * Spelled out rather than derived, for the same reason as `WireExpense`: this

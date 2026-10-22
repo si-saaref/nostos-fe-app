@@ -8,6 +8,7 @@ import { DateField } from '@/components/DateField'
 import { DismissablePanel } from '@/components/DismissablePanel'
 import { FormField } from '@/components/FormField'
 import { SettingPlate } from '@/modules/settings/components/SettingPlate'
+import { BalanceAdjustmentPanel } from '@/modules/settings/components/BalanceAdjustmentPanel'
 import { SectionShell } from '@/modules/settings/components/SectionShell'
 import { RowActions } from '@/modules/settings/components/RowActions'
 import {
@@ -245,6 +246,11 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                   {m.settings_admin_only()}
                 </p>
               )}
+              <BalanceAdjustmentPanel
+                householdId={householdId}
+                account={account}
+                canManage={canManage}
+              />
             </SettingPlate>
           )
         })}

@@ -1,6 +1,6 @@
 import { http } from 'msw'
 import { db, nextId } from '@/mocks/db'
-import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
+import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
@@ -12,9 +12,22 @@ import {
 import type {
   Account,
   AccountKind,
+  BalanceAdjustment,
   WireAccount,
   WireAccountKind,
+  WireBalanceAdjustment,
 } from '@/types/catalog'
+
+const toAdjustmentWire = (row: BalanceAdjustment): WireBalanceAdjustment => ({
+  id: row.id,
+  household_id: row.householdId,
+  source_id: row.sourceId,
+  created_by_user_id: row.createdByUserId,
+  delta: row.delta,
+  date: row.date,
+  reason: row.reason,
+  created_at: row.createdAt,
+})
 
 /** The mock's store holds domain rows; only the wire is uppercase. */
 const KIND_TO_WIRE: Record<AccountKind, WireAccountKind> = {
@@ -53,6 +66,52 @@ const conflict = (name: string) =>
 
 /** Archived rows and stable `order` for the same reasons as categories. */
 export const accountHandlers = [
+  http.get('*/api/v1/payment-sources/:id/adjustments', async ({ params }) => {
+    await pause(READ_LATENCY_MS)
+    const source = db.accounts.find((row) => row.id === params.id)
+    if (!source) return notFound('Account')
+    return ok(
+      db.adjustments
+        .filter((row) => row.sourceId === source.id)
+        .map(toAdjustmentWire),
+    )
+  }),
+
+  http.post(
+    '*/api/v1/payment-sources/:id/adjustments',
+    async ({ params, request }) => {
+      await pause(WRITE_LATENCY_MS)
+      const source = db.accounts.find((row) => row.id === params.id)
+      if (!source) return notFound('Account')
+      const body = (await request.json()) as {
+        direction: 'INCREASE' | 'DECREASE'
+        amount: number
+        date: string
+        reason: string
+      }
+      if (
+        !Number.isFinite(body.amount) ||
+        body.amount <= 0 ||
+        !body.reason?.trim() ||
+        body.date < source.asOf
+      ) {
+        return errorBody(400, 'VALIDATION_ERROR', 'Invalid balance adjustment')
+      }
+      const created: BalanceAdjustment = {
+        id: nextId('adjustment'),
+        householdId: MOCK_HOUSEHOLD.id,
+        sourceId: source.id,
+        createdByUserId: MOCK_USER.id,
+        delta: body.direction === 'DECREASE' ? -body.amount : body.amount,
+        date: body.date,
+        reason: body.reason.trim(),
+        createdAt: new Date().toISOString(),
+      }
+      db.adjustments.unshift(created)
+      return ok(toAdjustmentWire(created), { status: 201 })
+    },
+  ),
+
   http.get('*/api/v1/payment-sources', async () => {
     await pause(READ_LATENCY_MS)
     return ok(db.accounts.map(toWire))

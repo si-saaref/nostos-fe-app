@@ -52,11 +52,16 @@ const balanceAt = (sourceId: string, upTo: string): number => {
       )
       .map((row) => row.value),
   )
+  const corrections = sumMoney(
+    db.adjustments
+      .filter((row) => row.sourceId === sourceId && inWindow(row.date))
+      .map((row) => row.delta),
+  )
 
   // No clamp at zero. A source can genuinely go negative — the household
   // overspent an e-wallet, or is carrying a debt — and a floor would report a
   // comfortable Rp 0 for a source that is actually short (PRD §Risks).
-  return roundMoney(account.openingBalance + into - outOf - spent)
+  return roundMoney(account.openingBalance + into - outOf - spent + corrections)
 }
 
 export const positionHandlers = [

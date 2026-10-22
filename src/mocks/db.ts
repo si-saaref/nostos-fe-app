@@ -5,7 +5,7 @@ import { seedIncome } from '@/mocks/fixtures/income'
 import { seedIncomeTypes } from '@/mocks/fixtures/incomeTypes'
 import { seedMembers } from '@/mocks/fixtures/members'
 import { seedPrefs } from '@/mocks/fixtures/prefs'
-import type { Account, Category } from '@/types/catalog'
+import type { Account, BalanceAdjustment, Category } from '@/types/catalog'
 import type { StoredExpense } from '@/types/expense'
 import type { IncomeType, StoredIncome } from '@/types/income'
 import type { HouseholdPrefs, Member } from '@/modules/settings/types/settings'
@@ -30,6 +30,7 @@ const seedAll = () => {
     incomeTypes: seedIncomeTypes(),
     categories: seedCategories(),
     accounts: seedAccounts(),
+    adjustments: [] as BalanceAdjustment[],
     members,
     prefs: seedPrefs(),
   }
@@ -41,6 +42,7 @@ export const db: {
   incomeTypes: IncomeType[]
   categories: Category[]
   accounts: Account[]
+  adjustments: BalanceAdjustment[]
   members: Member[]
   prefs: HouseholdPrefs
 } = seedAll()
