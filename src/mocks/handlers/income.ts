@@ -1,4 +1,5 @@
 import { http } from 'msw'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
@@ -12,14 +13,14 @@ import {
   previousPeriod,
 } from '@/mocks/handlers/shared'
 import type { WireMeta } from '@/mocks/handlers/shared'
-import { averageMoney, isValidMoney, roundMoney, sumMoney } from '@/utils/money'
+import { averageMoney, isValidMoney, sumMoney } from '@/utils/money'
 import type { StoredIncome, WireIncome } from '@/types/income'
 
 const toWire = (income: StoredIncome): WireIncome => ({
   id: income.id,
   name: income.name,
   description: income.description ?? null,
-  amount: income.amount,
+  amount: toWireMoney(income.amount),
   kind: income.kind,
   type_id: income.typeId,
   from_source_id: income.fromSourceId,
@@ -49,12 +50,12 @@ const totalsFor = (items: StoredIncome[]) => {
   const into = sumMoney(items.map((row) => row.amount))
   const transfers = items.filter((row) => row.fromSourceId !== null)
   const outOf = sumMoney(transfers.map((row) => row.amount))
-  const sum = roundMoney(into - outOf)
+  const sum = sumMoney([into, -outOf])
   return {
-    sum,
+    sum: toWireMoney(sum),
     count: items.length,
-    average: averageMoney(sum, items.length),
-    moved: outOf,
+    average: toWireMoney(averageMoney(sum, items.length)),
+    moved: toWireMoney(outOf),
     external_count: items.length - transfers.length,
     transfer_count: transfers.length,
   }
@@ -113,7 +114,12 @@ const badBody = (body: Partial<WireIncome> & Record<string, unknown>) => {
       },
     ])
   }
-  if (body.amount !== undefined && !isValidMoney(body.amount)) {
+  if (
+    body.amount !== undefined &&
+    (typeof body.amount !== 'string' ||
+      !/^(0|[1-9]\d{0,11})\.\d{2}$/.test(body.amount) ||
+      !isValidMoney(fromWireMoney(body.amount)))
+  ) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
       {
         field: 'amount',
@@ -275,7 +281,7 @@ export const incomeHandlers = [
       name: body.name ?? '',
       // Blank is coerced to null on write — see the expense handler.
       description: body.description?.trim() || null,
-      amount: body.amount ?? 0,
+      amount: body.amount === undefined ? 0 : fromWireMoney(body.amount),
       kind: body.kind,
       typeId: body.type_id ?? '',
       fromSourceId: body.from_source_id ?? null,
@@ -329,7 +335,7 @@ export const incomeHandlers = [
       ...(body.description !== undefined && {
         description: body.description?.trim() || null,
       }),
-      ...(body.amount !== undefined && { amount: body.amount }),
+      ...(body.amount !== undefined && { amount: fromWireMoney(body.amount) }),
       ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.from_source_id !== undefined && {
         fromSourceId: body.from_source_id,

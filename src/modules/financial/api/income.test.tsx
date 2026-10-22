@@ -32,7 +32,7 @@ describe('toIncome', () => {
       id: 'inc-1',
       name: 'Salary Sep',
       description: undefined,
-      amount: 5000000,
+      amount: '5000000.00',
       kind: 'EXTERNAL_INCOME',
       type_id: 'itype-0',
       from_source_id: null,

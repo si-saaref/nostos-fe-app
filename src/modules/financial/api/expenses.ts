@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import { averageMoney, roundMoney } from '@/utils/money'
+import { averageMoney, sumMoney } from '@/utils/money'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated } from '@/types/api'
 import type {
   CreateExpenseInput,
@@ -82,7 +83,7 @@ export const toExpense = (row: WireExpense): Expense => ({
   id: row.id,
   name: row.name,
   description: row.description,
-  value: row.value,
+  value: fromWireMoney(row.value),
   typeId: row.type_id,
   sourceId: row.source_id,
   datePaid: row.date_paid,
@@ -100,7 +101,7 @@ const toExpenseBody = (input: CreateExpenseInput) => ({
   // Blank is absent. The server coerces `''` to `null` anyway, but sending
   // the empty string would make "" and null both reachable from here.
   description: input.description?.trim() || null,
-  value: input.value,
+  value: toWireMoney(input.value),
   type_id: input.typeId,
   source_id: input.sourceId,
   date_paid: input.datePaid,
@@ -126,7 +127,7 @@ const toExpensePatch = (patch: UpdateExpenseInput) => {
   if (patch.description !== undefined) {
     body.description = patch.description?.trim() || null
   }
-  if (patch.value !== undefined) body.value = patch.value
+  if (patch.value !== undefined) body.value = toWireMoney(patch.value)
   if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.sourceId !== undefined) body.source_id = patch.sourceId
   if (patch.datePaid !== undefined) body.date_paid = patch.datePaid
@@ -164,7 +165,7 @@ const withRow = (
   expense: Expense,
 ): Paginated<Expense> => {
   const count = (page.totals?.count ?? page.items.length) + 1
-  const sum = roundMoney((page.totals?.sum ?? 0) + expense.value)
+  const sum = sumMoney([page.totals?.sum ?? 0, expense.value])
   return {
     ...page,
     items: [expense, ...page.items],
@@ -182,7 +183,7 @@ const withoutRow = (
   const removed = page.items.find((item) => item.id === id)
   if (!removed) return page
   const count = Math.max(0, (page.totals?.count ?? page.items.length) - 1)
-  const sum = Math.max(0, roundMoney((page.totals?.sum ?? 0) - removed.value))
+  const sum = Math.max(0, sumMoney([page.totals?.sum ?? 0, -removed.value]))
   return {
     ...page,
     items: page.items.filter((item) => item.id !== id),

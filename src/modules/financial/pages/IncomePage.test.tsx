@@ -461,10 +461,10 @@ describe('IncomePage — requests', () => {
           meta: {
             pagination: { page: 1, limit: 400, total: 0, total_pages: 1 },
             totals: {
-              sum: 0,
+              sum: '0.00',
               count: 0,
-              average: 0,
-              moved: 0,
+              average: '0.00',
+              moved: '0.00',
               external_count: 0,
               transfer_count: 0,
             },

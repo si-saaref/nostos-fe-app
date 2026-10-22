@@ -115,7 +115,7 @@ describe('unwrapPage — meta.summary', () => {
     const page = unwrapPage(
       respond({
         pagination: PAGINATION,
-        totals: { sum: 100, count: 1, average: 100 },
+        totals: { sum: '100.00', count: 1, average: '100.00' },
       }),
       (row) => row,
     )
@@ -129,8 +129,8 @@ describe('unwrapPage — meta.summary', () => {
     const page = unwrapPage(
       respond({
         pagination: PAGINATION,
-        totals: { sum: 100, count: 1, average: 100 },
-        summary: { current: { sum: 250, count: 2, average: 125 } },
+        totals: { sum: '100.00', count: 1, average: '100.00' },
+        summary: { current: { sum: '250.00', count: 2, average: '125.00' } },
       }),
       (row) => row,
     )
@@ -142,11 +142,11 @@ describe('unwrapPage — meta.summary', () => {
       respond({
         pagination: PAGINATION,
         summary: {
-          current: { sum: 250, count: 2, average: 125 },
-          previous: { sum: 90, count: 1, average: 90 },
+          current: { sum: '250.00', count: 2, average: '125.00' },
+          previous: { sum: '90.00', count: 1, average: '90.00' },
           breakdown: {
-            by_type: [{ id: 'type-a', sum: 250, count: 2 }],
-            by_member: [{ id: 'user-a', sum: 250, count: 2 }],
+            by_type: [{ id: 'type-a', sum: '250.00', count: 2 }],
+            by_member: [{ id: 'user-a', sum: '250.00', count: 2 }],
           },
         },
       }),

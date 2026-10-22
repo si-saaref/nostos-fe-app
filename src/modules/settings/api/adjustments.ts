@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
 import { entityKey } from '@/api/keys'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
 import type { ApiEnvelope } from '@/types/api'
 import type { BalanceAdjustment, WireBalanceAdjustment } from '@/types/catalog'
 
@@ -20,7 +21,7 @@ const toAdjustment = (row: WireBalanceAdjustment): BalanceAdjustment => ({
   householdId: row.household_id,
   sourceId: row.source_id,
   createdByUserId: row.created_by_user_id,
-  delta: row.delta,
+  delta: fromWireMoney(row.delta),
   date: row.date,
   reason: row.reason,
   createdAt: row.created_at,
@@ -52,7 +53,7 @@ export const useCreateAdjustment = (householdId: string) => {
             `/payment-sources/${input.sourceId}/adjustments`,
             {
               direction: input.direction,
-              amount: input.amount,
+              amount: toWireMoney(input.amount),
               date: input.date,
               reason: input.reason.trim(),
             },

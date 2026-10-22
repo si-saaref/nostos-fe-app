@@ -61,7 +61,7 @@ export interface WireSummary {
 
 export interface WireSummarySlice {
   id: string
-  sum: number
+  sum: string
   count: number
 }
 
@@ -79,10 +79,10 @@ export interface WirePagination {
  * money that the server never made.
  */
 export interface WireTotals {
-  sum: number
+  sum: string
   count: number
-  average: number
-  moved?: number
+  average: string
+  moved?: string
   external_count?: number
   transfer_count?: number
 }

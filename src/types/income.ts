@@ -84,7 +84,7 @@ export interface WireIncome {
   id: string
   name: string
   description?: string | null
-  amount: number
+  amount: string
   kind: 'EXTERNAL_INCOME' | 'TRANSFER'
   type_id: string
   from_source_id: string | null
@@ -138,8 +138,8 @@ export interface Position {
 
 export interface WirePosition {
   source_id: string
-  opening_balance: number
-  balance: number
+  opening_balance: string
+  balance: string
 }
 
 export interface PositionTotals {

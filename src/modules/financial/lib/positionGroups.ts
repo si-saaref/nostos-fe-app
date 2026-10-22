@@ -57,7 +57,7 @@ export const groupPositionsByKind = (
         name: account.name,
         balance: position.balance,
         openingBalance: position.openingBalance,
-        movement: position.balance - position.openingBalance,
+        movement: sumMoney([position.balance, -position.openingBalance]),
         rim: rimFor(account.order),
         isArchived: account.archivedAt !== null,
       },

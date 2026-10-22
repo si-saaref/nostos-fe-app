@@ -77,7 +77,7 @@ describe('CalendarPage', () => {
           data: [],
           meta: {
             pagination: { page: 1, limit: 500, total: 612, total_pages: 2 },
-            totals: { sum: 0, count: 612, average: 0 },
+            totals: { sum: '0.00', count: 612, average: '0.00' },
           },
         }),
       ),

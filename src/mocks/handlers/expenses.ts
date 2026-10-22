@@ -1,4 +1,5 @@
 import { http } from 'msw'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
@@ -24,7 +25,7 @@ const toWire = (expense: StoredExpense): WireExpense => ({
   id: expense.id,
   name: expense.name,
   description: expense.description ?? null,
-  value: expense.value,
+  value: toWireMoney(expense.value),
   type_id: expense.typeId,
   source_id: expense.sourceId,
   date_paid: expense.datePaid,
@@ -46,7 +47,11 @@ const live = (): StoredExpense[] =>
 
 const totalsFor = (items: StoredExpense[]) => {
   const sum = sumMoney(items.map((expense) => expense.value))
-  return { sum, count: items.length, average: averageMoney(sum, items.length) }
+  return {
+    sum: toWireMoney(sum),
+    count: items.length,
+    average: toWireMoney(averageMoney(sum, items.length)),
+  }
 }
 
 /** Ranked `sum DESC, count DESC, id ASC`, capped at 5, as the API ranks it. */
@@ -54,20 +59,24 @@ const rank = (
   items: StoredExpense[],
   keyOf: (row: StoredExpense) => string,
 ) => {
-  const byKey = new Map<string, { sum: number; count: number }>()
+  const byKey = new Map<string, number[]>()
   items.forEach((row) => {
     const key = keyOf(row)
-    const bucket = byKey.get(key) ?? { sum: 0, count: 0 }
-    byKey.set(key, { sum: bucket.sum + row.value, count: bucket.count + 1 })
+    const bucket = byKey.get(key) ?? []
+    bucket.push(row.value)
+    byKey.set(key, bucket)
   })
   return [...byKey.entries()]
     .map(([id, bucket]) => ({
       id,
-      sum: sumMoney([bucket.sum]),
-      count: bucket.count,
+      sum: toWireMoney(sumMoney(bucket)),
+      count: bucket.length,
     }))
     .sort(
-      (a, b) => b.sum - a.sum || b.count - a.count || a.id.localeCompare(b.id),
+      (a, b) =>
+        fromWireMoney(b.sum) - fromWireMoney(a.sum) ||
+        b.count - a.count ||
+        a.id.localeCompare(b.id),
     )
     .slice(0, 5)
 }
@@ -192,7 +201,12 @@ const badBody = (body: Partial<WireExpense> & Record<string, unknown>) => {
       },
     ])
   }
-  if (body.value !== undefined && !isValidMoney(body.value)) {
+  if (
+    body.value !== undefined &&
+    (typeof body.value !== 'string' ||
+      !/^(0|[1-9]\d{0,11})\.\d{2}$/.test(body.value) ||
+      !isValidMoney(fromWireMoney(body.value)))
+  ) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
       {
         field: 'value',
@@ -302,7 +316,7 @@ export const expenseHandlers = [
       // Blank is coerced to null on write, so `''` never reaches the store
       // and a reader never has to treat the two as the same thing.
       description: body.description?.trim() || null,
-      value: body.value ?? 0,
+      value: body.value === undefined ? 0 : fromWireMoney(body.value),
       typeId: body.type_id ?? '',
       sourceId: body.source_id ?? '',
       datePaid: body.date_paid ?? '',
@@ -350,7 +364,7 @@ export const expenseHandlers = [
       ...(body.description !== undefined && {
         description: body.description?.trim() || null,
       }),
-      ...(body.value !== undefined && { value: body.value }),
+      ...(body.value !== undefined && { value: fromWireMoney(body.value) }),
       ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.source_id !== undefined && { sourceId: body.source_id }),
       ...(body.date_paid !== undefined && { datePaid: body.date_paid }),

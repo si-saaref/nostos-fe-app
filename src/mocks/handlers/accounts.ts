@@ -1,4 +1,5 @@
 import { http } from 'msw'
+import { fromWireMoney, toWireMoney, toWireSignedMoney } from '@/utils/money'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
@@ -23,7 +24,7 @@ const toAdjustmentWire = (row: BalanceAdjustment): WireBalanceAdjustment => ({
   household_id: row.householdId,
   source_id: row.sourceId,
   created_by_user_id: row.createdByUserId,
-  delta: row.delta,
+  delta: toWireSignedMoney(row.delta),
   date: row.date,
   reason: row.reason,
   created_at: row.createdAt,
@@ -46,7 +47,7 @@ const toWire = (account: Account): WireAccount => ({
   id: account.id,
   name: account.name,
   kind: KIND_TO_WIRE[account.kind],
-  opening_balance: account.openingBalance,
+  opening_balance: toWireMoney(account.openingBalance),
   as_of: account.asOf,
   order: account.order,
   archived_at: account.archivedAt,
@@ -85,13 +86,13 @@ export const accountHandlers = [
       if (!source) return notFound('Account')
       const body = (await request.json()) as {
         direction: 'INCREASE' | 'DECREASE'
-        amount: number
+        amount: string
         date: string
         reason: string
       }
       if (
-        !Number.isFinite(body.amount) ||
-        body.amount <= 0 ||
+        !/^\d+\.\d{2}$/.test(body.amount) ||
+        fromWireMoney(body.amount) <= 0 ||
         !body.reason?.trim() ||
         body.date < source.asOf
       ) {
@@ -102,7 +103,10 @@ export const accountHandlers = [
         householdId: MOCK_HOUSEHOLD.id,
         sourceId: source.id,
         createdByUserId: MOCK_USER.id,
-        delta: body.direction === 'DECREASE' ? -body.amount : body.amount,
+        delta:
+          body.direction === 'DECREASE'
+            ? -fromWireMoney(body.amount)
+            : fromWireMoney(body.amount),
         date: body.date,
         reason: body.reason.trim(),
         createdAt: new Date().toISOString(),
@@ -126,7 +130,10 @@ export const accountHandlers = [
       id: nextId('source'),
       name,
       kind: KIND_FROM_WIRE[body.kind ?? 'CASH'] ?? 'cash',
-      openingBalance: body.opening_balance ?? 0,
+      openingBalance:
+        body.opening_balance === undefined
+          ? 0
+          : fromWireMoney(body.opening_balance),
       asOf: body.as_of ?? '',
       order: db.accounts.reduce((max, row) => Math.max(max, row.order), -1) + 1,
       archivedAt: null,
@@ -151,7 +158,7 @@ export const accountHandlers = [
         kind: KIND_FROM_WIRE[body.kind] ?? 'cash',
       }),
       ...(body.opening_balance !== undefined && {
-        openingBalance: body.opening_balance,
+        openingBalance: fromWireMoney(body.opening_balance),
       }),
       ...(body.as_of !== undefined && { asOf: body.as_of }),
       ...(body.archived_at !== undefined && { archivedAt: body.archived_at }),

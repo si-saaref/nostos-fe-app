@@ -14,7 +14,7 @@ import {
   useUpdateExpense,
 } from '@/modules/financial/api/expenses'
 import { db } from '@/mocks/db'
-import { getErrorCode, getFieldErrors } from '@/utils/errors'
+import { getErrorCode } from '@/utils/errors'
 import type { Paginated } from '@/types/api'
 import type { Expense, ExpenseFilters } from '@/types/expense'
 
@@ -360,7 +360,7 @@ describe('useUpdateExpense', () => {
 
     // Under PATCH an absent key means "leave it alone", so a fixed body shape
     // would blank the five fields the admin never opened.
-    expect(body).toEqual({ value: 12345 })
+    expect(body).toEqual({ value: '12345.00' })
     expect(body).not.toHaveProperty('name')
   })
 
@@ -553,7 +553,7 @@ describe('the body the server refuses', () => {
     expect(getErrorCode(result.current.error)).toBe('FUTURE_DATE')
   })
 
-  it('rejects a third decimal place with a field error on value', async () => {
+  it('rejects a third decimal place before sending to the API', async () => {
     const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
       wrapper: createWrapper(),
     })
@@ -570,9 +570,6 @@ describe('the body the server refuses', () => {
     ).rejects.toBeDefined()
 
     await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(getErrorCode(result.current.error)).toBe('VALIDATION_ERROR')
-    expect(getFieldErrors(result.current.error)).toEqual([
-      expect.objectContaining({ field: 'value' }),
-    ])
+    expect(result.current.error).toBeInstanceOf(RangeError)
   })
 })

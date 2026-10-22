@@ -65,7 +65,7 @@ export interface WireBalanceAdjustment {
   household_id: string
   source_id: string
   created_by_user_id: string
-  delta: number
+  delta: string
   date: string
   reason: string
   created_at: string
@@ -88,7 +88,7 @@ export interface WireAccount {
   id: string
   name: string
   kind: WireAccountKind
-  opening_balance: number
+  opening_balance: string
   as_of: string
   order: number
   archived_at: string | null

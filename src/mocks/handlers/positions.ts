@@ -1,7 +1,7 @@
 import { http } from 'msw'
 import { db } from '@/mocks/db'
 import { READ_LATENCY_MS, errorBody, ok, pause } from '@/mocks/handlers/shared'
-import { roundMoney, sumMoney } from '@/utils/money'
+import { sumMoney, toWireSignedMoney } from '@/utils/money'
 import { fromIsoDay, isoDay, shiftDays } from '@/utils/dates'
 import type { WirePosition } from '@/types/income'
 
@@ -61,7 +61,7 @@ const balanceAt = (sourceId: string, upTo: string): number => {
   // No clamp at zero. A source can genuinely go negative — the household
   // overspent an e-wallet, or is carrying a debt — and a floor would report a
   // comfortable Rp 0 for a source that is actually short (PRD §Risks).
-  return roundMoney(account.openingBalance + into - outOf - spent + corrections)
+  return sumMoney([account.openingBalance, into, -outOf, -spent, corrections])
 }
 
 export const positionHandlers = [
@@ -96,8 +96,8 @@ export const positionHandlers = [
     const rows: WirePosition[] = db.accounts
       .map((account) => ({
         source_id: account.id,
-        opening_balance: balanceAt(account.id, openingAt),
-        balance: balanceAt(account.id, asOf),
+        opening_balance: toWireSignedMoney(balanceAt(account.id, openingAt)),
+        balance: toWireSignedMoney(balanceAt(account.id, asOf)),
       }))
       // An archived source that still holds money is history with a balance,
       // and dropping it would make the household total disagree with its own
@@ -106,8 +106,8 @@ export const positionHandlers = [
         const account = db.accounts.find((a) => a.id === row.source_id)
         return (
           account?.archivedAt === null ||
-          row.balance !== 0 ||
-          row.opening_balance !== 0
+          row.balance !== '0.00' ||
+          row.opening_balance !== '0.00'
         )
       })
 

@@ -54,10 +54,10 @@ export const ok = <T>(data: T, init?: { status?: number; message?: string }) =>
   )
 
 export interface WireTotalsBlock {
-  sum: number
+  sum: string
   count: number
-  average: number
-  moved?: number
+  average: string
+  moved?: string
   external_count?: number
   transfer_count?: number
 }
@@ -77,8 +77,8 @@ export interface WireMeta {
     previous?: WireTotalsBlock
     /** Expenses only. Ranked `sum DESC, count DESC, id ASC`, capped at 5. */
     breakdown?: {
-      by_type: Array<{ id: string; sum: number; count: number }>
-      by_member: Array<{ id: string; sum: number; count: number }>
+      by_type: Array<{ id: string; sum: string; count: number }>
+      by_member: Array<{ id: string; sum: string; count: number }>
     }
   }
 }

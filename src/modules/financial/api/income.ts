@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import { averageMoney, roundMoney } from '@/utils/money'
+import { averageMoney, sumMoney } from '@/utils/money'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated, Totals } from '@/types/api'
 import type {
   CreateIncomeInput,
@@ -53,7 +54,7 @@ export const toIncome = (row: WireIncome): Income => ({
   id: row.id,
   name: row.name,
   description: row.description,
-  amount: row.amount,
+  amount: fromWireMoney(row.amount),
   kind: row.kind,
   typeId: row.type_id,
   fromSourceId: row.from_source_id,
@@ -78,7 +79,7 @@ const toIncomeBody = (input: CreateIncomeInput) => ({
   name: input.name,
   // Blank is absent — see `toExpenseBody`.
   description: input.description?.trim() || null,
-  amount: input.amount,
+  amount: toWireMoney(input.amount),
   type_id: input.typeId,
   from_source_id: input.fromSourceId,
   to_source_id: input.toSourceId,
@@ -106,7 +107,7 @@ const toIncomePatch = (patch: UpdateIncomeInput) => {
   if (patch.description !== undefined) {
     body.description = patch.description?.trim() || null
   }
-  if (patch.amount !== undefined) body.amount = patch.amount
+  if (patch.amount !== undefined) body.amount = toWireMoney(patch.amount)
   if (patch.kind !== undefined) body.kind = patch.kind
   if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.fromSourceId !== undefined) {
@@ -144,7 +145,7 @@ const adjustedTotals = (
   if (!totals) return undefined
   const transfer = income.kind === 'TRANSFER'
   const count = Math.max(0, totals.count + direction)
-  const sum = roundMoney(totals.sum + direction * netContribution(income))
+  const sum = sumMoney([totals.sum, direction * netContribution(income)])
   const externalCount =
     totals.external_count === undefined
       ? undefined
@@ -156,7 +157,7 @@ const adjustedTotals = (
   const moved =
     totals.moved === undefined
       ? undefined
-      : roundMoney(totals.moved + (transfer ? direction * income.amount : 0))
+      : sumMoney([totals.moved, transfer ? direction * income.amount : 0])
   return {
     ...totals,
     sum,

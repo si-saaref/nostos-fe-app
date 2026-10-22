@@ -319,7 +319,7 @@ export const ExpensesPage = () => {
           expenses.forEach((expense) => {
             const key =
               kind === 'member' ? expense.paidByUserId : expense.typeId
-            byKey.set(key, (byKey.get(key) ?? 0) + expense.value)
+            byKey.set(key, sumMoney([byKey.get(key) ?? 0, expense.value]))
           })
           return [...byKey.entries()].sort((a, b) => b[1] - a[1])
         })()

@@ -6,7 +6,7 @@ const wire = (kind: string): WireAccount =>
     id: 'source-tunai',
     name: 'Tunai',
     kind,
-    opening_balance: 1500000,
+    opening_balance: '1500000.00',
     as_of: '2026-05-01',
     order: 0,
     archived_at: null,

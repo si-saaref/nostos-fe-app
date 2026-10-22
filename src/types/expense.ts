@@ -76,7 +76,7 @@ export interface WireExpense {
   id: string
   name: string
   description?: string | null
-  value: number
+  value: string
   type_id: string
   source_id: string
   date_paid: string

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
 import { entityKey } from '@/api/keys'
 import { useInvalidatingMutation } from '@/api/useInvalidatingMutation'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
 import type { ApiEnvelope } from '@/types/api'
 import type {
   Account,
@@ -45,7 +46,7 @@ export const toAccount = (row: WireAccount): Account => ({
   id: row.id,
   name: row.name,
   kind: toDomainKind(row.kind),
-  openingBalance: row.opening_balance,
+  openingBalance: fromWireMoney(row.opening_balance),
   asOf: row.as_of,
   order: row.order,
   archivedAt: row.archived_at,
@@ -93,7 +94,7 @@ export const useCreateAccount = (householdId: string) =>
           await apiClient.post<ApiEnvelope<WireAccount>>('/payment-sources', {
             name: input.name,
             kind: KIND_TO_WIRE[input.kind],
-            opening_balance: input.openingBalance,
+            opening_balance: toWireMoney(input.openingBalance),
             as_of: input.asOf,
           }),
         ),
