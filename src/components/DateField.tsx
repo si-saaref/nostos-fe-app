@@ -62,6 +62,7 @@ export const DateField = ({
   }
 
   const today = isoDay(new Date())
+  const yesterday = isoDay(shiftDays(new Date(), -1))
   const days = useMemo(() => gridFor(month), [month])
   const monthLabel = new Intl.DateTimeFormat(locale, {
     month: 'long',
@@ -173,16 +174,25 @@ export const DateField = ({
               })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                onChange(today)
-                setOpen(false)
-              }}
-              className="text-accent mt-2 w-full rounded-md py-1 text-[11px] font-semibold"
-            >
-              {m.date_today()}
-            </button>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {[
+                { day: today, label: m.date_today() },
+                { day: yesterday, label: m.date_yesterday() },
+              ].map(({ day, label }) => (
+                <button
+                  key={day}
+                  type="button"
+                  disabled={max !== undefined && day > max}
+                  onClick={() => {
+                    onChange(day)
+                    setOpen(false)
+                  }}
+                  className="text-accent hover:bg-chip rounded-md py-2 text-[11px] font-semibold disabled:opacity-30"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
