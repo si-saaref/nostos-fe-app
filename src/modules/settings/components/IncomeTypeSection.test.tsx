@@ -96,13 +96,12 @@ describe('IncomeTypeSection', () => {
     expect(screen.getByText(/hanya admin|only admins/i)).toBeInTheDocument()
   })
 
-  it('states how many entries a type carries before archiving it', async () => {
+  it('does not show a count derived from only the first ledger page', async () => {
     render()
 
-    // The seeded ledger uses "tarik tunai" on every withdrawal.
+    await screen.findByText('tarik tunai')
     expect(
-      (await screen.findAllByText(/dipakai \d+ pemasukan|used by \d+ income/i))
-        .length,
-    ).toBeGreaterThan(0)
+      screen.queryByText(/dipakai \d+ pemasukan|used by \d+ income/i),
+    ).toBeNull()
   })
 })

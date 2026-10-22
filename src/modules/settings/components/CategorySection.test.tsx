@@ -4,18 +4,13 @@ import { renderWithProviders } from '@/test/test-utils'
 import { CategorySection } from '@/modules/settings/components/CategorySection'
 import { MOCK_ME } from '@/mocks/fixtures/household'
 
-/**
- * `limit` is capped at 500, and a rejected count renders as zero rather than as
- * an error — so only the rendered count catches it.
- */
-describe('CategorySection usage counts', () => {
-  it('counts the expenses using a category', async () => {
+describe('CategorySection archive copy', () => {
+  it('does not claim a partial usage count is the full history', async () => {
     renderWithProviders(
       <CategorySection householdId={MOCK_ME.household_id} canManage />,
     )
-    expect(
-      await screen.findAllByText(/Dipakai \d+ pengeluaran/),
-    ).not.toHaveLength(0)
+    await screen.findByText('Belanja')
+    expect(screen.queryByText(/Dipakai \d+ pengeluaran/)).toBeNull()
   })
 })
 

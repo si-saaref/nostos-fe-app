@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
@@ -11,7 +11,6 @@ import {
   useIncomeTypes,
   useUpdateIncomeType,
 } from '@/modules/settings/api/incomeTypes'
-import { MAX_PAGE_SIZE, useIncome } from '@/modules/financial/api/income'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { isoDay } from '@/utils/dates'
 import { capitalizeFirst } from '@/utils/text'
@@ -50,30 +49,11 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
   const { mutate: update, error: updateError } =
     useUpdateIncomeType(householdId)
 
-  // Usage count, so archiving states its consequence instead of implying one.
-  // Capped at the route's own ceiling: a rejected count would render as "used
-  // by nobody", which is the one wrong answer here.
-  const { data: income } = useIncome(householdId, {
-    page: 1,
-    limit: MAX_PAGE_SIZE,
-  })
-
   const [openId, setOpenId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [toArchive, setToArchive] = useState<IncomeType | null>(null)
-
-  // Counted once per fetch rather than filtered per row, and keyed by id
-  // rather than by name — a renamed type keeps the history it earned.
-  const usageById = useMemo(() => {
-    const counts = new Map<string, number>()
-    income?.items.forEach((row) => {
-      counts.set(row.typeId, (counts.get(row.typeId) ?? 0) + 1)
-    })
-    return counts
-  }, [income])
-  const usageOf = (type: IncomeType) => usageById.get(type.id) ?? 0
 
   const hasNone = (types?.length ?? 0) === 0
   const addType = (name: string, then?: () => void) => {
@@ -173,19 +153,11 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
 
         {types?.map((type) => {
           const isOpen = openId === type.id
-          const used = usageOf(type)
           const isArchived = Boolean(type.archivedAt)
           return (
             <SettingPlate
               key={type.id}
               title={type.name}
-              meta={
-                used > 0
-                  ? used === 1
-                    ? m.itype_in_use_one()
-                    : m.itype_in_use({ n: used })
-                  : undefined
-              }
               muted={isArchived}
               trailing={
                 isArchived ? (
@@ -217,9 +189,13 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
                     onSave={() => {
                       const name = capitalizeFirst(draftName.trim())
                       if (name && name !== type.name) {
-                        update({ id: type.id, name })
+                        update(
+                          { id: type.id, name },
+                          { onSuccess: () => setOpenId(null) },
+                        )
+                      } else {
+                        setOpenId(null)
                       }
-                      setOpenId(null)
                     }}
                     onArchive={
                       isArchived ? undefined : () => setToArchive(type)
@@ -242,11 +218,6 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
         onOpenChange={(open) => !open && setToArchive(null)}
         title={m.archive_title({ name: toArchive?.name ?? '' })}
         body={m.archive_body({ name: toArchive?.name ?? '' })}
-        note={
-          toArchive && usageOf(toArchive) > 0
-            ? m.itype_in_use({ n: usageOf(toArchive) })
-            : undefined
-        }
         confirmLabel={m.archive_confirm()}
         destructive
         onConfirm={() => {

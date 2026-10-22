@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
@@ -11,7 +11,6 @@ import {
   useCreateCategory,
   useUpdateCategory,
 } from '@/modules/settings/api/categories'
-import { MAX_PAGE_SIZE, useExpenses } from '@/modules/financial/api/expenses'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { rimFor } from '@/theme/rims'
 import { isoDay } from '@/utils/dates'
@@ -38,16 +37,6 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
   } = useCreateCategory(householdId)
   const { mutate: update, error: updateError } = useUpdateCategory(householdId)
 
-  // Usage count so archiving can state its consequence instead of implying one.
-  // Capped at the route's own ceiling: 1000 is a 400, and a rejected count
-  // renders as "used by nobody", which is the one wrong answer here.
-  const { data: expenses } = useExpenses(householdId, {
-    page: 1,
-    limit: MAX_PAGE_SIZE,
-    sortBy: 'datePaid',
-    sortOrder: 'desc',
-  })
-
   const [openId, setOpenId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
@@ -55,17 +44,6 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
   const [categoryToArchive, setCategoryToArchive] = useState<Category | null>(
     null,
   )
-
-  // Counted once per fetch. Filtering the whole list per category turned a
-  // 1000-row month into a scan for every row rendered, twice more per dialog.
-  const usageByCategory = useMemo(() => {
-    const counts = new Map<string, number>()
-    expenses?.items.forEach((expense) => {
-      counts.set(expense.typeId, (counts.get(expense.typeId) ?? 0) + 1)
-    })
-    return counts
-  }, [expenses])
-  const usageOf = (id: string) => usageByCategory.get(id) ?? 0
 
   return (
     <SectionShell
@@ -137,13 +115,11 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
 
         {categories?.map((category) => {
           const isOpen = openId === category.id
-          const used = usageOf(category.id)
           const isArchived = Boolean(category.archivedAt)
           return (
             <SettingPlate
               key={category.id}
               title={category.name}
-              meta={used > 0 ? m.cat_in_use({ n: used }) : undefined}
               rim={rimFor(category.order)}
               muted={isArchived}
               trailing={
@@ -176,9 +152,13 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
                     onSave={() => {
                       const name = capitalizeFirst(draftName.trim())
                       if (name && name !== category.name) {
-                        update({ id: category.id, name })
+                        update(
+                          { id: category.id, name },
+                          { onSuccess: () => setOpenId(null) },
+                        )
+                      } else {
+                        setOpenId(null)
                       }
-                      setOpenId(null)
                     }}
                     onArchive={
                       isArchived
@@ -203,11 +183,6 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
         onOpenChange={(open) => !open && setCategoryToArchive(null)}
         title={m.archive_title({ name: categoryToArchive?.name ?? '' })}
         body={m.archive_body({ name: categoryToArchive?.name ?? '' })}
-        note={
-          categoryToArchive && usageOf(categoryToArchive.id) > 0
-            ? m.archive_in_use({ n: usageOf(categoryToArchive.id) })
-            : undefined
-        }
         confirmLabel={m.archive_confirm()}
         destructive
         onConfirm={() => {
