@@ -65,7 +65,7 @@ const IncomePlateBase = ({
   const { locale } = useSettings()
   const panelId = useId()
 
-  const isTransfer = income.fromSourceId !== null
+  const isTransfer = income.kind === 'TRANSFER'
   const amount = formatCurrency(income.amount, currency, locale)
 
   // Opening a row to read it is not a commitment: a click away or Escape

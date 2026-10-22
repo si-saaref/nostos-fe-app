@@ -27,6 +27,7 @@ const income = (
   id: `i-${date}-${amount}`,
   name: fromSourceId ? 'Tarik tunai' : 'Gaji',
   amount,
+  kind: fromSourceId === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
   typeId: 'itype-0',
   fromSourceId,
   toSourceId: 'source-bsi',

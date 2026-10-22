@@ -48,6 +48,7 @@ describe('IncomeForm', () => {
       id: 'inc-1',
       name: 'Bonus lama',
       amount: 4250000,
+      kind: 'EXTERNAL_INCOME',
       typeId: archived.id,
       fromSourceId: null,
       toSourceId: ACCOUNT_IDS[0],

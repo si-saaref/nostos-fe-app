@@ -106,8 +106,8 @@ export const buildCalendarMonth = (
   })
 
   const days = [...byDate.values()].map((day) => {
-    const moving = day.income.filter((row) => row.fromSourceId !== null)
-    const arriving = day.income.filter((row) => row.fromSourceId === null)
+    const moving = day.income.filter((row) => row.kind === 'TRANSFER')
+    const arriving = day.income.filter((row) => row.kind === 'EXTERNAL_INCOME')
     return {
       ...day,
       spent: sumMoney(day.expenses.map((row) => row.value)),

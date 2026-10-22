@@ -61,7 +61,7 @@ export const incomeMonthFigures = (
 
   if (page.items.length < page.pagination.total) return UNKNOWN
 
-  const moving = page.items.filter((row) => row.fromSourceId !== null)
+  const moving = page.items.filter((row) => row.kind === 'TRANSFER')
   return {
     externalCount: page.items.length - moving.length,
     transferCount: moving.length,

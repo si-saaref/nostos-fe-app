@@ -30,6 +30,7 @@ const income = (
   id: `i-${date}-${amount}`,
   name: 'Gaji',
   amount,
+  kind: fromSourceId === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
   typeId: 'itype-0',
   fromSourceId,
   toSourceId: 'source-bsi',

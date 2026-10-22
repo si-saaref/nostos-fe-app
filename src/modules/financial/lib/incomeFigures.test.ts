@@ -7,6 +7,7 @@ const row = (id: string, amount: number, from: string | null): Income => ({
   id,
   name: id,
   amount,
+  kind: from === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
   typeId: 'itype-0',
   fromSourceId: from,
   toSourceId: 'source-bni',

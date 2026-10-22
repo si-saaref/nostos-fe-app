@@ -8,6 +8,7 @@ const income: Income = {
   id: 'inc-1',
   name: 'Gaji bulan ini',
   amount: 8600000,
+  kind: 'EXTERNAL_INCOME',
   typeId: 'itype-0',
   fromSourceId: null,
   toSourceId: 'source-bni',

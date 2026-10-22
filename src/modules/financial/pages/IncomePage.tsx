@@ -105,10 +105,12 @@ export const IncomePage = () => {
         date,
         income: rows,
         inflow: sumMoney(
-          rows.filter((row) => row.fromSourceId === null).map((r) => r.amount),
+          rows
+            .filter((row) => row.kind === 'EXTERNAL_INCOME')
+            .map((r) => r.amount),
         ),
         moved: sumMoney(
-          rows.filter((row) => row.fromSourceId !== null).map((r) => r.amount),
+          rows.filter((row) => row.kind === 'TRANSFER').map((r) => r.amount),
         ),
       }))
   }, [items])

@@ -2,7 +2,8 @@
  * Income: every rupiah that entered a payment source, whether it came from
  * outside the household or from another source of its own.
  *
- * One table, two meanings, decided by `fromSourceId` (income PRD §5):
+ * One table, two meanings, carried explicitly by `kind` on the wire. Source
+ * references must agree with that kind (enforced by the database):
  *
  *   from: null,  to: BNI   → external inflow. The household holds more.
  *   from: BNI,   to: Cash  → transfer. The household holds exactly as much.
@@ -17,6 +18,7 @@ export interface Income {
   /** The detail behind the name. See `Expense.description`. */
   description?: string | null
   amount: number
+  kind: 'EXTERNAL_INCOME' | 'TRANSFER'
   /**
    * Foreign key into the household's `income_types`. The row stores the key,
    * not the word — so an archived type keeps naming the entries that used it,
@@ -82,6 +84,7 @@ export interface WireIncome {
   name: string
   description?: string | null
   amount: number
+  kind: 'EXTERNAL_INCOME' | 'TRANSFER'
   type_id: string
   from_source_id: string | null
   to_source_id: string

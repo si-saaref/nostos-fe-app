@@ -54,6 +54,7 @@ export const toIncome = (row: WireIncome): Income => ({
   name: row.name,
   description: row.description,
   amount: row.amount,
+  kind: row.kind,
   typeId: row.type_id,
   fromSourceId: row.from_source_id,
   toSourceId: row.to_source_id,
@@ -131,7 +132,7 @@ const matchesFilters = (income: Income, filters: IncomeFilters): boolean => {
  * screen for as long as the request took.
  */
 const netContribution = (income: Income): number =>
-  income.fromSourceId === null ? income.amount : 0
+  income.kind === 'EXTERNAL_INCOME' ? income.amount : 0
 
 const adjustedTotals = (
   totals: Totals | undefined,
@@ -139,7 +140,7 @@ const adjustedTotals = (
   direction: 1 | -1,
 ): Totals | undefined => {
   if (!totals) return undefined
-  const transfer = income.fromSourceId !== null
+  const transfer = income.kind === 'TRANSFER'
   const count = Math.max(0, totals.count + direction)
   const sum = roundMoney(totals.sum + direction * netContribution(income))
   const externalCount =
@@ -260,6 +261,7 @@ export const useCreateIncome = (householdId: string) => {
         id: `${OPTIMISTIC_PREFIX}${crypto.randomUUID()}`,
         householdId,
         ...input,
+        kind: input.fromSourceId === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
       }
       // Only into caches the row actually belongs to: a list scoped to last
       // month must not sprout today's entry.

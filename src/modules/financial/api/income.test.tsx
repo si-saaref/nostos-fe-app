@@ -31,7 +31,9 @@ describe('toIncome', () => {
     const wire: WireIncome = {
       id: 'inc-1',
       name: 'Salary Sep',
+      description: undefined,
       amount: 5000000,
+      kind: 'EXTERNAL_INCOME',
       type_id: 'itype-0',
       from_source_id: null,
       to_source_id: 'source-bni',
@@ -46,7 +48,9 @@ describe('toIncome', () => {
     expect(toIncome(wire)).toEqual({
       id: 'inc-1',
       name: 'Salary Sep',
+      description: undefined,
       amount: 5000000,
+      kind: 'EXTERNAL_INCOME',
       typeId: 'itype-0',
       fromSourceId: null,
       toSourceId: 'source-bni',

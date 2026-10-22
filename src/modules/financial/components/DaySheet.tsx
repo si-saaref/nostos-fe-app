@@ -283,7 +283,7 @@ const IncomeRow = ({
   money: (value: number) => string
 }) => {
   const m = useMessages()
-  const isTransfer = income.fromSourceId !== null
+  const isTransfer = income.kind === 'TRANSFER'
 
   return (
     <Row

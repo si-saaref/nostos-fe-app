@@ -20,6 +20,7 @@ const toWire = (income: StoredIncome): WireIncome => ({
   name: income.name,
   description: income.description ?? null,
   amount: income.amount,
+  kind: income.kind,
   type_id: income.typeId,
   from_source_id: income.fromSourceId,
   to_source_id: income.toSourceId,
@@ -257,6 +258,7 @@ export const incomeHandlers = [
       // Blank is coerced to null on write — see the expense handler.
       description: body.description?.trim() || null,
       amount: body.amount ?? 0,
+      kind: body.from_source_id == null ? 'EXTERNAL_INCOME' : 'TRANSFER',
       typeId: body.type_id ?? '',
       fromSourceId: body.from_source_id ?? null,
       toSourceId: body.to_source_id,
@@ -313,6 +315,7 @@ export const incomeHandlers = [
       ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.from_source_id !== undefined && {
         fromSourceId: body.from_source_id,
+        kind: body.from_source_id === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
       }),
       ...(body.to_source_id !== undefined && {
         toSourceId: body.to_source_id,

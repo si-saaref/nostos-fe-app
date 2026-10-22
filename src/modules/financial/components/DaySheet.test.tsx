@@ -25,6 +25,7 @@ const incomeRow = (
   id: `i-${amount}`,
   name,
   amount,
+  kind: fromSourceId === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
   typeId: 'itype-0',
   fromSourceId,
   toSourceId: 'source-bni',
