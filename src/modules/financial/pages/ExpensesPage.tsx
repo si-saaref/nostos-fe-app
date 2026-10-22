@@ -26,8 +26,11 @@ import { getErrorMessage } from '@/utils/errors'
 import { sumMoney } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export const ExpensesPage = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
   const m = useMessages()
   const { householdId, role } = useHousehold()
   const { locale } = useSettings()
@@ -53,7 +56,19 @@ export const ExpensesPage = () => {
     useDeleteExpense(householdId)
 
   const [openId, setOpenId] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(() =>
+    Boolean(
+      (location.state as { recordExpense?: boolean } | null)?.recordExpense,
+    ),
+  )
+  useEffect(() => {
+    if (!(location.state as { recordExpense?: boolean } | null)?.recordExpense)
+      return
+    navigate(location.pathname + location.search, {
+      replace: true,
+      state: null,
+    })
+  }, [location, navigate])
   const [scrolledDate, setScrolledDate] = useState<string | undefined>()
   const [atEnd, setAtEnd] = useState(true)
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null)

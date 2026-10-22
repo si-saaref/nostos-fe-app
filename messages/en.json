@@ -380,5 +380,6 @@
   "email_change_unknown": "Unknown email-change status. Check your account before trying again.",
   "email_change_settings": "Back to settings",
   "email_change_signin": "Go to sign in",
-  "date_yesterday": "Yesterday"
+  "date_yesterday": "Yesterday",
+  "action_record_expense": "Record expense"
 }

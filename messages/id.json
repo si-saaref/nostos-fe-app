@@ -380,5 +380,6 @@
   "email_change_unknown": "Status perubahan email tidak dikenal. Periksa akunmu sebelum mencoba lagi.",
   "email_change_settings": "Kembali ke pengaturan",
   "email_change_signin": "Ke halaman masuk",
-  "date_yesterday": "Kemarin"
+  "date_yesterday": "Kemarin",
+  "action_record_expense": "Catat pengeluaran"
 }

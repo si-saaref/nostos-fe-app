@@ -24,6 +24,7 @@ import { getErrorMessage } from '@/utils/errors'
 import { sumMoney } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
 import { useCallback, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 /**
  * The income surface: one position card that states, one statement that lists.
@@ -236,13 +237,30 @@ export const IncomePage = () => {
               also put a third control named "Catat" on the page — the form's
               own submit is the way to record once the form is there. */}
           {!isRecording && (
-            <button
-              type="button"
-              onClick={requestRecord}
-              className="bg-accent text-accent-ink hidden shrink-0 rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
-            >
-              + {m.action_record_income()}
-            </button>
+            <div className="fixed right-4 bottom-20 left-4 z-30 flex gap-2 lg:static lg:items-center">
+              <Link
+                to="/expenses"
+                state={{ recordExpense: true }}
+                aria-label={m.action_record_expense()}
+                className="border-hair bg-card text-ink flex h-12 flex-1 items-center justify-center rounded-xl border px-3 text-[12px] font-semibold shadow-lg lg:h-auto lg:flex-none lg:rounded-lg lg:px-4 lg:py-2 lg:shadow-none"
+              >
+                <span className="lg:hidden">+ {m.nav_expenses()}</span>
+                <span className="hidden lg:inline">
+                  + {m.action_record_expense()}
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={requestRecord}
+                aria-label={m.action_record_income()}
+                className="bg-accent text-accent-ink flex h-12 flex-1 items-center justify-center rounded-xl px-3 text-[12px] font-semibold shadow-lg lg:h-auto lg:flex-none lg:rounded-lg lg:px-4 lg:py-2 lg:shadow-none"
+              >
+                <span className="lg:hidden">+ {m.nav_income()}</span>
+                <span className="hidden lg:inline">
+                  + {m.action_record_income()}
+                </span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -351,19 +369,6 @@ export const IncomePage = () => {
           )}
         </div>
       </div>
-
-      {!isRecording && (
-        <button
-          type="button"
-          onClick={requestRecord}
-          className="bg-accent text-accent-ink fixed right-4 bottom-20 z-30 flex h-12 items-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg lg:hidden"
-        >
-          <span aria-hidden="true" className="text-lg leading-none">
-            +
-          </span>
-          {m.action_record()}
-        </button>
-      )}
 
       <ConfirmDialog
         open={Boolean(toDelete)}
