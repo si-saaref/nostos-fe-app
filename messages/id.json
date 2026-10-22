@@ -21,6 +21,7 @@
   "act_signout": "Keluar",
   "action_record": "Catat",
   "action_record_income": "Catat pemasukan",
+  "action_record_expense": "Catat pengeluaran",
   "action_record_long": "Catat pengeluaran",
   "archive_body": "Riwayat tidak berubah — pengeluaran yang sudah mencatat {name} tetap menunjuk ke sana dan ditandai sebagai diarsipkan. Kamu bisa memulihkannya kapan saja.",
   "archive_confirm": "Ya, arsipkan",
@@ -114,6 +115,7 @@
   "date_next_month": "Bulan berikutnya",
   "date_prev_month": "Bulan sebelumnya",
   "date_today": "Hari ini",
+  "date_yesterday": "Kemarin",
   "deletion_back": "Kembali ke halaman masuk",
   "deletion_body": "Akses hanya kembali jika rumah dipulihkan sebelum {date}.",
   "deletion_note": "Tanyakan ke admin rumahmu kalau ini keliru.",
@@ -122,7 +124,7 @@
   "exp_blocked_categories_fix": "Buat kategori",
   "exp_blocked_sources": "Rumah ini belum punya sumber pembayaran.",
   "exp_blocked_sources_fix": "Tambah sumber pembayaran",
-  "expense_delete_body": "Catatan ini hilang dari buku untuk semua anggota rumah. Total harian dan bulanan ikut berubah. Tindakan ini tidak bisa dibatalkan.",
+  "expense_delete_body": "Catatan ini hilang dari buku untuk semua anggota rumah. Total pengeluaran dan saldo sumbernya ikut berubah. Setelah dihapus, catatan ini tidak bisa dipulihkan dari aplikasi.",
   "expense_delete_confirm": "Ya, hapus",
   "expense_delete_title": "Hapus {name}?",
   "expense_edit_title": "Ubah {name}",
@@ -218,7 +220,7 @@
   "inc_vs_closed": "{month} ditutup di {amount}",
   "inc_vs_flat": "tidak berubah",
   "inc_vs_note": "{month}: {amount}",
-  "income_delete_body": "Catatan ini hilang dari rincian untuk semua anggota rumah, dan saldo sumber yang terkait ikut berubah. Tersimpan 7 hari sebelum benar-benar dibuang.",
+  "income_delete_body": "Catatan ini hilang dari buku untuk semua anggota rumah. Saldo sumber yang terkait ikut berubah. Setelah dihapus, catatan ini tidak bisa dipulihkan dari aplikasi.",
   "income_delete_confirm": "Ya, hapus",
   "income_delete_title": "Hapus {name}?",
   "itype_add": "Tambah jenis",
@@ -379,7 +381,5 @@
   "email_change_invalid": "Tautan tidak berlaku atau sudah dipakai. Ajukan perubahan lagi dari pengaturan.",
   "email_change_unknown": "Status perubahan email tidak dikenal. Periksa akunmu sebelum mencoba lagi.",
   "email_change_settings": "Kembali ke pengaturan",
-  "email_change_signin": "Ke halaman masuk",
-  "date_yesterday": "Kemarin",
-  "action_record_expense": "Catat pengeluaran"
+  "email_change_signin": "Ke halaman masuk"
 }

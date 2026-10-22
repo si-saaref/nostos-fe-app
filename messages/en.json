@@ -21,6 +21,7 @@
   "act_signout": "Sign out",
   "action_record": "Record",
   "action_record_income": "Record income",
+  "action_record_expense": "Record expense",
   "action_record_long": "Record an expense",
   "archive_body": "History does not change — expenses already recorded against {name} keep pointing at it and are marked archived. You can restore it at any time.",
   "archive_confirm": "Yes, archive",
@@ -114,6 +115,7 @@
   "date_next_month": "Next month",
   "date_prev_month": "Previous month",
   "date_today": "Today",
+  "date_yesterday": "Yesterday",
   "deletion_back": "Back to sign in",
   "deletion_body": "Access returns only if it is restored before {date}.",
   "deletion_note": "Ask your household admin if you think this is a mistake.",
@@ -122,7 +124,7 @@
   "exp_blocked_categories_fix": "Create a category",
   "exp_blocked_sources": "This household has no payment sources yet.",
   "exp_blocked_sources_fix": "Add a payment source",
-  "expense_delete_body": "This removes the entry from the ledger for everyone in the household. Totals for the day and the month change with it. This cannot be undone.",
+  "expense_delete_body": "This removes the entry from the household ledger. Spending totals and its source balance change too. You cannot restore it in the app after deleting it.",
   "expense_delete_confirm": "Yes, delete",
   "expense_delete_title": "Delete {name}?",
   "expense_edit_title": "Edit {name}",
@@ -218,7 +220,7 @@
   "inc_vs_closed": "{month} closed at {amount}",
   "inc_vs_flat": "unchanged",
   "inc_vs_note": "{month}: {amount}",
-  "income_delete_body": "This removes the entry from the statement for everyone in the household, and the balances of the sources it touched change with it. Kept for 7 days before it is really gone.",
+  "income_delete_body": "This removes the entry from the household ledger. The balances of the sources it touched change too. You cannot restore it in the app after deleting it.",
   "income_delete_confirm": "Yes, delete",
   "income_delete_title": "Delete {name}?",
   "itype_add": "Add type",
@@ -379,7 +381,5 @@
   "email_change_invalid": "This link is invalid or has already been used. Request the change again in settings.",
   "email_change_unknown": "Unknown email-change status. Check your account before trying again.",
   "email_change_settings": "Back to settings",
-  "email_change_signin": "Go to sign in",
-  "date_yesterday": "Yesterday",
-  "action_record_expense": "Record expense"
+  "email_change_signin": "Go to sign in"
 }
