@@ -1,8 +1,8 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "acc_add": "Tambah akun",
-  "acc_as_of": "Per tanggal",
-  "acc_balance_note": "Saldo berjalan bisa dihitung setelah modul Pemasukan ada.",
+  "acc_as_of": "Tanggal mulai hitung",
+  "acc_balance_note": "Saldo awal dan tanggal mulai hitung ditetapkan saat akun dibuat dan tidak bisa diubah di pengaturan. Transaksi sebelumnya tidak ikut dihitung.",
   "acc_desc": "Tempat uang benar-benar berada. Dipakai bersama oleh pengeluaran dan pemasukan.",
   "acc_empty": "Belum ada akun. Tambahkan tunai atau rekening yang biasa dipakai.",
   "acc_kind": "Jenis",

@@ -71,6 +71,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
     draft: AccountInput,
     setDraft: (next: AccountInput) => void,
     disabled = false,
+    includeOpening = true,
   ) => (
     <div className="flex flex-wrap items-end gap-2">
       <FormField label={m.acc_name()} className="min-w-[180px] flex-1">
@@ -97,20 +98,26 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
           ))}
         </select>
       </FormField>
-      <AmountInput
-        label={m.acc_opening()}
-        className="w-[150px]"
-        value={draft.openingBalance}
-        disabled={disabled}
-        onChange={(value) => setDraft({ ...draft, openingBalance: value ?? 0 })}
-      />
-      <DateField
-        label={m.acc_as_of()}
-        className="w-[190px]"
-        value={draft.asOf}
-        disabled={disabled}
-        onChange={(value) => setDraft({ ...draft, asOf: value })}
-      />
+      {includeOpening && (
+        <>
+          <AmountInput
+            label={m.acc_opening()}
+            className="w-[150px]"
+            value={draft.openingBalance}
+            disabled={disabled}
+            onChange={(value) =>
+              setDraft({ ...draft, openingBalance: value ?? 0 })
+            }
+          />
+          <DateField
+            label={m.acc_as_of()}
+            className="w-[190px]"
+            value={draft.asOf}
+            disabled={disabled}
+            onChange={(value) => setDraft({ ...draft, asOf: value })}
+          />
+        </>
+      )}
     </div>
   )
 
@@ -209,15 +216,17 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             >
               {canManage ? (
                 <div className="flex flex-col gap-3">
-                  {fields(editDraft, setEditDraft, isArchived)}
+                  {fields(editDraft, setEditDraft, isArchived, false)}
                   <RowActions
                     onSave={() => {
-                      update({
-                        id: account.id,
-                        ...editDraft,
-                        name: editDraft.name.trim(),
-                      })
-                      setOpenId(null)
+                      update(
+                        {
+                          id: account.id,
+                          name: editDraft.name.trim(),
+                          kind: editDraft.kind,
+                        },
+                        { onSuccess: () => setOpenId(null) },
+                      )
                     }}
                     onArchive={
                       isArchived

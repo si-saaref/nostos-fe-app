@@ -1,8 +1,8 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "acc_add": "Add account",
-  "acc_as_of": "As of",
-  "acc_balance_note": "A running balance becomes derivable once the Income module exists.",
+  "acc_as_of": "Calculation starts",
+  "acc_balance_note": "Set the opening balance and calculation start date when creating an account. They cannot be changed in Settings; earlier transactions are not counted.",
   "acc_desc": "Where money actually sits. Shared by expenses and income alike.",
   "acc_empty": "No accounts yet. Add the cash or bank account you normally use.",
   "acc_kind": "Kind",

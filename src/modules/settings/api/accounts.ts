@@ -57,10 +57,6 @@ const toAccountBody = (patch: Partial<Account>) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
   if (patch.kind !== undefined) body.kind = KIND_TO_WIRE[patch.kind]
-  if (patch.openingBalance !== undefined) {
-    body.opening_balance = patch.openingBalance
-  }
-  if (patch.asOf !== undefined) body.as_of = patch.asOf
   if (patch.order !== undefined) body.order = patch.order
   if (patch.archivedAt !== undefined) body.archived_at = patch.archivedAt
   return body
