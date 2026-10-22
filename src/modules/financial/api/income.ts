@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
 import { averageMoney, roundMoney } from '@/utils/money'
-import type { ApiEnvelope, Paginated } from '@/types/api'
+import type { ApiEnvelope, Paginated, Totals } from '@/types/api'
 import type {
   CreateIncomeInput,
   Income,
@@ -133,30 +133,59 @@ const matchesFilters = (income: Income, filters: IncomeFilters): boolean => {
 const netContribution = (income: Income): number =>
   income.fromSourceId === null ? income.amount : 0
 
+const adjustedTotals = (
+  totals: Totals | undefined,
+  income: Income,
+  direction: 1 | -1,
+): Totals | undefined => {
+  if (!totals) return undefined
+  const transfer = income.fromSourceId !== null
+  const count = Math.max(0, totals.count + direction)
+  const sum = roundMoney(totals.sum + direction * netContribution(income))
+  const externalCount =
+    totals.external_count === undefined
+      ? undefined
+      : Math.max(0, totals.external_count + (transfer ? 0 : direction))
+  const transferCount =
+    totals.transfer_count === undefined
+      ? undefined
+      : Math.max(0, totals.transfer_count + (transfer ? direction : 0))
+  const moved =
+    totals.moved === undefined
+      ? undefined
+      : roundMoney(totals.moved + (transfer ? direction * income.amount : 0))
+  return {
+    ...totals,
+    sum,
+    count,
+    average: averageMoney(sum, externalCount ?? count),
+    ...(externalCount !== undefined && { external_count: externalCount }),
+    ...(transferCount !== undefined && { transfer_count: transferCount }),
+    ...(moved !== undefined && { moved }),
+  }
+}
+
 const withRow = (
   page: Paginated<Income>,
   income: Income,
 ): Paginated<Income> => {
-  const count = (page.totals?.count ?? page.items.length) + 1
-  const sum = roundMoney((page.totals?.sum ?? 0) + netContribution(income))
+  const totals = adjustedTotals(page.totals, income, 1)
   return {
     ...page,
     items: [income, ...page.items],
     pagination: { ...page.pagination, total: page.pagination.total + 1 },
-    totals: page.totals
-      ? { sum, count, average: averageMoney(sum, count) }
-      : undefined,
+    totals,
+    summary:
+      page.summary && totals
+        ? { ...page.summary, current: totals }
+        : page.summary,
   }
 }
 
 const withoutRow = (page: Paginated<Income>, id: string): Paginated<Income> => {
   const removed = page.items.find((item) => item.id === id)
   if (!removed) return page
-  const count = Math.max(0, (page.totals?.count ?? page.items.length) - 1)
-  // No `Math.max(0, …)` on the sum: net inflow is a signed quantity, and
-  // clamping it would report a comfortable zero for a month that is genuinely
-  // negative.
-  const sum = roundMoney((page.totals?.sum ?? 0) - netContribution(removed))
+  const totals = adjustedTotals(page.totals, removed, -1)
   return {
     ...page,
     items: page.items.filter((item) => item.id !== id),
@@ -164,9 +193,11 @@ const withoutRow = (page: Paginated<Income>, id: string): Paginated<Income> => {
       ...page.pagination,
       total: Math.max(0, page.pagination.total - 1),
     },
-    totals: page.totals
-      ? { sum, count, average: averageMoney(sum, count) }
-      : undefined,
+    totals,
+    summary:
+      page.summary && totals
+        ? { ...page.summary, current: totals }
+        : page.summary,
   }
 }
 
