@@ -17,8 +17,11 @@ import type {
   ScopeChip,
   TopSlice,
 } from '@/modules/financial/types/ledger'
-import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useActiveCategories } from '@/modules/settings/api/categories'
+import { useAccounts, useActiveAccounts } from '@/modules/settings/api/accounts'
+import {
+  useCategories,
+  useActiveCategories,
+} from '@/modules/settings/api/categories'
 import { useRoster } from '@/modules/settings/api/members'
 import { rimFor } from '@/theme/rims'
 import type { Expense } from '@/types/expense'
@@ -50,6 +53,8 @@ export const ExpensesPage = () => {
 
   const { data: categories } = useActiveCategories(householdId)
   const { data: accounts } = useActiveAccounts(householdId)
+  const { data: allCategories } = useCategories(householdId)
+  const { data: allAccounts } = useAccounts(householdId)
   const { data: users } = useRoster(householdId)
   const { judge, baselineFor, recentFor } = useItemBaselines(householdId)
   const { mutate: deleteExpense, error: deleteError } =
@@ -195,19 +200,19 @@ export const ExpensesPage = () => {
   const rimOf = useCallback(
     (typeId: string) =>
       rimFor(
-        categories?.find((category) => category.id === typeId)?.order ?? 0,
+        allCategories?.find((category) => category.id === typeId)?.order ?? 0,
       ),
-    [categories],
+    [allCategories],
   )
   const nameOfType = useCallback(
     (typeId: string) =>
-      categories?.find((category) => category.id === typeId)?.name ?? '—',
-    [categories],
+      allCategories?.find((category) => category.id === typeId)?.name ?? '—',
+    [allCategories],
   )
   const nameOfSource = useCallback(
     (sourceId: string) =>
-      accounts?.find((account) => account.id === sourceId)?.name ?? '—',
-    [accounts],
+      allAccounts?.find((account) => account.id === sourceId)?.name ?? '—',
+    [allAccounts],
   )
   const nameOfUser = useCallback(
     (userId: string) =>
