@@ -1,5 +1,10 @@
 # Income — API contract: what exists, what is missing
 
+> **Create payload update (2026-10-23):** the frontend now sends an array to
+> `POST /income` and expects an array in `data`. See
+> [Income and expense create arrays](API-CREATE-ARRAYS.md) for the current
+> contract, Postman examples and pending backend rollout.
+
 > ## ⚠️ Superseded in part — read `notes/FE-App/prd-income-fe.md` §10 first
 >
 > **Updated 2026-09-09.** The income API shipped, and six things this document proposes are

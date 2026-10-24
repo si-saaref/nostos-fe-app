@@ -254,15 +254,14 @@ export const useIncome = (
 export const useCreateIncome = (householdId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: CreateIncomeInput) =>
-      toIncome(
-        unwrap(
-          await apiClient.post<ApiEnvelope<WireIncome>>(
-            BASE_PATH,
-            toIncomeBody(input),
-          ),
-        ),
-      ),
+    mutationFn: async (input: CreateIncomeInput) => {
+      const created = unwrap(
+        await apiClient.post<ApiEnvelope<WireIncome[]>>(BASE_PATH, [
+          toIncomeBody(input),
+        ]),
+      )
+      return toIncome(created[0])
+    },
     onMutate: async (input) => {
       await queryClient.cancelQueries({
         queryKey: incomeKeys.lists(householdId),

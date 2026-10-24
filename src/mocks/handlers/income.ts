@@ -12,6 +12,7 @@ import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
   errorBody,
+  isCreateBatch,
   notFound,
   ok,
   okPage,
@@ -250,52 +251,63 @@ export const incomeHandlers = [
 
   http.post(PATH, async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
-    const body = (await request.json()) as Partial<WireIncome> &
-      Record<string, unknown>
-    if (body.to_source_id === undefined) {
-      return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
-        {
-          field: 'to_source_id',
-          code: 'IS_NOT_EMPTY',
-          message: 'to_source_id is required',
-        },
-      ])
+    const payload: unknown = await request.json().catch(() => null)
+    if (!isCreateBatch(payload)) {
+      return errorBody(
+        400,
+        'VALIDATION_ERROR',
+        'Expected a non-empty array of objects',
+      )
     }
-    if (body.type_id === undefined) {
-      return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
-        {
-          field: 'type_id',
-          code: 'IS_NOT_EMPTY',
-          message: 'type_id is required',
-        },
-      ])
-    }
-    if (body.kind === undefined) {
-      return errorBody(400, 'VALIDATION_ERROR', 'kind is required')
-    }
-    const rejected = badBody(body) ?? badRef(body)
-    if (rejected) return rejected
+    const created: StoredIncome[] = []
+    for (const body of payload as (Partial<WireIncome> &
+      Record<string, unknown>)[]) {
+      if (body.to_source_id === undefined) {
+        return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
+          {
+            field: 'to_source_id',
+            code: 'IS_NOT_EMPTY',
+            message: 'to_source_id is required',
+          },
+        ])
+      }
+      if (body.type_id === undefined) {
+        return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
+          {
+            field: 'type_id',
+            code: 'IS_NOT_EMPTY',
+            message: 'type_id is required',
+          },
+        ])
+      }
+      if (body.kind === undefined) {
+        return errorBody(400, 'VALIDATION_ERROR', 'kind is required')
+      }
+      const rejected = badBody(body) ?? badRef(body)
+      if (rejected) return rejected
 
-    const created: StoredIncome = {
-      id: nextId('inc'),
-      name: body.name ?? '',
-      // Blank is coerced to null on write — see the expense handler.
-      description: body.description?.trim() || null,
-      amount: body.amount === undefined ? 0 : fromWireMoney(body.amount),
-      kind: body.kind,
-      typeId: body.type_id ?? '',
-      fromSourceId: body.from_source_id ?? null,
-      toSourceId: body.to_source_id,
-      date: body.date ?? '',
-      householdId: MOCK_HOUSEHOLD.id,
-      createdByUserId: MOCK_USER.id,
-      createdAt: new Date().toISOString(),
-      updatedByAdminId: null,
-      updatedAt: null,
-      deletedAt: null,
+      created.push({
+        id: nextId('inc'),
+        name: body.name ?? '',
+        // Blank is coerced to null on write — see the expense handler.
+        description: body.description?.trim() || null,
+        amount: body.amount === undefined ? 0 : fromWireMoney(body.amount),
+        kind: body.kind,
+        typeId: body.type_id ?? '',
+        fromSourceId: body.from_source_id ?? null,
+        toSourceId: body.to_source_id,
+        date: body.date ?? '',
+        householdId: MOCK_HOUSEHOLD.id,
+        createdByUserId: MOCK_USER.id,
+        createdAt: new Date().toISOString(),
+        updatedByAdminId: null,
+        updatedAt: null,
+        deletedAt: null,
+      })
     }
-    db.income.unshift(created)
-    return ok(toWire(created), { status: 201 })
+    // Validate the whole batch before changing the store.
+    db.income.unshift(...created)
+    return ok(created.map(toWire), { status: 201 })
   }),
 
   http.patch(`${PATH}/:incomeId`, async ({ params, request }) => {

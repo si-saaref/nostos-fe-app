@@ -156,11 +156,11 @@ describe('useCreateIncome', () => {
     expect(result.current.data?.createdByUserId).toBeTruthy()
   })
 
-  it('sends the type as an id, not a name', async () => {
-    const bodies: Record<string, unknown>[] = []
+  it('sends one income in an array, with a type id and explicit null origin', async () => {
+    const bodies: unknown[] = []
     const record = async ({ request }: { request: Request }) => {
       if (request.method === 'POST') {
-        bodies.push((await request.clone().json()) as Record<string, unknown>)
+        bodies.push(await request.clone().json())
       }
     }
     server.events.on('request:start', record)
@@ -180,13 +180,20 @@ describe('useCreateIncome', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     server.events.removeListener('request:start', record)
 
-    expect(bodies[0]).toMatchObject({
-      type_id: INCOME_TYPE_IDS[0],
-      kind: 'EXTERNAL_INCOME',
-    })
-    expect(bodies[0]).not.toHaveProperty('type')
+    expect(bodies[0]).toEqual([
+      {
+        name: 'Gaji',
+        description: null,
+        amount: '5000000.00',
+        type_id: INCOME_TYPE_IDS[0],
+        kind: 'EXTERNAL_INCOME',
+        from_source_id: null,
+        to_source_id: ACCOUNT_IDS[0],
+        date: thisMonth.from,
+      },
+    ])
     // null is a value on this field, not an omission — the key must be present.
-    expect(bodies[0]).toHaveProperty('from_source_id', null)
+    expect(bodies[0]).toHaveProperty('0.from_source_id', null)
     expect(result.current.data?.typeId).toBe(INCOME_TYPE_IDS[0])
   })
 
@@ -342,14 +349,18 @@ describe('the income wire contract', () => {
   // error enum at all.
   it('refuses a body carrying household_id with a 400 VALIDATION_ERROR', async () => {
     const failure = await apiClient
-      .post('/income', {
-        name: 'Smuggled',
-        amount: 1000,
-        household_id: HOUSEHOLD,
-        from_source_id: null,
-        to_source_id: ACCOUNT_IDS[0],
-        date: thisMonth.from,
-      })
+      .post('/income', [
+        {
+          name: 'Smuggled',
+          kind: 'EXTERNAL_INCOME',
+          type_id: INCOME_TYPE_IDS[0],
+          amount: '1000.00',
+          household_id: HOUSEHOLD,
+          from_source_id: null,
+          to_source_id: ACCOUNT_IDS[0],
+          date: thisMonth.from,
+        },
+      ])
       .catch((error: unknown) => error)
 
     expect(getErrorCode(failure)).toBe('VALIDATION_ERROR')

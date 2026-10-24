@@ -13,6 +13,7 @@ import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
   errorBody,
+  isCreateBatch,
   notFound,
   ok,
   okPage,
@@ -306,31 +307,42 @@ export const expenseHandlers = [
 
   http.post('*/api/v1/expenses', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
-    const body = (await request.json()) as Partial<WireExpense> &
-      Record<string, unknown>
-    // Deviation #1: a bad ref is a 422 with a code, not a 400 with a field list.
-    const rejected = badBody(body) ?? badRef(body)
-    if (rejected) return rejected
-    const created: StoredExpense = {
-      id: nextId('exp'),
-      name: body.name ?? '',
-      // Blank is coerced to null on write, so `''` never reaches the store
-      // and a reader never has to treat the two as the same thing.
-      description: body.description?.trim() || null,
-      value: body.value === undefined ? 0 : fromWireMoney(body.value),
-      typeId: body.type_id ?? '',
-      sourceId: body.source_id ?? '',
-      datePaid: body.date_paid ?? '',
-      paidByUserId: body.paid_by_user_id ?? '',
-      householdId: MOCK_HOUSEHOLD.id,
-      createdByUserId: MOCK_USER.id,
-      createdAt: new Date().toISOString(),
-      updatedByAdminId: null,
-      updatedAt: null,
-      deletedAt: null,
+    const payload: unknown = await request.json().catch(() => null)
+    if (!isCreateBatch(payload)) {
+      return errorBody(
+        400,
+        'VALIDATION_ERROR',
+        'Expected a non-empty array of objects',
+      )
     }
-    db.expenses.unshift(created)
-    return ok(toWire(created), { status: 201 })
+    const created: StoredExpense[] = []
+    for (const body of payload as (Partial<WireExpense> &
+      Record<string, unknown>)[]) {
+      // Deviation #1: a bad ref is a 422 with a code, not a 400 with a field list.
+      const rejected = badBody(body) ?? badRef(body)
+      if (rejected) return rejected
+      created.push({
+        id: nextId('exp'),
+        name: body.name ?? '',
+        // Blank is coerced to null on write, so `''` never reaches the store
+        // and a reader never has to treat the two as the same thing.
+        description: body.description?.trim() || null,
+        value: body.value === undefined ? 0 : fromWireMoney(body.value),
+        typeId: body.type_id ?? '',
+        sourceId: body.source_id ?? '',
+        datePaid: body.date_paid ?? '',
+        paidByUserId: body.paid_by_user_id ?? '',
+        householdId: MOCK_HOUSEHOLD.id,
+        createdByUserId: MOCK_USER.id,
+        createdAt: new Date().toISOString(),
+        updatedByAdminId: null,
+        updatedAt: null,
+        deletedAt: null,
+      })
+    }
+    // Validate the whole batch before changing the store.
+    db.expenses.unshift(...created)
+    return ok(created.map(toWire), { status: 201 })
   }),
 
   http.patch('*/api/v1/expenses/:id', async ({ params, request }) => {

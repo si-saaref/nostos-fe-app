@@ -14,10 +14,10 @@ import type { Income } from '@/types/income'
 
 describe('IncomeForm', () => {
   it('submits the type as an id, not the word on screen', async () => {
-    const bodies: Record<string, unknown>[] = []
+    const bodies: Record<string, unknown>[][] = []
     const record = async ({ request }: { request: Request }) => {
       if (request.method === 'POST') {
-        bodies.push((await request.clone().json()) as Record<string, unknown>)
+        bodies.push((await request.clone().json()) as Record<string, unknown>[])
       }
     }
     server.events.on('request:start', record)
@@ -34,8 +34,9 @@ describe('IncomeForm', () => {
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
     server.events.removeListener('request:start', record)
 
-    expect(bodies[0].type_id).toBe(INCOME_TYPE_IDS[0])
-    expect(bodies[0]).not.toHaveProperty('type')
+    expect(bodies[0]).toHaveLength(1)
+    expect(bodies[0][0].type_id).toBe(INCOME_TYPE_IDS[0])
+    expect(bodies[0][0]).not.toHaveProperty('type')
   })
 
   // An admin correcting an amount must not silently retype the entry, and the

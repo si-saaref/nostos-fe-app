@@ -249,15 +249,14 @@ export const useExpenses = (
 export const useCreateExpense = (householdId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: CreateExpenseInput) =>
-      toExpense(
-        unwrap(
-          await apiClient.post<ApiEnvelope<WireExpense>>(
-            '/expenses',
-            toExpenseBody(input),
-          ),
-        ),
-      ),
+    mutationFn: async (input: CreateExpenseInput) => {
+      const created = unwrap(
+        await apiClient.post<ApiEnvelope<WireExpense[]>>('/expenses', [
+          toExpenseBody(input),
+        ]),
+      )
+      return toExpense(created[0])
+    },
     onMutate: async (input) => {
       await queryClient.cancelQueries({
         queryKey: expenseKeys.lists(householdId),

@@ -165,6 +165,46 @@ describe('useExpenses', () => {
 })
 
 describe('useCreateExpense', () => {
+  it('sends one expense in an array and returns the created entry to the form', async () => {
+    const bodies: unknown[] = []
+    const record = async ({ request }: { request: Request }) => {
+      if (request.method === 'POST') {
+        bodies.push(await request.clone().json())
+      }
+    }
+    server.events.on('request:start', record)
+
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+    try {
+      await act(async () => {
+        await result.current.mutateAsync(NEW_EXPENSE)
+      })
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+      expect(bodies).toEqual([
+        [
+          {
+            name: 'Kopi',
+            description: null,
+            value: '25000.00',
+            type_id: 'type-makan',
+            source_id: 'source-tunai',
+            date_paid: '2026-08-15',
+            paid_by_user_id: 'user-001',
+          },
+        ],
+      ])
+      expect(result.current.data).toMatchObject({
+        ...NEW_EXPENSE,
+        householdId: HOUSEHOLD_ID,
+      })
+      expect(result.current.data?.id).toBeTruthy()
+    } finally {
+      server.events.removeListener('request:start', record)
+    }
+  })
+
   it('does not corrupt a cached detail entry sharing the list prefix', async () => {
     const client = createTestQueryClient()
     const cachedDetail: Expense = {

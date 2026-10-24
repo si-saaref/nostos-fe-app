@@ -13,6 +13,15 @@ export const WRITE_LATENCY_MS = 400
 export const pause = (ms: number): Promise<void> =>
   IS_TEST ? Promise.resolve() : delay(ms)
 
+export const isCreateBatch = (
+  value: unknown,
+): value is Record<string, unknown>[] =>
+  Array.isArray(value) &&
+  value.length > 0 &&
+  value.every(
+    (item) => item !== null && typeof item === 'object' && !Array.isArray(item),
+  )
+
 /**
  * The documented envelope (auth PRD v3.1 §0), used by every failure path.
  * A bare `new HttpResponse(null, { status })` leaves `getErrorMessage` nothing

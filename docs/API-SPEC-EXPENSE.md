@@ -1,5 +1,10 @@
 # API spec — financial module
 
+> **Create payload update (2026-10-23):** the frontend now sends an array to
+> `POST /expenses` and expects an array in `data`. See
+> [Income and expense create arrays](API-CREATE-ARRAYS.md) for the current
+> contract, Postman examples and pending backend rollout.
+
 **Status:** proposal, for BE review. **Date:** 2026-09-05.
 
 This is the contract the frontend now implements against, written out so the backend has
