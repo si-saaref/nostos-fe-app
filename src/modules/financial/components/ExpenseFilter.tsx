@@ -61,7 +61,7 @@ export const ExpenseFilter = ({ householdId, filters, onChange }: Props) => {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <label className="well-shadow bg-chip focus-within:ring-accent/45 flex min-w-[180px] flex-1 items-center gap-2 rounded-lg px-3 py-2 focus-within:ring-1">
+      <label className="well-shadow bg-chip focus-within:ring-accent flex min-w-[180px] flex-1 items-center gap-2 rounded-lg px-3 py-2 focus-within:ring-2">
         <span className="sr-only">{m.filter_search()}</span>
         <svg
           aria-hidden="true"
@@ -91,7 +91,7 @@ export const ExpenseFilter = ({ householdId, filters, onChange }: Props) => {
           value={searchDraft}
           placeholder={m.filter_search()}
           onChange={(event) => onSearchInput(event.target.value)}
-          className="text-ink placeholder:text-muted w-full bg-transparent text-[11.5px] font-medium outline-none"
+          className="text-ink placeholder:text-muted w-full bg-transparent text-[11.5px] font-medium outline-none focus-visible:outline-none"
         />
       </label>
 
