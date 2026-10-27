@@ -47,6 +47,7 @@ describe('usePositions', () => {
     })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
+    expect(result.current.data?.totals.balanceText).toBe('19.99')
     expect(result.current.data?.summary).toEqual({
       totalBalance: 19.99,
       totalBalanceText: '19.99',
@@ -192,5 +193,26 @@ describe('the positions request', () => {
     await expect(
       apiClient.get('/positions', { params: { as_of: SCOPE.asOf } }),
     ).rejects.toMatchObject({ response: { status: 400 } })
+  })
+})
+
+it('provides an explicit legacy summary when metadata is absent', async () => {
+  server.use(
+    http.get('*/api/v1/positions', () =>
+      HttpResponse.json({
+        success: true,
+        data: [
+          { source_id: 'one', opening_balance: '0.00', balance: '123.45' },
+        ],
+      }),
+    ),
+  )
+  const { result } = renderHook(() => usePositions(HOUSEHOLD, SCOPE), {
+    wrapper: createWrapper(),
+  })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(result.current.data?.summary).toMatchObject({
+    totalBalanceText: '123.45',
+    asOf: SCOPE.asOf,
   })
 })

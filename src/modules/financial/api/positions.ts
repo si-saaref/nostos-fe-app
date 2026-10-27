@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
+import { isoDay, monthRange } from '@/utils/dates'
 import { entityKey } from '@/api/keys'
 import { fromWireMoney, sumMoney, sumMoneyText } from '@/utils/money'
 import type { ApiEnvelope } from '@/types/api'
@@ -56,7 +57,7 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
       const rows = unwrap(response).map(toPosition)
       const summary = response.data.meta?.summary
 
-      // Summed here rather than read from `meta`, and this is the one
+      // Legacy fallback only: summed when authoritative meta is absent. This is the one
       // aggregate on the surface allowed to be: the response is a complete
       // collection — one row per source, never paginated — so the client
       // provably holds every term. Every *ledger* aggregate is guarded
@@ -68,17 +69,28 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
           openingText: sumMoneyText(
             rows.map((row) => row.openingBalanceText ?? row.openingBalance),
           ),
-          balance: sumMoney(rows.map((row) => row.balance)),
-          balanceText: sumMoneyText(
-            rows.map((row) => row.balanceText ?? row.balance),
-          ),
+          balance: summary
+            ? fromWireMoney(summary.total_balance)
+            : sumMoney(rows.map((row) => row.balance)),
+          balanceText:
+            summary?.total_balance ??
+            sumMoneyText(rows.map((row) => row.balanceText ?? row.balance)),
         },
-        summary: summary && {
-          totalBalance: fromWireMoney(summary.total_balance),
-          totalBalanceText: summary.total_balance,
-          currency: summary.currency,
-          asOf: summary.as_of,
-        },
+        summary: summary
+          ? {
+              totalBalance: fromWireMoney(summary.total_balance),
+              totalBalanceText: summary.total_balance,
+              currency: summary.currency,
+              asOf: summary.as_of,
+            }
+          : {
+              totalBalance: sumMoney(rows.map((row) => row.balance)),
+              totalBalanceText: sumMoneyText(
+                rows.map((row) => row.balanceText ?? row.balance),
+              ),
+              currency: 'IDR',
+              asOf: scope.asOf,
+            },
       }
     },
     enabled: Boolean(householdId),
@@ -86,3 +98,12 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
     // 404 three times only delays the honest message.
     retry: false,
   })
+
+/** Both ledger headers use a date-stable scope, independent of selected month. */
+export const useCurrentPositions = (householdId: string) => {
+  const today = new Date()
+  return usePositions(householdId, {
+    asOf: isoDay(today),
+    from: monthRange(today).from,
+  })
+}
