@@ -11,6 +11,7 @@ const wire = (kind: string): WireAccount =>
     order: 0,
     archived_at: null,
     household_id: 'household-001',
+    system_key: 'DEFAULT_CASH',
   }) as WireAccount
 
 describe('toAccount', () => {
@@ -41,6 +42,18 @@ describe('toAccount', () => {
       order: 0,
       archivedAt: null,
       householdId: 'household-001',
+      systemKey: 'DEFAULT_CASH',
+      isProtected: true,
+    })
+  })
+
+  it('degrades a legacy row without a system key to an ordinary account', () => {
+    const legacy = wire('BANK')
+    delete (legacy as Partial<WireAccount>).system_key
+
+    expect(toAccount(legacy)).toMatchObject({
+      systemKey: null,
+      isProtected: false,
     })
   })
 })

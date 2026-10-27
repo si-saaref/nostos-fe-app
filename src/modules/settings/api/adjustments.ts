@@ -13,10 +13,28 @@ export interface CreateAdjustmentInput {
   reason: string
 }
 
+export interface ReconcileAccountInput {
+  sourceId: string
+  targetBalance: number
+  reason: string
+}
+
+interface WireReconcileResult {
+  adjustment: WireBalanceAdjustment
+  previous_balance: string
+  balance: string
+}
+
+export interface ReconcileResult {
+  adjustment: BalanceAdjustment
+  previousBalance: number
+  balance: number
+}
+
 const key = (householdId: string, sourceId: string) =>
   [...entityKey(householdId, 'adjustments'), sourceId] as const
 
-const toAdjustment = (row: WireBalanceAdjustment): BalanceAdjustment => ({
+export const toAdjustment = (row: WireBalanceAdjustment): BalanceAdjustment => ({
   id: row.id,
   householdId: row.household_id,
   sourceId: row.source_id,
@@ -63,6 +81,36 @@ export const useCreateAdjustment = (householdId: string) => {
     onSuccess: (row) => {
       queryClient.invalidateQueries({
         queryKey: key(householdId, row.sourceId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: entityKey(householdId, 'positions'),
+      })
+    },
+  })
+}
+
+export const useReconcileAccount = (householdId: string) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: ReconcileAccountInput): Promise<ReconcileResult> => {
+      const row = unwrap(
+        await apiClient.post<ApiEnvelope<WireReconcileResult>>(
+          `/payment-sources/${input.sourceId}/reconcile`,
+          {
+            target_balance: toWireMoney(input.targetBalance),
+            reason: input.reason.trim(),
+          },
+        ),
+      )
+      return {
+        adjustment: toAdjustment(row.adjustment),
+        previousBalance: fromWireMoney(row.previous_balance),
+        balance: fromWireMoney(row.balance),
+      }
+    },
+    onSuccess: (row) => {
+      queryClient.invalidateQueries({
+        queryKey: key(householdId, row.adjustment.sourceId),
       })
       queryClient.invalidateQueries({
         queryKey: entityKey(householdId, 'positions'),

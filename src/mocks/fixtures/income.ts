@@ -140,7 +140,7 @@ export const seedIncome = (): StoredIncome[] => {
         name: recipe.name,
         amount: recipe.amount,
         kind: recipe.from === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
-        typeId: incomeTypeIdOf(recipe.typeName),
+        typeId: recipe.from === null ? incomeTypeIdOf(recipe.typeName) : null,
         fromSourceId: recipe.from,
         toSourceId: recipe.to,
         date,

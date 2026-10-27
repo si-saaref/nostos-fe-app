@@ -1,6 +1,6 @@
 import { useMessages } from '@/i18n/useMessages'
 import { Select } from '@/components/Select'
-import { useIncomeTypes } from '@/modules/settings/api/incomeTypes'
+import { useIncomeTypes } from '@/modules/settings/api/incomeCategories'
 import type { IncomeFilters } from '@/types/income'
 
 interface Props {

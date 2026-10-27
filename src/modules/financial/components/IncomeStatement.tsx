@@ -150,7 +150,7 @@ export const IncomeStatement = ({
                       : nameOfSource(income.fromSourceId)
                   }
                   toName={nameOfSource(income.toSourceId)}
-                  typeName={nameOfType(income.typeId)}
+                  typeName={income.typeId ? nameOfType(income.typeId) : ''}
                   recorderName={nameOfUser(income.createdByUserId ?? '')}
                   isOpen={openId === income.id}
                   onToggle={onToggle}

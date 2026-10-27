@@ -27,6 +27,14 @@ export const INCOME_TYPE_NAMES = [
   'setoran',
 ] as const
 
+const SYSTEM_KEYS = [
+  'SALARY',
+  'BONUS',
+  'GIFT',
+  null,
+  null,
+] as const
+
 /**
  * Ids matching what `seedIncomeTypes` assigns, so a fixture ledger and the
  * type catalogue cannot drift apart. Derived from the index rather than
@@ -50,4 +58,6 @@ export const seedIncomeTypes = (): IncomeType[] =>
     name,
     archivedAt: null,
     householdId: MOCK_HOUSEHOLD.id,
+    order: index,
+    systemKey: SYSTEM_KEYS[index],
   }))

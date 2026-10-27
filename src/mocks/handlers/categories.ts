@@ -17,6 +17,7 @@ const toWire = (category: Category): WireCategory => ({
   order: category.order,
   archived_at: category.archivedAt,
   household_id: category.householdId,
+  system_key: category.systemKey,
 })
 
 /**
@@ -45,6 +46,10 @@ const conflict = (name: string) =>
   errorBody(409, 'CONFLICT', `Kategori "${name}" sudah ada`)
 
 export const categoryHandlers = [
+  http.get('*/api/v1/expense-categories', async () => {
+    await pause(READ_LATENCY_MS)
+    return ok(db.categories.map(toWire))
+  }),
   http.get('*/api/v1/expense-types', async () => {
     await pause(READ_LATENCY_MS)
     return ok(db.categories.map(toWire))
@@ -64,12 +69,46 @@ export const categoryHandlers = [
         db.categories.reduce((max, row) => Math.max(max, row.order), -1) + 1,
       archivedAt: null,
       householdId: MOCK_HOUSEHOLD.id,
+      systemKey: null,
+    }
+    db.categories.push(created)
+    return ok(toWire(created), { status: 201 })
+  }),
+
+  http.post('*/api/v1/expense-categories', async ({ request }) => {
+    await pause(WRITE_LATENCY_MS)
+    const body = (await request.json()) as { name?: string }
+    const name = (body.name ?? '').trim()
+    if (nameTaken(name)) return conflict(name)
+    const created: Category = {
+      id: nextId('type'),
+      name,
+      order: db.categories.reduce((max, row) => Math.max(max, row.order), -1) + 1,
+      archivedAt: null,
+      householdId: MOCK_HOUSEHOLD.id,
+      systemKey: null,
     }
     db.categories.push(created)
     return ok(toWire(created), { status: 201 })
   }),
 
   http.patch('*/api/v1/expense-types/:id', async ({ params, request }) => {
+    await pause(WRITE_LATENCY_MS)
+    const body = (await request.json()) as Partial<WireCategory>
+    const index = db.categories.findIndex((row) => row.id === params.id)
+    if (index === -1) return notFound('Category')
+    if (body.name !== undefined && nameTaken(body.name, String(params.id))) {
+      return conflict(body.name)
+    }
+    db.categories[index] = {
+      ...db.categories[index],
+      ...(body.name !== undefined && { name: body.name }),
+      ...(body.archived_at !== undefined && { archivedAt: body.archived_at }),
+    }
+    return ok(toWire(db.categories[index]))
+  }),
+
+  http.patch('*/api/v1/expense-categories/:id', async ({ params, request }) => {
     await pause(WRITE_LATENCY_MS)
     const body = (await request.json()) as Partial<WireCategory>
     const index = db.categories.findIndex((row) => row.id === params.id)

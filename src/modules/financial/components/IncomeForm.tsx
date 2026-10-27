@@ -8,7 +8,7 @@ import {
 } from '@/modules/financial/api/income'
 import { incomeFieldErrors } from '@/modules/financial/lib/incomeErrors'
 import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useIncomeTypes } from '@/modules/settings/api/incomeTypes'
+import { useIncomeTypes } from '@/modules/settings/api/incomeCategories'
 import { useHousehold } from '@/contexts/useHousehold'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
@@ -228,7 +228,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
         render={({ field }) => (
           <Select
             label={m.inc_form_kind()}
-            value={field.value}
+            value={field.value ?? ''}
             onChange={(value) => {
               field.onChange(value)
               clearErrors('fromSourceId')
@@ -300,7 +300,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
           <Select
             label={m.inc_form_type()}
             placeholder={m.form_choose()}
-            value={field.value}
+            value={field.value ?? ''}
             onChange={changeAndClear('typeId', field.onChange)}
             error={fieldState.error?.message}
             disabled={typeOptions.length === 0}

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
 import type { Me } from '@/types/household'
 import type { ApiEnvelope } from '@/types/api'
@@ -28,3 +28,22 @@ export const useMe = () =>
     staleTime: 60_000,
     retry: false,
   })
+
+export interface ChangeNameInput {
+  firstName: string
+  lastName: string
+}
+
+export const useChangeName = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: ChangeNameInput) =>
+      unwrap(
+        await apiClient.patch<ApiEnvelope<Me>>('/auth/me/name', {
+          first_name: input.firstName.trim(),
+          last_name: input.lastName.trim(),
+        }),
+      ),
+    onSuccess: (profile) => queryClient.setQueryData(meKey, profile),
+  })
+}

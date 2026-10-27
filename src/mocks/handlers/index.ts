@@ -40,7 +40,7 @@ export type MockedDomains = Record<MockDomain, boolean>
 export const MOCKED: MockedDomains = {
   auth: false, // shipped 2026-09-01
   financial: false, // shipped 2026-09-09 — both ledgers, catalogue and positions
-  prefs: true, // route not built: the live API 404s
+  prefs: false, // shipped with household foundation contracts
 }
 
 const DOMAIN_HANDLERS: Record<MockDomain, RequestHandler[]> = {
@@ -63,8 +63,10 @@ const DOMAIN_PATHS: Record<MockDomain, (string | RegExp)[]> = {
   financial: [
     '/api/v1/expenses',
     '/api/v1/expense-types',
+    '/api/v1/expense-categories',
     '/api/v1/payment-sources',
     '/api/v1/income-types',
+    '/api/v1/income-categories',
     '/api/v1/income',
     '/api/v1/positions',
     /\/api\/v1\/households\/[^/]+\/members(\/|$)/,

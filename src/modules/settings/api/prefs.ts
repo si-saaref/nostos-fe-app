@@ -23,6 +23,7 @@ export const prefsKeys = {
 const toPrefs = (row: WireHouseholdPrefs): HouseholdPrefs => ({
   currency: row.currency,
   monthStartDay: row.month_start_day,
+  timezone: row.timezone,
 })
 
 /** Only the keys the caller passed — a partial body, like every other PATCH. */
@@ -32,6 +33,7 @@ const toPrefsBody = (patch: Partial<HouseholdPrefs>) => {
   if (patch.monthStartDay !== undefined) {
     body.month_start_day = patch.monthStartDay
   }
+  if (patch.timezone !== undefined) body.timezone = patch.timezone
   return body
 }
 

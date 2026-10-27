@@ -27,6 +27,22 @@ beforeEach(() => {
 })
 
 describe('toIncome', () => {
+  it('keeps a category-free transfer compatible with the nullable wire contract', () => {
+    const transfer = toIncome({
+      id: 'inc-transfer',
+      name: 'ATM withdrawal',
+      amount: '100000.00',
+      kind: 'TRANSFER',
+      type_id: null,
+      from_source_id: ACCOUNT_IDS[1],
+      to_source_id: ACCOUNT_IDS[0],
+      date: '2026-09-04',
+      household_id: HOUSEHOLD,
+    })
+
+    expect(transfer.typeId).toBeNull()
+  })
+
   it('maps every snake_case key, keeping a null from_source_id null', () => {
     const wire: WireIncome = {
       id: 'inc-1',
@@ -136,6 +152,32 @@ describe('useIncome', () => {
 })
 
 describe('useCreateIncome', () => {
+  it('posts a transfer with an explicit null category', async () => {
+    const bodies: unknown[] = []
+    const record = async ({ request }: { request: Request }) => {
+      if (request.method === 'POST') bodies.push(await request.clone().json())
+    }
+    server.events.on('request:start', record)
+
+    const { result } = renderHook(() => useCreateIncome(HOUSEHOLD), {
+      wrapper: createWrapper(),
+    })
+    result.current.mutate({
+      name: 'ATM withdrawal',
+      kind: 'TRANSFER',
+      amount: 100000,
+      typeId: null,
+      fromSourceId: ACCOUNT_IDS[1],
+      toSourceId: ACCOUNT_IDS[0],
+      date: thisMonth.from,
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    server.events.removeListener('request:start', record)
+
+    expect(bodies[0]).toHaveProperty('0.type_id', null)
+    expect(result.current.data?.typeId).toBeNull()
+  })
+
   it('creates an external inflow and stamps the recorder', async () => {
     const { result } = renderHook(() => useCreateIncome(HOUSEHOLD), {
       wrapper: createWrapper(),
@@ -270,6 +312,7 @@ describe('useUpdateIncome', () => {
       id: transfer!.id,
       fromSourceId: null,
       kind: 'EXTERNAL_INCOME',
+      typeId: INCOME_TYPE_IDS[0],
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

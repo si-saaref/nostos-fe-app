@@ -144,7 +144,7 @@ const badRef = (
   body: Partial<WireIncome>,
   current?: StoredIncome,
 ): ReturnType<typeof errorBody> | null => {
-  if (body.type_id !== undefined && !liveType(body.type_id)) {
+  if (body.type_id !== undefined && body.type_id !== null && !liveType(body.type_id)) {
     return errorBody(422, 'INVALID_TYPE', 'Jenis pemasukan tidak tersedia')
   }
   if (body.to_source_id !== undefined && !liveSource(body.to_source_id)) {
@@ -171,11 +171,23 @@ const badRef = (
     )
   }
   const kind = body.kind ?? current?.kind
+  const type =
+    body.type_id !== undefined ? body.type_id : (current?.typeId ?? null)
   if ((kind === 'TRANSFER') !== (from !== null)) {
     return errorBody(
       400,
       'VALIDATION_ERROR',
       'Transaction kind does not match its origin source',
+    )
+  }
+  if (
+    (kind === 'TRANSFER' && type !== null) ||
+    (kind === 'EXTERNAL_INCOME' && type === null)
+  ) {
+    return errorBody(
+      400,
+      'VALIDATION_ERROR',
+      'Transaction kind does not match its income category',
     )
   }
   const to =
@@ -293,7 +305,7 @@ export const incomeHandlers = [
         description: body.description?.trim() || null,
         amount: body.amount === undefined ? 0 : fromWireMoney(body.amount),
         kind: body.kind,
-        typeId: body.type_id ?? '',
+        typeId: body.type_id ?? null,
         fromSourceId: body.from_source_id ?? null,
         toSourceId: body.to_source_id,
         date: body.date ?? '',
@@ -320,7 +332,10 @@ export const incomeHandlers = [
     // fields, so a null anywhere else is a 400 rather than a silent no-op.
     const nulled = Object.keys(body).find(
       (key) =>
-        body[key] === null && key !== 'from_source_id' && key !== 'description',
+        body[key] === null &&
+        key !== 'from_source_id' &&
+        key !== 'description' &&
+        key !== 'type_id',
     )
     if (nulled) {
       return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [

@@ -51,6 +51,8 @@ export const toAccount = (row: WireAccount): Account => ({
   order: row.order,
   archivedAt: row.archived_at,
   householdId: row.household_id,
+  systemKey: row.system_key ?? null,
+  isProtected: row.system_key != null,
 })
 
 /** Only what the caller passed — see `toCategoryBody` for why. */

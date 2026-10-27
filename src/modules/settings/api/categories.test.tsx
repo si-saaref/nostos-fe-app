@@ -3,11 +3,14 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { createTestQueryClient } from '@/test/test-utils'
+import { server } from '@/mocks/server'
 import {
+  toCategory,
   useActiveCategories,
   useCategories,
   useUpdateCategory,
 } from '@/modules/settings/api/categories'
+import type { WireCategory } from '@/types/catalog'
 
 const HOUSEHOLD_ID = 'household-001'
 
@@ -33,6 +36,34 @@ const setup = () =>
   )
 
 describe('category cache', () => {
+  it('reads through the preferred expense-category alias', async () => {
+    const seen: string[] = []
+    const record = ({ request }: { request: Request }) =>
+      seen.push(new URL(request.url).pathname)
+    server.events.on('request:start', record)
+
+    const { result } = setup()
+    await waitFor(() => expect(result.current.all.isSuccess).toBe(true))
+    server.events.removeListener('request:start', record)
+
+    expect(seen.some((path) => path.endsWith('/expense-categories'))).toBe(true)
+  })
+
+  it('maps stable semantic identity and falls back explicitly for legacy rows', () => {
+    const row = {
+      id: 'type-food',
+      name: 'Renamed food',
+      order: 0,
+      archived_at: null,
+      household_id: HOUSEHOLD_ID,
+      system_key: 'FOOD_DRINK',
+    } as WireCategory
+
+    expect(toCategory(row).systemKey).toBe('FOOD_DRINK')
+    delete (row as Partial<WireCategory>).system_key
+    expect(toCategory(row).systemKey).toBeNull()
+  })
+
   it('reaches the picker when Settings renames a category', async () => {
     const { result } = setup()
     await waitFor(() => expect(result.current.active.isSuccess).toBe(true))

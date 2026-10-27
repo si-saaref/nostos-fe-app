@@ -24,7 +24,7 @@ export interface Income {
    * not the word — so an archived type keeps naming the entries that used it,
    * and a renamed one renames its history with it.
    */
-  typeId: string
+  typeId: string | null
   /** `null` means the money came from outside the household. */
   fromSourceId: string | null
   toSourceId: string
@@ -44,7 +44,7 @@ export interface CreateIncomeInput {
   name: string
   description?: string | null
   amount: number
-  typeId: string
+  typeId: string | null
   fromSourceId: string | null
   toSourceId: string
   date: string
@@ -86,7 +86,7 @@ export interface WireIncome {
   description?: string | null
   amount: string
   kind: 'EXTERNAL_INCOME' | 'TRANSFER'
-  type_id: string
+  type_id: string | null
   from_source_id: string | null
   to_source_id: string
   date: string
@@ -110,13 +110,26 @@ export interface IncomeType {
   name: string
   archivedAt: string | null
   householdId: string
+  order: number
+  systemKey: IncomeCategorySystemKey | null
 }
+
+export type IncomeCategorySystemKey =
+  | 'SALARY'
+  | 'BONUS'
+  | 'BUSINESS'
+  | 'FREELANCE'
+  | 'GIFT'
+  | 'REIMBURSEMENT'
+  | 'OTHER'
 
 export interface WireIncomeType {
   id: string
   name: string
   archived_at: string | null
   household_id: string
+  order?: number
+  system_key?: IncomeCategorySystemKey | null
 }
 
 /**
@@ -154,4 +167,18 @@ export interface PositionTotals {
 export interface Positions {
   items: Position[]
   totals: PositionTotals
+  summary?: PositionSummary
+}
+
+export interface PositionSummary {
+  totalBalance: number
+  totalBalanceText?: string
+  currency: string
+  asOf: string
+}
+
+export interface WirePositionSummary {
+  total_balance: string
+  currency: string
+  as_of: string
 }

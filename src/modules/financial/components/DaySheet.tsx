@@ -335,8 +335,12 @@ const IncomeRow = ({
           <span className="bg-chip rounded px-1.5 py-px text-[10px] font-semibold">
             {nameOf(income.toSourceId)}
           </span>
-          <Dot />
-          {nameOf(income.typeId)}
+          {!isTransfer && income.typeId && (
+            <>
+              <Dot />
+              {nameOf(income.typeId)}
+            </>
+          )}
         </>
       }
     />

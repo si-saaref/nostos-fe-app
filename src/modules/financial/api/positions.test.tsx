@@ -4,6 +4,7 @@ import { createWrapper } from '@/test/test-utils'
 import { apiClient } from '@/api/client'
 import { db, resetMockState } from '@/mocks/db'
 import { server } from '@/mocks/server'
+import { http, HttpResponse } from 'msw'
 import { MOCK_ME } from '@/mocks/fixtures/household'
 import { usePositions } from '@/modules/financial/api/positions'
 import { monthRange } from '@/utils/dates'
@@ -18,6 +19,42 @@ beforeEach(() => {
 })
 
 describe('usePositions', () => {
+  it('uses the authoritative response summary when the backend sends it', async () => {
+    server.use(
+      http.get('*/api/v1/positions', () =>
+        HttpResponse.json({
+          success: true,
+          data: [
+            {
+              source_id: 'source-one',
+              opening_balance: '10.00',
+              balance: '20.00',
+            },
+          ],
+          meta: {
+            summary: {
+              total_balance: '19.99',
+              currency: 'IDR',
+              as_of: SCOPE.asOf,
+            },
+          },
+        }),
+      ),
+    )
+
+    const { result } = renderHook(() => usePositions(HOUSEHOLD, SCOPE), {
+      wrapper: createWrapper(),
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data?.summary).toEqual({
+      totalBalance: 19.99,
+      totalBalanceText: '19.99',
+      currency: 'IDR',
+      asOf: SCOPE.asOf,
+    })
+  })
+
   it('returns one row per source with an opening and a current balance', async () => {
     const { result } = renderHook(() => usePositions(HOUSEHOLD, SCOPE), {
       wrapper: createWrapper(),

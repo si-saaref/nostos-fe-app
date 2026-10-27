@@ -19,6 +19,7 @@ describe('buildHandlers', () => {
       expect.arrayContaining([
         '*/api/v1/expenses',
         '*/api/v1/expense-types',
+        '*/api/v1/expense-categories',
         '*/api/v1/payment-sources',
         '*/api/v1/households/:id/members',
       ]),
@@ -44,6 +45,7 @@ describe('isLiveApiPath', () => {
     '/api/v1/expenses',
     '/api/v1/expenses/8c14e2a0-5b73-4f19-9d62-0a3e7c81f45b',
     '/api/v1/expense-types',
+    '/api/v1/expense-categories',
     '/api/v1/payment-sources/7a2e',
     '/api/v1/households/1f0c/members',
     '/api/v1/households/1f0c/members/9b4d/resend-invite',
@@ -72,6 +74,7 @@ describe('isLiveApiPath', () => {
         '*/api/v1/income',
         '*/api/v1/income/:incomeId',
         '*/api/v1/income-types',
+        '*/api/v1/income-categories',
         '*/api/v1/positions',
       ]),
     )
@@ -115,6 +118,8 @@ describe('isLiveApiPath', () => {
     '/api/v1/income/8c14e2a0-5b73-4f19-9d62-0a3e7c81f45b',
     '/api/v1/income-types',
     '/api/v1/income-types/itype-0',
+    '/api/v1/income-categories',
+    '/api/v1/income-categories/itype-0',
     '/api/v1/positions',
   ])('reports %s as live once the financial domain is', (pathname) => {
     expect(isLiveApiPath(pathname, ALL_LIVE)).toBe(true)

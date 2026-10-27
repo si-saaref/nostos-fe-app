@@ -57,6 +57,7 @@ export interface HouseholdPrefs {
   currency: string
   /** Day of month the household's period starts. 1 for most households. */
   monthStartDay: number
+  timezone: string
 }
 
 export interface CategoryInput {
@@ -84,4 +85,5 @@ export interface InviteInput {
 export interface WireHouseholdPrefs {
   currency: string
   month_start_day: number
+  timezone: string
 }

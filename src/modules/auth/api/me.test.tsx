@@ -19,6 +19,8 @@ describe('useMe', () => {
       role: Role.ADMIN,
       household_status: HouseholdStatus.ACTIVE,
       scheduled_deletion_date: null,
+      first_name: 'Budi',
+      last_name: 'Santoso',
     })
   })
 

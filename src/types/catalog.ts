@@ -16,7 +16,24 @@ export interface Category {
   order: number
   archivedAt: string | null
   householdId: string
+  systemKey: ExpenseCategorySystemKey | null
 }
+
+export type ExpenseCategorySystemKey =
+  | 'FOOD_DRINK'
+  | 'GROCERIES'
+  | 'TRANSPORTATION'
+  | 'BILLS'
+  | 'HOUSING'
+  | 'SHOPPING'
+  | 'HEALTH'
+  | 'ENTERTAINMENT'
+  | 'EDUCATION'
+  | 'GIFTS_DONATIONS'
+  | 'SUBSCRIPTIONS'
+  | 'OTHER'
+
+export type AccountSystemKey = 'DEFAULT_CASH' | 'DEFAULT_BANK'
 
 /**
  * What the API sends. Uppercase, matching `role` and `household_status` —
@@ -47,6 +64,8 @@ export interface Account {
   order: number
   archivedAt: string | null
   householdId: string
+  systemKey: AccountSystemKey | null
+  isProtected: boolean
 }
 
 export interface BalanceAdjustment {
@@ -82,6 +101,8 @@ export interface WireCategory {
   order: number
   archived_at: string | null
   household_id: string
+  /** Absent only on a legacy deployment during the additive cutover. */
+  system_key?: ExpenseCategorySystemKey | null
 }
 
 export interface WireAccount {
@@ -93,4 +114,6 @@ export interface WireAccount {
   order: number
   archived_at: string | null
   household_id: string
+  /** Absent only on a legacy deployment during the additive cutover. */
+  system_key?: AccountSystemKey | null
 }

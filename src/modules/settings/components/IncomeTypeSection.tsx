@@ -10,7 +10,7 @@ import {
   useCreateIncomeType,
   useIncomeTypes,
   useUpdateIncomeType,
-} from '@/modules/settings/api/incomeTypes'
+} from '@/modules/settings/api/incomeCategories'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { isoDay } from '@/utils/dates'
 import { capitalizeFirst } from '@/utils/text'

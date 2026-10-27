@@ -57,6 +57,7 @@ const toWire = (account: Account): WireAccount => ({
   order: account.order,
   archived_at: account.archivedAt,
   household_id: account.householdId,
+  system_key: account.systemKey,
 })
 
 /** Name uniqueness, enforced exactly as it is for categories. */
@@ -72,6 +73,38 @@ const conflict = (name: string) =>
 
 /** Archived rows and stable `order` for the same reasons as categories. */
 export const accountHandlers = [
+  http.post(
+    '*/api/v1/payment-sources/:id/reconcile',
+    async ({ params, request }) => {
+      await pause(WRITE_LATENCY_MS)
+      const source = db.accounts.find((row) => row.id === params.id)
+      if (!source) return notFound('Account')
+      const body = (await request.json()) as {
+        target_balance: string
+        reason: string
+      }
+      const current = source.openingBalance + db.adjustments
+        .filter((row) => row.sourceId === source.id)
+        .reduce((sum, row) => sum + row.delta, 0)
+      const target = fromWireMoney(body.target_balance)
+      const created: BalanceAdjustment = {
+        id: nextId('adjustment'),
+        householdId: MOCK_HOUSEHOLD.id,
+        sourceId: source.id,
+        createdByUserId: MOCK_USER.id,
+        delta: target - current,
+        date: new Date().toISOString().slice(0, 10),
+        reason: body.reason.trim(),
+        createdAt: new Date().toISOString(),
+      }
+      db.adjustments.unshift(created)
+      return ok({
+        adjustment: toAdjustmentWire(created),
+        previous_balance: toWireSignedMoney(current),
+        balance: toWireSignedMoney(target),
+      })
+    },
+  ),
   http.get('*/api/v1/payment-sources/:id/adjustments', async ({ params }) => {
     await pause(READ_LATENCY_MS)
     const source = db.accounts.find((row) => row.id === params.id)
@@ -149,6 +182,8 @@ export const accountHandlers = [
       order: db.accounts.reduce((max, row) => Math.max(max, row.order), -1) + 1,
       archivedAt: null,
       householdId: MOCK_HOUSEHOLD.id,
+      systemKey: null,
+      isProtected: false,
     }
     db.accounts.push(created)
     return ok(toWire(created), { status: 201 })

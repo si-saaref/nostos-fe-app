@@ -3,6 +3,7 @@ import type { AxiosResponse } from 'axios'
 import { queryClient } from '@/api/queryClient'
 import { fromWireMoney } from '@/utils/money'
 import type {
+  ApiMeta,
   ApiEnvelope,
   Paginated,
   Pagination,
@@ -43,7 +44,9 @@ apiClient.interceptors.request.use((config) => {
  * neither the endpoint nor the shape — so a contract change would surface as a
  * mystery rather than as itself.
  */
-export const unwrap = <T>(res: AxiosResponse<ApiEnvelope<T>>): T => {
+export const unwrap = <T, M = ApiMeta>(
+  res: AxiosResponse<ApiEnvelope<T, M>>,
+): T => {
   const body = res.data
   if (body == null || typeof body !== 'object' || !('data' in body)) {
     throw new Error(

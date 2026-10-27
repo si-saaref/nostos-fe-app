@@ -26,6 +26,8 @@ export const seedAccounts = (): Account[] => [
     order: 0,
     archivedAt: null,
     householdId: MOCK_HOUSEHOLD.id,
+    systemKey: 'DEFAULT_CASH',
+    isProtected: true,
   },
   {
     id: 'source-qris',
@@ -36,6 +38,8 @@ export const seedAccounts = (): Account[] => [
     order: 1,
     archivedAt: null,
     householdId: MOCK_HOUSEHOLD.id,
+    systemKey: null,
+    isProtected: false,
   },
   {
     id: 'source-debit',
@@ -46,6 +50,8 @@ export const seedAccounts = (): Account[] => [
     order: 2,
     archivedAt: null,
     householdId: MOCK_HOUSEHOLD.id,
+    systemKey: 'DEFAULT_BANK',
+    isProtected: true,
   },
   {
     id: 'source-ewallet',
@@ -59,6 +65,8 @@ export const seedAccounts = (): Account[] => [
     order: 3,
     archivedAt: null,
     householdId: MOCK_HOUSEHOLD.id,
+    systemKey: null,
+    isProtected: false,
   },
   {
     id: 'source-bsi',
@@ -69,6 +77,8 @@ export const seedAccounts = (): Account[] => [
     order: 4,
     archivedAt: null,
     householdId: MOCK_HOUSEHOLD.id,
+    systemKey: null,
+    isProtected: false,
   },
   {
     id: 'source-bni',
@@ -79,5 +89,7 @@ export const seedAccounts = (): Account[] => [
     order: 5,
     archivedAt: null,
     householdId: MOCK_HOUSEHOLD.id,
+    systemKey: null,
+    isProtected: false,
   },
 ]

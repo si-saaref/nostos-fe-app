@@ -20,6 +20,8 @@ export const MOCK_ME: Me = {
   household_name: MOCK_HOUSEHOLD.name,
   email: MOCK_USER.email,
   name: MOCK_USER.name,
+  first_name: 'Budi',
+  last_name: 'Santoso',
   role: Role.ADMIN,
   household_status: HouseholdStatus.ACTIVE,
   scheduled_deletion_date: null,

@@ -1,6 +1,6 @@
-import { http } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { db } from '@/mocks/db'
-import { READ_LATENCY_MS, errorBody, ok, pause } from '@/mocks/handlers/shared'
+import { READ_LATENCY_MS, errorBody, pause } from '@/mocks/handlers/shared'
 import { sumMoneyText } from '@/utils/money'
 import { fromIsoDay, isoDay, shiftDays } from '@/utils/dates'
 import type { WirePosition } from '@/types/income'
@@ -121,6 +121,16 @@ export const positionHandlers = [
     // shaped like `/payment-sources` rather than like a ledger list. That is
     // also why the totals are summed on the client — the client provably
     // holds every row, which is not true of any paginated aggregate.
-    return ok(rows)
+    return HttpResponse.json({
+      success: true,
+      data: rows,
+      meta: {
+        summary: {
+          total_balance: sumMoneyText(rows.map((row) => row.balance)),
+          currency: db.prefs.currency,
+          as_of: asOf,
+        },
+      },
+    })
   }),
 ]

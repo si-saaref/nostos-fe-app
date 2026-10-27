@@ -12,6 +12,7 @@ import type { HouseholdPrefs } from '@/modules/settings/types/settings'
 const toWire = (prefs: HouseholdPrefs) => ({
   currency: prefs.currency,
   month_start_day: prefs.monthStartDay,
+  timezone: prefs.timezone,
 })
 
 /** No route behind this yet. Same envelope as the rest, so shipping it is one flag. */
@@ -26,6 +27,7 @@ export const prefsHandlers = [
     const patch = (await request.json()) as {
       currency?: string
       month_start_day?: number
+      timezone?: string
     }
     db.prefs = {
       ...db.prefs,
@@ -33,6 +35,7 @@ export const prefsHandlers = [
       ...(patch.month_start_day !== undefined && {
         monthStartDay: patch.month_start_day,
       }),
+      ...(patch.timezone !== undefined && { timezone: patch.timezone }),
     }
     return ok(toWire(db.prefs))
   }),

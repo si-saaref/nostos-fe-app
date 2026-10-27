@@ -28,6 +28,7 @@ export const toCategory = (row: WireCategory): Category => ({
   order: row.order,
   archivedAt: row.archived_at,
   householdId: row.household_id,
+  systemKey: row.system_key ?? null,
 })
 
 /**
@@ -46,7 +47,7 @@ const toCategoryBody = (patch: Partial<Category>) => {
 
 const fetchCategories = async (): Promise<Category[]> =>
   unwrap(
-    await apiClient.get<ApiEnvelope<WireCategory[]>>('/expense-types'),
+    await apiClient.get<ApiEnvelope<WireCategory[]>>('/expense-categories'),
   ).map(toCategory)
 
 export const useCategories = (householdId: string) =>
@@ -72,7 +73,7 @@ export const useCreateCategory = (householdId: string) =>
     async (input: CategoryInput) =>
       toCategory(
         unwrap(
-          await apiClient.post<ApiEnvelope<WireCategory>>('/expense-types', {
+          await apiClient.post<ApiEnvelope<WireCategory>>('/expense-categories', {
             name: input.name,
           }),
         ),
@@ -86,7 +87,7 @@ export const useUpdateCategory = (householdId: string) =>
       toCategory(
         unwrap(
           await apiClient.patch<ApiEnvelope<WireCategory>>(
-            `/expense-types/${id}`,
+            `/expense-categories/${id}`,
             toCategoryBody(patch),
           ),
         ),

@@ -17,6 +17,8 @@ const account = (
   order,
   archivedAt,
   householdId: 'h1',
+  systemKey: null,
+  isProtected: false,
 })
 
 const position = (

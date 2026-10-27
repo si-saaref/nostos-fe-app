@@ -16,11 +16,17 @@ const toWire = (type: IncomeType): WireIncomeType => ({
   name: type.name,
   archived_at: type.archivedAt,
   household_id: type.householdId,
+  order: type.order,
+  system_key: type.systemKey,
 })
 
 const NAME_MAX = 100
 
 export const incomeTypeHandlers = [
+  http.get('*/api/v1/income-categories', async () => {
+    await pause(READ_LATENCY_MS)
+    return ok(db.incomeTypes.map(toWire))
+  }),
   http.get('*/api/v1/income-types', async () => {
     await pause(READ_LATENCY_MS)
     return ok(db.incomeTypes.map(toWire))
@@ -53,6 +59,31 @@ export const incomeTypeHandlers = [
       name,
       archivedAt: null,
       householdId: MOCK_HOUSEHOLD.id,
+      order: db.incomeTypes.reduce((max, row) => Math.max(max, row.order), -1) + 1,
+      systemKey: null,
+    }
+    db.incomeTypes.push(created)
+    return ok(toWire(created), { status: 201 })
+  }),
+
+  http.post('*/api/v1/income-categories', async ({ request }) => {
+    await pause(WRITE_LATENCY_MS)
+    const body = (await request.json()) as { name?: string }
+    const name = (body.name ?? '').trim()
+    if (!name || name.length > NAME_MAX) {
+      return errorBody(400, 'VALIDATION_ERROR', 'Validation failed')
+    }
+    const clash = db.incomeTypes.find(
+      (row) => row.name.toLowerCase() === name.toLowerCase(),
+    )
+    if (clash) return errorBody(409, 'CONFLICT', `"${clash.name}" sudah ada`)
+    const created: IncomeType = {
+      id: nextId('itype'),
+      name,
+      archivedAt: null,
+      householdId: MOCK_HOUSEHOLD.id,
+      order: db.incomeTypes.reduce((max, row) => Math.max(max, row.order), -1) + 1,
+      systemKey: null,
     }
     db.incomeTypes.push(created)
     return ok(toWire(created), { status: 201 })
@@ -63,6 +94,19 @@ export const incomeTypeHandlers = [
     const body = (await request.json()) as Partial<WireIncomeType>
     const index = db.incomeTypes.findIndex((row) => row.id === params.id)
     if (index === -1) return notFound('Income type')
+    db.incomeTypes[index] = {
+      ...db.incomeTypes[index],
+      ...(body.name !== undefined && { name: body.name }),
+      ...(body.archived_at !== undefined && { archivedAt: body.archived_at }),
+    }
+    return ok(toWire(db.incomeTypes[index]))
+  }),
+
+  http.patch('*/api/v1/income-categories/:id', async ({ params, request }) => {
+    await pause(WRITE_LATENCY_MS)
+    const body = (await request.json()) as Partial<WireIncomeType>
+    const index = db.incomeTypes.findIndex((row) => row.id === params.id)
+    if (index === -1) return notFound('Income category')
     db.incomeTypes[index] = {
       ...db.incomeTypes[index],
       ...(body.name !== undefined && { name: body.name }),

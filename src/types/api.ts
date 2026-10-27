@@ -3,11 +3,11 @@
  * wrapper around it — and the list routes hoist their counts into `meta`
  * (BACKEND.md D15), so one unwrap works for every endpoint.
  */
-export interface ApiEnvelope<T> {
+export interface ApiEnvelope<T, M = ApiMeta> {
   success: boolean
   data: T
   message?: string
-  meta?: ApiMeta
+  meta?: M
 }
 
 /**
