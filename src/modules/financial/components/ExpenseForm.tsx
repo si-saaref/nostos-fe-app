@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { Controller, useForm } from 'react-hook-form'
@@ -65,8 +65,10 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
   const create = useCreateExpense(householdId)
   const update = useUpdateExpense(householdId)
   const { isPending, error } = isEdit ? update : create
-  const { data: categories } = useActiveCategories(householdId)
-  const { data: accounts } = useActiveAccounts(householdId)
+  const categoriesQuery = useActiveCategories(householdId)
+  const { data: categories } = categoriesQuery
+  const accountsQuery = useActiveAccounts(householdId)
+  const { data: accounts } = accountsQuery
   const { data: activePayers } = useActivePayers(householdId)
   const { data: roster } = useRoster(householdId)
 
@@ -95,6 +97,8 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
     reset,
     setError,
     clearErrors,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<CreateExpenseInput>({
     defaultValues: {
@@ -108,6 +112,18 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
       paidByUserId: expense?.paidByUserId ?? me?.user_id ?? '',
     },
   })
+
+  useEffect(() => {
+    if (isEdit) return
+    if (!getValues('typeId') && categories?.length)
+      setValue('typeId', categories[0].id)
+    if (!getValues('sourceId') && accounts?.length)
+      setValue(
+        'sourceId',
+        (accounts.find((a) => a.systemKey === 'DEFAULT_CASH') ?? accounts[0])
+          .id,
+      )
+  }, [isEdit, categories, accounts, getValues, setValue])
 
   // Whether the last failure landed on a field. The summary line stands down
   // when it did — a field error plus a summary says the same thing twice.
@@ -214,6 +230,20 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
       aria-label={m.action_record_long()}
       className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3"
     >
+      {(categoriesQuery.isError || accountsQuery.isError) && (
+        <p role="alert" className="text-danger sm:col-span-2 lg:col-span-3">
+          {m.state_error()}{' '}
+          <button
+            type="button"
+            onClick={() => {
+              void categoriesQuery.refetch()
+              void accountsQuery.refetch()
+            }}
+          >
+            {m.state_retry()}
+          </button>
+        </p>
+      )}
       <FormBlockers blockers={blockers} />
 
       <FormField label={m.form_name()} error={errors.name?.message}>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useMessages } from '@/i18n/useMessages'
@@ -54,8 +54,10 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
   const create = useCreateIncome(householdId)
   const update = useUpdateIncome(householdId)
   const { isPending, error } = isEdit ? update : create
-  const { data: accounts } = useActiveAccounts(householdId)
-  const { data: types } = useIncomeTypes(householdId)
+  const accountsQuery = useActiveAccounts(householdId)
+  const { data: accounts } = accountsQuery
+  const typesQuery = useIncomeTypes(householdId)
+  const { data: types } = typesQuery
 
   const today = isoDay(new Date())
 
@@ -86,6 +88,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     reset,
     setError,
     clearErrors,
+    getValues,
     setValue,
     formState: { errors },
   } = useForm<CreateIncomeInput>({
@@ -102,6 +105,21 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     },
   })
   const kind = useWatch({ control, name: 'kind' })
+  useEffect(() => {
+    if (isEdit) return
+    if (
+      getValues('kind') === 'EXTERNAL_INCOME' &&
+      !getValues('typeId') &&
+      typeOptions.length
+    )
+      setValue('typeId', typeOptions[0].value)
+    if (!getValues('toSourceId') && accounts?.length)
+      setValue(
+        'toSourceId',
+        (accounts.find((a) => a.systemKey === 'DEFAULT_BANK') ?? accounts[0])
+          .id,
+      )
+  }, [isEdit, types, accounts, typeOptions, getValues, setValue, kind])
 
   const [handledOnField, setHandledOnField] = useState(false)
 
@@ -222,6 +240,20 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
       aria-label={m.action_record_income()}
       className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3"
     >
+      {(typesQuery.isError || accountsQuery.isError) && (
+        <p role="alert" className="text-danger sm:col-span-2 lg:col-span-3">
+          {m.state_error()}{' '}
+          <button
+            type="button"
+            onClick={() => {
+              void typesQuery.refetch()
+              void accountsQuery.refetch()
+            }}
+          >
+            {m.state_retry()}
+          </button>
+        </p>
+      )}
       <FormBlockers blockers={blockers} />
 
       <Controller

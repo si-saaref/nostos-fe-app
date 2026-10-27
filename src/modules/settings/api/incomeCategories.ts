@@ -35,6 +35,7 @@ export const useIncomeTypes = (householdId: string) =>
     queryKey: incomeTypeKeys.all(householdId),
     queryFn: fetchIncomeTypes,
     enabled: Boolean(householdId),
+    staleTime: 60_000,
   })
 
 export const useCreateIncomeType = (householdId: string) =>

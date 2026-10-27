@@ -69,6 +69,7 @@ export const useMembers = (householdId: string) =>
     queryKey: memberKeys.all(householdId),
     queryFn: () => fetchMembers(householdId),
     enabled: Boolean(householdId),
+    staleTime: 60_000,
   })
 
 /**
@@ -81,6 +82,7 @@ export const useRoster = (householdId: string) =>
     queryKey: memberKeys.all(householdId),
     queryFn: () => fetchMembers(householdId),
     enabled: Boolean(householdId),
+    staleTime: 60_000,
     select: (members: Member[]) => members.map(toRosterUser),
   })
 
@@ -94,6 +96,7 @@ export const useActivePayers = (householdId: string) =>
     queryKey: memberKeys.all(householdId),
     queryFn: () => fetchMembers(householdId),
     enabled: Boolean(householdId),
+    staleTime: 60_000,
     select: (members: Member[]) =>
       members
         .filter((member) => member.status === 'joined' && !member.deletedAt)

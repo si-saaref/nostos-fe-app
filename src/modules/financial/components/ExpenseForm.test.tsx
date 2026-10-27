@@ -57,23 +57,6 @@ describe('ExpenseForm', () => {
   })
 
   // A required Select used to block the submit and render nothing, so the
-  // button simply appeared broken.
-  it('explains a missing category instead of silently refusing to submit', async () => {
-    const onSuccess = vi.fn()
-    renderWithProviders(<ExpenseForm onSuccess={onSuccess} />)
-
-    await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Kopi')
-    await userEvent.type(screen.getByLabelText(/jumlah/i), '25000')
-    await chooseOption(/metode pembayaran/i, /^Tunai/)
-    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
-
-    const alerts = await screen.findAllByRole('alert')
-    expect(alerts.map((alert) => alert.textContent).join(' ')).toMatch(
-      /kategori/i,
-    )
-    expect(onSuccess).not.toHaveBeenCalled()
-  })
-
   /** A 422 with a code and no details[] — the shape deviation #1 describes. */
   const rejectWith = (code: string, message: string) => {
     server.use(
@@ -321,4 +304,16 @@ describe('ExpenseForm when the household is not set up', () => {
     const alerts = await screen.findAllByRole('alert')
     expect(alerts.map((a) => a.textContent).join(' ')).toMatch(/wajib/i)
   })
+})
+
+it('records immediately using live household defaults without Settings', async () => {
+  const onSuccess = vi.fn()
+  renderWithProviders(<ExpenseForm onSuccess={onSuccess} />)
+  await userEvent.type(
+    screen.getByLabelText(/nama pengeluaran/i),
+    'First expense',
+  )
+  await userEvent.type(screen.getByLabelText(/jumlah/i), '1000')
+  await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+  await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
 })

@@ -51,6 +51,7 @@ export const useHouseholdPrefs = (householdId: string) =>
         ),
       ),
     enabled: Boolean(householdId),
+    staleTime: 60_000,
   })
 
 export const useUpdatePrefs = (householdId: string) =>

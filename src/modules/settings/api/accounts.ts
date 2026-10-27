@@ -78,6 +78,7 @@ export const useAccounts = (householdId: string) =>
     queryKey: accountKeys.all(householdId),
     queryFn: fetchAccounts,
     enabled: Boolean(householdId),
+    staleTime: 60_000,
   })
 
 /** What a picker should offer: archived accounts are history, not choices. */
@@ -86,6 +87,7 @@ export const useActiveAccounts = (householdId: string) =>
     queryKey: accountKeys.all(householdId),
     queryFn: fetchAccounts,
     enabled: Boolean(householdId),
+    staleTime: 60_000,
     select: (accounts: Account[]) =>
       accounts.filter((account) => !account.archivedAt),
   })

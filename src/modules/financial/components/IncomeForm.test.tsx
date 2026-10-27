@@ -185,3 +185,12 @@ describe('IncomeForm layout contracts', () => {
     expect(actions?.className).toMatch(/justify-end/)
   })
 })
+
+it('records external income immediately using live household defaults', async () => {
+  const onSuccess = vi.fn()
+  renderWithProviders(<IncomeForm onSuccess={onSuccess} />)
+  await userEvent.type(screen.getByLabelText(/keterangan/i), 'First income')
+  await userEvent.type(screen.getByLabelText(/jumlah/i), '1000')
+  await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+  await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
+})

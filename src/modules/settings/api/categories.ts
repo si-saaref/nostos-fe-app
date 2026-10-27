@@ -55,6 +55,7 @@ export const useCategories = (householdId: string) =>
     queryKey: categoryKeys.all(householdId),
     queryFn: fetchCategories,
     enabled: Boolean(householdId),
+    staleTime: 60_000,
   })
 
 /** What a picker should offer: archived categories are history, not choices. */
@@ -63,6 +64,7 @@ export const useActiveCategories = (householdId: string) =>
     queryKey: categoryKeys.all(householdId),
     queryFn: fetchCategories,
     enabled: Boolean(householdId),
+    staleTime: 60_000,
     select: (categories: Category[]) =>
       categories.filter((category) => !category.archivedAt),
   })
@@ -73,9 +75,12 @@ export const useCreateCategory = (householdId: string) =>
     async (input: CategoryInput) =>
       toCategory(
         unwrap(
-          await apiClient.post<ApiEnvelope<WireCategory>>('/expense-categories', {
-            name: input.name,
-          }),
+          await apiClient.post<ApiEnvelope<WireCategory>>(
+            '/expense-categories',
+            {
+              name: input.name,
+            },
+          ),
         ),
       ),
   )
