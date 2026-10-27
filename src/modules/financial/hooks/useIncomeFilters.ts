@@ -1,3 +1,5 @@
+import { householdDay } from '@/modules/financial/lib/householdDay'
+import { useHouseholdPrefs } from '@/modules/settings/api/prefs'
 import { useSearchParams } from 'react-router-dom'
 import { useIncome } from '@/modules/financial/api/income'
 import {
@@ -45,6 +47,7 @@ const parseFilters = (params: URLSearchParams): IncomeFilters => {
 }
 
 export const useIncomeFilters = (householdId: string) => {
+  const { data: prefs } = useHouseholdPrefs(householdId)
   const [searchParams, setSearchParams] = useSearchParams()
   const filters = parseFilters(searchParams)
   const query = useIncome(householdId, filters)
@@ -79,14 +82,9 @@ export const useIncomeFilters = (householdId: string) => {
     (month.getFullYear() === now.getFullYear() &&
       month.getMonth() < now.getMonth())
 
-  /**
-   * The day every cumulative figure is true as of: today while the month in
-   * view is the current one, its last day once it is in the past.
-   *
-   * Without this, stepping back to March would ask for balances "as of today"
-   * and print a position that has nothing to do with the flows beside it.
-   */
-  const asOf = canStepForward ? (filters.dateTo ?? isoDay(now)) : isoDay(now)
+  // Month opening remains scoped by `from`; current balance always answers
+  // the same household-today question as the shared header.
+  const asOf = householdDay(now, prefs?.timezone ?? 'Asia/Jakarta')
 
   return {
     filters,

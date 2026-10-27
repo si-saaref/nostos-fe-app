@@ -6,7 +6,10 @@ import { db, resetMockState } from '@/mocks/db'
 import { server } from '@/mocks/server'
 import { http, HttpResponse } from 'msw'
 import { MOCK_ME } from '@/mocks/fixtures/household'
-import { usePositions } from '@/modules/financial/api/positions'
+import {
+  useCurrentPositions,
+  usePositions,
+} from '@/modules/financial/api/positions'
 import { monthRange } from '@/utils/dates'
 import { roundMoney } from '@/utils/money'
 
@@ -166,7 +169,9 @@ describe('the positions request', () => {
     server.events.removeListener('request:start', record)
 
     expect(seen.some((path) => path.endsWith('/api/v1/positions'))).toBe(true)
-    expect(seen.some((path) => path.includes('/households/'))).toBe(false)
+    expect(seen.some((path) => /households\/[^/]+\/positions/.test(path))).toBe(
+      false,
+    )
   })
 
   it('always sends both from and as_of, because the route requires them', async () => {
@@ -215,4 +220,60 @@ it('provides an explicit legacy summary when metadata is absent', async () => {
     totalBalanceText: '123.45',
     asOf: SCOPE.asOf,
   })
+})
+
+it('uses household currency for a legacy response without summary metadata', async () => {
+  server.use(
+    http.get('*/api/v1/positions', () =>
+      HttpResponse.json({
+        success: true,
+        data: [
+          { source_id: 'one', opening_balance: '0.00', balance: '123.45' },
+        ],
+      }),
+    ),
+    http.get('*/api/v1/households/:id/prefs', () =>
+      HttpResponse.json({
+        success: true,
+        data: { currency: 'USD', month_start_day: 1, timezone: 'Asia/Jakarta' },
+      }),
+    ),
+  )
+  const { result } = renderHook(() => usePositions(HOUSEHOLD, SCOPE), {
+    wrapper: createWrapper(),
+  })
+  await waitFor(() =>
+    expect(result.current.data?.summary?.currency).toBe('USD'),
+  )
+})
+
+it('queries current positions using household timezone across midnight', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-10-27T18:30:00Z'))
+  const scopes: string[] = []
+  server.use(
+    http.get('*/api/v1/positions', ({ request }) => {
+      scopes.push(new URL(request.url).searchParams.get('as_of')!)
+      return HttpResponse.json({
+        success: true,
+        data: [],
+        meta: {
+          summary: {
+            total_balance: '1.00',
+            currency: 'IDR',
+            as_of: '2026-10-28',
+          },
+        },
+      })
+    }),
+  )
+  try {
+    const { result } = renderHook(() => useCurrentPositions(HOUSEHOLD), {
+      wrapper: createWrapper(),
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(scopes).toEqual(['2026-10-28'])
+  } finally {
+    vi.useRealTimers()
+  }
 })

@@ -165,6 +165,7 @@ const withRow = (
   page: Paginated<Expense>,
   expense: Expense,
 ): Paginated<Expense> => {
+  if (page.items.some((row) => row.id === expense.id)) return page
   const count = (page.totals?.count ?? page.items.length) + 1
   const sumText = sumMoneyText([
     page.totals?.sumText ?? page.totals?.sum ?? 0,
@@ -258,27 +259,23 @@ export const useCreateExpense = (householdId: string) => {
       )
       return toExpense(created[0])
     },
-    onSuccess: async (created, input) => {
+    onSuccess: async (created) => {
       await queryClient.cancelQueries({
         queryKey: expenseKeys.lists(householdId),
       })
       const previous = queryClient.getQueriesData<Paginated<Expense>>({
         queryKey: expenseKeys.lists(householdId),
       })
-      const optimistic: Expense = {
-        id: created.id,
-        householdId,
-        ...input,
-      }
+      const confirmed: Expense = created
       // Only into caches the row actually belongs to. A list scoped to last
       // month, or to another category, must not sprout today's entry.
       previous.forEach(([key, data]) => {
         if (!data) return
         const filters = key[FILTERS_IN_KEY] as ExpenseFilters | undefined
-        if (filters && !matchesFilters(optimistic, filters)) return
+        if (filters && !matchesFilters(confirmed, filters)) return
         queryClient.setQueryData<Paginated<Expense>>(
           key,
-          withRow(data, optimistic),
+          withRow(data, confirmed),
         )
       })
       return { previous }

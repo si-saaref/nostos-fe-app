@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
-import { isoDay, monthRange } from '@/utils/dates'
+import { householdDay } from '@/modules/financial/lib/householdDay'
+import { useHouseholdPrefs } from '@/modules/settings/api/prefs'
 import { entityKey } from '@/api/keys'
 import { fromWireMoney, sumMoney, sumMoneyText } from '@/utils/money'
 import type { ApiEnvelope } from '@/types/api'
@@ -45,8 +46,9 @@ const toPosition = (row: WirePosition) => ({
   balanceText: row.balance,
 })
 
-export const usePositions = (householdId: string, scope: PositionScope) =>
-  useQuery({
+export const usePositions = (householdId: string, scope: PositionScope) => {
+  const prefs = useHouseholdPrefs(householdId)
+  const query = useQuery({
     queryKey: positionKeys.scoped(householdId, scope),
     queryFn: async (): Promise<Positions> => {
       const response = await apiClient.get<
@@ -88,7 +90,7 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
               totalBalanceText: sumMoneyText(
                 rows.map((row) => row.balanceText ?? row.balance),
               ),
-              currency: 'IDR',
+              currency: '',
               asOf: scope.asOf,
             },
       }
@@ -98,12 +100,29 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
     // 404 three times only delays the honest message.
     retry: false,
   })
+  const data = query.data
+  const summary = data?.summary
+  return {
+    ...query,
+    isError: query.isError || (!!data && !summary?.currency && prefs.isError),
+    isSuccess: query.isSuccess && (!!summary?.currency || prefs.isSuccess),
+    data: data && {
+      ...data,
+      summary: summary?.currency
+        ? summary
+        : summary && prefs.data
+          ? { ...summary, currency: prefs.data.currency }
+          : undefined,
+    },
+  }
+}
 
 /** Both ledger headers use a date-stable scope, independent of selected month. */
 export const useCurrentPositions = (householdId: string) => {
-  const today = new Date()
-  return usePositions(householdId, {
-    asOf: isoDay(today),
-    from: monthRange(today).from,
+  const prefs = useHouseholdPrefs(householdId)
+  const today = householdDay(new Date(), prefs.data?.timezone ?? 'Asia/Jakarta')
+  return usePositions(prefs.isPending ? '' : householdId, {
+    asOf: today,
+    from: `${today.slice(0, 7)}-01`,
   })
 }

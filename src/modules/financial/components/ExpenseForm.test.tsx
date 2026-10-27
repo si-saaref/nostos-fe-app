@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -316,4 +317,80 @@ it('records immediately using live household defaults without Settings', async (
   await userEvent.type(screen.getByLabelText(/jumlah/i), '1000')
   await userEvent.click(screen.getByRole('button', { name: /catat/i }))
   await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
+})
+
+it('reuses catalogue and prefs requests when the capture form reopens', async () => {
+  const seen: string[] = []
+  const record = ({ request }: { request: Request }) => {
+    if (request.method === 'GET') seen.push(new URL(request.url).pathname)
+  }
+  server.events.on('request:start', record)
+  const Toggle = () => {
+    const [open, setOpen] = useState(true)
+    return (
+      <>
+        <button onClick={() => setOpen(!open)}>Toggle form</button>
+        {open && <ExpenseForm />}
+      </>
+    )
+  }
+  try {
+    renderWithProviders(<Toggle />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: /kategori/i }),
+      ).not.toHaveTextContent('Pilih'),
+    )
+    await userEvent.type(
+      screen.getByLabelText(/nama pengeluaran/i),
+      'Cache test',
+    )
+    const before = [...seen]
+    await userEvent.click(screen.getByRole('button', { name: 'Toggle form' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Toggle form' }))
+    expect(screen.getByLabelText(/nama pengeluaran/i)).toBeInTheDocument()
+    expect(seen).toEqual(before)
+  } finally {
+    server.events.removeListener('request:start', record)
+  }
+})
+
+it('retries a failed category catalogue and retains the member input', async () => {
+  let fail = true
+  let requests = 0
+  server.use(
+    http.get('*/api/v1/expense-categories', () => {
+      requests++
+      if (fail) return HttpResponse.json({}, { status: 503 })
+      return HttpResponse.json({
+        success: true,
+        data: [
+          {
+            id: 'type-makan',
+            name: 'Makan',
+            order: 0,
+            archived_at: null,
+            household_id: 'household-001',
+            system_key: 'FOOD_DRINK',
+          },
+        ],
+      })
+    }),
+  )
+  renderWithProviders(<ExpenseForm />)
+  await userEvent.type(screen.getByLabelText(/nama pengeluaran/i), 'Keep this')
+  const retry = await screen.findByRole(
+    'button',
+    { name: /coba lagi/i },
+    { timeout: 8000 },
+  )
+  fail = false
+  await userEvent.click(retry)
+  await waitFor(() =>
+    expect(
+      screen.getByRole('combobox', { name: /kategori/i }),
+    ).toHaveTextContent('Makan'),
+  )
+  expect(requests).toBeGreaterThan(1)
+  expect(screen.getByLabelText(/nama pengeluaran/i)).toHaveValue('Keep this')
 })

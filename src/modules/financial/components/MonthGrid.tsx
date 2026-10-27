@@ -191,7 +191,7 @@ const DayCell = ({
       aria-label={label}
       tabIndex={isTabStop ? 0 : -1}
       onClick={() => onSelect(day.date)}
-      className={`relative flex min-h-[44px] flex-col rounded-lg px-1.5 py-1.5 text-left transition-[background-color,box-shadow] duration-150 ease-out sm:min-h-[92px] sm:rounded-xl sm:px-2 sm:py-1.5 ${
+      className={`relative flex min-h-[68px] flex-col rounded-lg px-1.5 py-1.5 text-left transition-[background-color,box-shadow] duration-150 ease-out sm:min-h-[92px] sm:rounded-xl sm:px-2 sm:py-1.5 ${
         isFuture
           ? 'shadow-[inset_0_0_0_1px_var(--hair)]'
           : isSelected
@@ -214,7 +214,7 @@ const DayCell = ({
       {!isFuture && day.count > 0 && (
         <span
           aria-hidden="true"
-          className="mt-auto flex h-5 items-end gap-[3px] sm:h-11 sm:gap-1"
+          className="mt-auto flex h-9 items-end gap-[3px] sm:h-11 sm:gap-1"
         >
           <span className="flex flex-col items-center">
             <span className="text-[9px] font-bold">−</span>
