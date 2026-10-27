@@ -373,12 +373,13 @@ describe('IncomePage', () => {
     tomorrow.setDate(tomorrow.getDate() + 1)
 
     await userEvent.click(screen.getByRole('button', { name: /tanggal|date/i }))
-    const cells = await screen.findAllByRole('button', {
-      name: String(tomorrow.getDate()),
-    })
-    expect(cells.some((cell) => !(cell as HTMLButtonElement).disabled)).toBe(
-      false,
-    )
+    expect(
+      await screen.findByRole('button', {
+        name: new Intl.DateTimeFormat('id-ID', {
+          dateStyle: 'full',
+        }).format(tomorrow),
+      }),
+    ).toBeDisabled()
   })
 })
 

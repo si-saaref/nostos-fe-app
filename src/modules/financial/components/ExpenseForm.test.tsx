@@ -47,12 +47,13 @@ describe('ExpenseForm', () => {
     await userEvent.click(
       screen.getByRole('button', { name: /tanggal bayar/i }),
     )
-    const cells = await screen.findAllByRole('button', {
-      name: String(future.getDate()),
-    })
-    expect(cells.some((cell) => !(cell as HTMLButtonElement).disabled)).toBe(
-      false,
-    )
+    expect(
+      await screen.findByRole('button', {
+        name: new Intl.DateTimeFormat('id-ID', {
+          dateStyle: 'full',
+        }).format(future),
+      }),
+    ).toBeDisabled()
   })
 
   // A required Select used to block the submit and render nothing, so the

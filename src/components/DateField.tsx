@@ -68,6 +68,10 @@ export const DateField = ({
     month: 'long',
     year: 'numeric',
   }).format(month)
+  const dayLabel = useMemo(
+    () => new Intl.DateTimeFormat(locale, { dateStyle: 'full' }),
+    [locale],
+  )
   const weekdays = useMemo(() => {
     const format = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
     // 2024-01-01 was a Monday, so this walks the week from WEEK_START.
@@ -145,6 +149,7 @@ export const DateField = ({
                   <button
                     key={iso}
                     type="button"
+                    aria-label={dayLabel.format(day)}
                     disabled={blocked}
                     aria-current={isToday ? 'date' : undefined}
                     onClick={() => {
