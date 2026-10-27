@@ -8,6 +8,7 @@ import { AccountSection } from '@/modules/settings/components/AccountSection'
 import { ProfileSection } from '@/modules/settings/components/ProfileSection'
 import { MemberSection } from '@/modules/settings/components/MemberSection'
 import { PreferencesSection } from '@/modules/settings/components/PreferencesSection'
+import { SectionShell } from '@/modules/settings/components/SectionShell'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { canManageExpenses } from '@/utils/permissions'
 
@@ -16,7 +17,7 @@ interface IndexEntry {
   label: string
 }
 
-type GroupId = 'expense' | 'income' | 'household' | 'personal'
+type GroupId = 'household' | 'account'
 
 interface SettingsGroup {
   id: GroupId
@@ -47,35 +48,35 @@ export const SettingsPage = () => {
   const navigate = useNavigate()
   const canManage = canManageExpenses(role)
 
-  // Household first: it owns the accounts and people the other two groups
-  // spend and receive through, and it is where an admin arrives from the
-  // profile row.
   const groups: SettingsGroup[] = [
     {
       id: 'household',
-      label: m.group_household(),
+      label: m.settings_group_household(),
       sections: [
         { id: SETTINGS_ANCHORS.accounts, label: m.acc_title() },
         { id: SETTINGS_ANCHORS.members, label: m.mem_title() },
-        { id: SETTINGS_ANCHORS.household, label: m.pref_title() },
-      ],
-    },
-    {
-      id: 'personal',
-      label: m.group_personal(),
-      sections: [{ id: SETTINGS_ANCHORS.profile, label: m.profile_title() }],
-    },
-    {
-      id: 'expense',
-      label: m.group_expense(),
-      sections: [
         { id: SETTINGS_ANCHORS.expenseCategories, label: m.cat_title() },
+        {
+          id: SETTINGS_ANCHORS.incomeCategories,
+          label: m.settings_income_categories(),
+        },
+        {
+          id: SETTINGS_ANCHORS.householdAccounting,
+          label: m.settings_household_accounting(),
+        },
       ],
     },
     {
-      id: 'income',
-      label: m.group_income(),
-      sections: [{ id: SETTINGS_ANCHORS.incomeTypes, label: m.itype_title() }],
+      id: 'account',
+      label: m.settings_group_account(),
+      sections: [
+        { id: SETTINGS_ANCHORS.changeName, label: m.settings_change_name() },
+        { id: SETTINGS_ANCHORS.changeEmail, label: m.settings_change_email() },
+        {
+          id: SETTINGS_ANCHORS.personalPreferences,
+          label: m.settings_personal_preferences(),
+        },
+      ],
     },
   ]
   const allSections = groups.flatMap((group) => group.sections)
@@ -250,22 +251,6 @@ export const SettingsPage = () => {
             ref={scrollRef}
             className="h-full overflow-y-auto pr-1 pb-24 lg:pb-4"
           >
-            {activeGroup.id === 'personal' && <ProfileSection />}
-
-            {activeGroup.id === 'expense' && (
-              <CategorySection
-                householdId={householdId}
-                canManage={canManage}
-              />
-            )}
-
-            {activeGroup.id === 'income' && (
-              <IncomeTypeSection
-                householdId={householdId}
-                canManage={canManage}
-              />
-            )}
-
             {activeGroup.id === 'household' && (
               <>
                 <AccountSection
@@ -278,10 +263,40 @@ export const SettingsPage = () => {
                   canManage={canManage}
                   currentUserId={me?.user_id ?? ''}
                 />
+                <CategorySection
+                  householdId={householdId}
+                  canManage={canManage}
+                />
+                <IncomeTypeSection
+                  householdId={householdId}
+                  canManage={canManage}
+                />
                 <PreferencesSection
                   householdId={householdId}
                   canManage={canManage}
                 />
+              </>
+            )}
+
+            {activeGroup.id === 'account' && (
+              <>
+                <SectionShell
+                  id={SETTINGS_ANCHORS.changeName}
+                  title={m.settings_change_name()}
+                  description={m.settings_change_name_desc()}
+                  canManage
+                >
+                  <div />
+                </SectionShell>
+                <ProfileSection />
+                <SectionShell
+                  id={SETTINGS_ANCHORS.personalPreferences}
+                  title={m.settings_personal_preferences()}
+                  description={m.settings_personal_preferences_desc()}
+                  canManage
+                >
+                  <div />
+                </SectionShell>
               </>
             )}
           </div>
