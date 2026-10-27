@@ -66,8 +66,8 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { index: true, element: <Navigate to="/income" replace /> },
-          { path: '/dashboard', element: <Navigate to="/income" replace /> },
+          { index: true, element: <Navigate to="/expenses" replace /> },
+          { path: '/dashboard', element: <Navigate to="/expenses" replace /> },
           {
             path: '/expenses',
             element: (

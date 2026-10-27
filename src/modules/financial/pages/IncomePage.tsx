@@ -1,3 +1,4 @@
+import { HouseholdBalance } from '@/modules/financial/components/HouseholdBalance'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
 import { useHousehold } from '@/contexts/useHousehold'
@@ -24,7 +25,6 @@ import { getErrorMessage } from '@/utils/errors'
 import { sumMoney, sumMoneyText } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
 import { useCallback, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 
 /**
  * The income surface: one position card that states, one statement that lists.
@@ -208,6 +208,7 @@ export const IncomePage = () => {
           co-equal, and a position you have to scroll back up to find is not.
           It is also what the sticky day shelves stick beneath. */}
       <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
+        <HouseholdBalance />
         <InflowStrip
           householdId={householdId}
           month={month}
@@ -250,17 +251,6 @@ export const IncomePage = () => {
               own submit is the way to record once the form is there. */}
           {!isRecording && (
             <div className="fixed right-4 bottom-20 left-4 z-30 flex gap-2 lg:static lg:items-center">
-              <Link
-                to="/expenses"
-                state={{ recordExpense: true }}
-                aria-label={m.action_record_expense()}
-                className="border-hair bg-card text-ink flex h-12 flex-1 items-center justify-center rounded-xl border px-3 text-[12px] font-semibold shadow-lg lg:h-auto lg:flex-none lg:rounded-lg lg:px-4 lg:py-2 lg:shadow-none"
-              >
-                <span className="lg:hidden">+ {m.nav_expenses()}</span>
-                <span className="hidden lg:inline">
-                  + {m.action_record_expense()}
-                </span>
-              </Link>
               <button
                 type="button"
                 onClick={requestRecord}

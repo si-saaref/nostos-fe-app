@@ -1,3 +1,4 @@
+import { HouseholdBalance } from '@/modules/financial/components/HouseholdBalance'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
 import { useHousehold } from '@/contexts/useHousehold'
@@ -365,6 +366,7 @@ export const ExpensesPage = () => {
       {/* Pinned: the count and the filters never scroll away from the ledger
           they describe, because a total you cannot see cannot be trusted. */}
       <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
+        <HouseholdBalance />
         <CountStrip
           householdId={householdId}
           filters={filters}

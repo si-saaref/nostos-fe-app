@@ -485,3 +485,14 @@ describe('IncomePage — requests', () => {
     }
   })
 })
+
+it('shows household balance and keeps position details with a single capture action', async () => {
+  renderPage()
+  expect(
+    await screen.findByRole('region', { name: 'Saldo rumah tangga hari ini' }),
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole('link', { name: /catat pengeluaran/i }),
+  ).not.toBeInTheDocument()
+  expect((await screen.findAllByText(/BNI/)).length).toBeGreaterThan(0)
+})

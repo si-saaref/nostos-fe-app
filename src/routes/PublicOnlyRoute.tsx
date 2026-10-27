@@ -18,6 +18,6 @@ export const PublicOnlyRoute = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated, isLoading } = useHousehold()
 
   if (isLoading) return <Loading full label={messages.state_loading()} />
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  if (isAuthenticated) return <Navigate to="/expenses" replace />
   return <>{children}</>
 }
