@@ -81,7 +81,7 @@ const toIncomeBody = (input: CreateIncomeInput) => ({
   // Blank is absent — see `toExpenseBody`.
   description: input.description?.trim() || null,
   amount: toWireMoney(input.amount),
-  type_id: input.typeId,
+  type_id: input.kind === 'TRANSFER' ? null : input.typeId,
   from_source_id: input.fromSourceId,
   to_source_id: input.toSourceId,
   date: input.date,

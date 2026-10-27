@@ -39,7 +39,7 @@ export interface Income {
   updatedAt?: string | null
 }
 
-export interface CreateIncomeInput {
+export interface IncomeFormValues {
   kind: 'EXTERNAL_INCOME' | 'TRANSFER'
   name: string
   description?: string | null
@@ -49,6 +49,24 @@ export interface CreateIncomeInput {
   toSourceId: string
   date: string
 }
+
+export type ExternalIncomeInput = Omit<
+  IncomeFormValues,
+  'kind' | 'typeId' | 'fromSourceId'
+> & {
+  kind: 'EXTERNAL_INCOME'
+  typeId: string
+  fromSourceId: null
+}
+export type TransferInput = Omit<
+  IncomeFormValues,
+  'kind' | 'typeId' | 'fromSourceId'
+> & {
+  kind: 'TRANSFER'
+  typeId: null
+  fromSourceId: string
+}
+export type CreateIncomeInput = ExternalIncomeInput | TransferInput
 
 /**
  * What an admin may change (AC3.3 — all six fields).

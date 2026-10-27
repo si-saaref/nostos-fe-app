@@ -47,3 +47,18 @@ describe('IncomePlate', () => {
     expect(screen.getByText(/—/)).toBeInTheDocument()
   })
 })
+
+it('labels a legacy categorized transfer as a transfer with an unsigned route', () => {
+  renderWithProviders(
+    <IncomePlate
+      {...props}
+      income={{ ...income, kind: 'TRANSFER', fromSourceId: 'cash' }}
+      fromName="Cash"
+      typeName="Legacy salary"
+    />,
+  )
+  expect(screen.queryByText(/Legacy salary/)).not.toBeInTheDocument()
+  expect(screen.getByText(/Pindah antar akun/)).toBeInTheDocument()
+  expect(screen.getByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByText(/^\+/)).not.toBeInTheDocument()
+})

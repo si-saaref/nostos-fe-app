@@ -266,7 +266,7 @@ describe('useCreateIncome', () => {
       name: 'Nowhere',
       kind: 'TRANSFER',
       amount: 1000,
-      typeId: INCOME_TYPE_IDS[0],
+      typeId: null,
       fromSourceId: ACCOUNT_IDS[0],
       toSourceId: ACCOUNT_IDS[0],
       date: thisMonth.from,

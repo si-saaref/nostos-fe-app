@@ -117,7 +117,8 @@ const IncomePlateBase = ({
               {initials(recorderName)}
             </span>
             <span className="text-muted truncate text-[10px] sm:text-[11px]">
-              {typeName} · {recorderName}
+              {isTransfer ? m.inc_form_kind_transfer() : typeName} ·{' '}
+              {recorderName}
             </span>
           </span>
 
@@ -147,7 +148,9 @@ const IncomePlateBase = ({
             )}
 
             <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <DetailField label={m.inc_plate_type()} value={typeName} />
+              {!isTransfer && (
+                <DetailField label={m.inc_plate_type()} value={typeName} />
+              )}
               <DetailField
                 label={m.inc_plate_from()}
                 value={fromName ?? m.inc_form_from_external()}

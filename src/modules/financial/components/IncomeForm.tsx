@@ -22,7 +22,11 @@ import { isoDay } from '@/utils/dates'
 import { rimFor } from '@/theme/rims'
 import type { Blocker } from '@/components/FormBlockers'
 import type { IncomeField } from '@/modules/financial/lib/incomeErrors'
-import type { CreateIncomeInput, Income } from '@/types/income'
+import type {
+  CreateIncomeInput,
+  IncomeFormValues,
+  Income,
+} from '@/types/income'
 
 interface Props {
   /** The row being corrected. Absent means this is a new entry. */
@@ -91,7 +95,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     getValues,
     setValue,
     formState: { errors },
-  } = useForm<CreateIncomeInput>({
+  } = useForm<IncomeFormValues>({
     defaultValues: {
       kind: income?.kind ?? 'EXTERNAL_INCOME',
       name: income?.name ?? '',
@@ -131,20 +135,27 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     setHandledOnField(fieldErrors.length > 0)
   }
 
-  const onSubmit = (data: CreateIncomeInput) => {
-    const input = {
-      ...data,
-      amount: Number(data.amount),
-      typeId: data.kind === 'TRANSFER' ? null : data.typeId,
-      // The Select trades in strings, so "no source chosen" arrives as `''`.
-      // It has to reach the wire as an explicit null: on this field null is a
-      // value — money from outside the household — and an empty string would
-      // be a source id that does not exist.
-      fromSourceId:
-        data.kind === 'TRANSFER' && data.fromSourceId
-          ? data.fromSourceId
-          : null,
-    }
+  const onSubmit = (data: IncomeFormValues) => {
+    const input: CreateIncomeInput =
+      data.kind === 'TRANSFER'
+        ? {
+            ...data,
+            kind: 'TRANSFER',
+            amount: Number(data.amount),
+            typeId: null,
+            fromSourceId: data.fromSourceId!,
+          }
+        : {
+            ...data,
+            amount: Number(data.amount),
+            kind: 'EXTERNAL_INCOME',
+            typeId: data.typeId!,
+            // The Select trades in strings, so "no source chosen" arrives as `''`.
+            // It has to reach the wire as an explicit null: on this field null is a
+            // value — money from outside the household — and an empty string would
+            // be a source id that does not exist.
+            fromSourceId: null,
+          }
     if (isEdit) {
       update.mutate(
         { id: income.id, ...input },
