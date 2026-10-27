@@ -74,9 +74,12 @@ describe('IncomeTypeSection', () => {
     render()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /tambah jenis|add type/i }),
+      await screen.findByRole('button', { name: /tambah kategori pemasukan|add income category/i }),
     )
-    await userEvent.type(screen.getByLabelText(/nama jenis|type name/i), 'Gaji')
+    await userEvent.type(
+      screen.getByLabelText(/nama kategori pemasukan|income category name/i),
+      'Gaji',
+    )
     await userEvent.click(
       screen.getByRole('button', { name: /^(tambah|add)$/i }),
     )
@@ -91,7 +94,7 @@ describe('IncomeTypeSection', () => {
 
     expect(await screen.findByText('gaji')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /tambah jenis|add type/i }),
+      screen.queryByRole('button', { name: /tambah kategori pemasukan|add income category/i }),
     ).toBeNull()
     expect(screen.getByText(/hanya admin|only admins/i)).toBeInTheDocument()
   })

@@ -3,19 +3,17 @@ import { useMessages } from '@/i18n/useMessages'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
 import { FormField } from '@/components/FormField'
-import { SettingPlate } from '@/modules/settings/components/SettingPlate'
+import { CategoryChipList } from '@/modules/settings/components/CategoryChipList'
 import { SectionShell } from '@/modules/settings/components/SectionShell'
-import { RowActions } from '@/modules/settings/components/RowActions'
 import {
   useCategories,
   useCreateCategory,
   useUpdateCategory,
 } from '@/modules/settings/api/categories'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
-import { rimFor } from '@/theme/rims'
 import { isoDay } from '@/utils/dates'
 import { capitalizeFirst } from '@/utils/text'
-import type { Category } from '@/types/catalog'
+import type { CategoryChipItem } from '@/modules/settings/components/CategoryChipList'
 
 interface Props {
   householdId: string
@@ -37,13 +35,10 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
   } = useCreateCategory(householdId)
   const { mutate: update, error: updateError } = useUpdateCategory(householdId)
 
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [draftName, setDraftName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
-  const [categoryToArchive, setCategoryToArchive] = useState<Category | null>(
-    null,
-  )
+  const [categoryToArchive, setCategoryToArchive] =
+    useState<CategoryChipItem | null>(null)
 
   return (
     <SectionShell
@@ -61,122 +56,69 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
       addLabel={m.cat_add()}
       onAdd={canManage ? () => setIsAdding(true) : undefined}
     >
-      <ul className="flex flex-col gap-1.5">
-        {isAdding && (
-          <li>
-            <DismissablePanel onDismiss={() => setIsAdding(false)}>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  if (!newName.trim()) return
-                  create(
-                    { name: capitalizeFirst(newName.trim()) },
-                    {
-                      onSuccess: () => {
-                        setNewName('')
-                        setIsAdding(false)
-                      },
-                    },
-                  )
-                }}
-                className="bg-card lift-shadow flex flex-wrap items-end gap-2 rounded-lg p-3"
+      {isAdding && (
+        <DismissablePanel onDismiss={() => setIsAdding(false)}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (!newName.trim()) return
+              create(
+                { name: capitalizeFirst(newName.trim()) },
+                {
+                  onSuccess: () => {
+                    setNewName('')
+                    setIsAdding(false)
+                  },
+                },
+              )
+            }}
+            className="bg-card lift-shadow mb-3 flex flex-wrap items-end gap-2 rounded-lg p-3"
+          >
+            <FormField label={m.cat_name()} className="min-w-[200px] flex-1">
+              <input
+                autoFocus
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+                className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
+              />
+            </FormField>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAdding(false)}
+                className="border-hair text-muted min-h-11 rounded-lg border px-4 py-2 text-[12px] font-semibold"
               >
-                <FormField
-                  label={m.cat_name()}
-                  className="min-w-[200px] flex-1"
-                >
-                  <input
-                    autoFocus
-                    value={newName}
-                    onChange={(event) => setNewName(event.target.value)}
-                    className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-                  />
-                </FormField>
-                <div className="ml-auto flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAdding(false)}
-                    className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
-                  >
-                    {m.act_cancel()}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreating}
-                    className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
-                  >
-                    {isCreating ? m.act_saving() : m.act_add()}
-                  </button>
-                </div>
-              </form>
-            </DismissablePanel>
-          </li>
-        )}
+                {m.act_cancel()}
+              </button>
+              <button
+                type="submit"
+                disabled={isCreating}
+                className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+              >
+                {isCreating ? m.act_saving() : m.act_add()}
+              </button>
+            </div>
+          </form>
+        </DismissablePanel>
+      )}
 
-        {categories?.map((category) => {
-          const isOpen = openId === category.id
-          const isArchived = Boolean(category.archivedAt)
-          return (
-            <SettingPlate
-              key={category.id}
-              title={category.name}
-              rim={rimFor(category.order)}
-              muted={isArchived}
-              trailing={
-                isArchived ? (
-                  <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
-                    {m.cat_archived()}
-                  </span>
-                ) : undefined
-              }
-              isOpen={isOpen}
-              onToggle={() => {
-                setOpenId(isOpen ? null : category.id)
-                setDraftName(category.name)
-              }}
-            >
-              <div className="flex flex-wrap items-end gap-2">
-                <FormField
-                  label={m.cat_name()}
-                  className="min-w-[200px] flex-1"
-                >
-                  <input
-                    value={draftName}
-                    disabled={!canManage || isArchived}
-                    onChange={(event) => setDraftName(event.target.value)}
-                    className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
-                  />
-                </FormField>
-                {canManage && (
-                  <RowActions
-                    onSave={() => {
-                      const name = capitalizeFirst(draftName.trim())
-                      if (name && name !== category.name) {
-                        update(
-                          { id: category.id, name },
-                          { onSuccess: () => setOpenId(null) },
-                        )
-                      } else {
-                        setOpenId(null)
-                      }
-                    }}
-                    onArchive={
-                      isArchived
-                        ? undefined
-                        : () => setCategoryToArchive(category)
-                    }
-                    onRestore={
-                      isArchived
-                        ? () => update({ id: category.id, archivedAt: null })
-                        : undefined
-                    }
-                  />
-                )}
-              </div>
-            </SettingPlate>
-          )
-        })}
-      </ul>
+      <CategoryChipList
+        items={categories ?? []}
+        domain="expense"
+        canManage={canManage}
+        nameLabel={m.cat_name()}
+        archivedLabel={m.cat_archived()}
+        saveLabel={m.act_save()}
+        archiveLabel={m.act_archive()}
+        restoreLabel={m.act_restore()}
+        onRename={(category, name) =>
+          update({ id: category.id, name: capitalizeFirst(name) })
+        }
+        onArchive={setCategoryToArchive}
+        onRestore={(category) =>
+          update({ id: category.id, archivedAt: null })
+        }
+      />
 
       <ConfirmDialog
         open={Boolean(categoryToArchive)}
@@ -195,7 +137,6 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
             })
           }
           setCategoryToArchive(null)
-          setOpenId(null)
         }}
       />
     </SectionShell>
