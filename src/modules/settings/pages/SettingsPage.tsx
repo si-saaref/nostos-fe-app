@@ -5,10 +5,11 @@ import { useHousehold } from '@/contexts/useHousehold'
 import { CategorySection } from '@/modules/settings/components/CategorySection'
 import { IncomeTypeSection } from '@/modules/settings/components/IncomeTypeSection'
 import { AccountSection } from '@/modules/settings/components/AccountSection'
-import { ProfileSection } from '@/modules/settings/components/ProfileSection'
+import { ChangeNameSection } from '@/modules/settings/components/ChangeNameSection'
+import { ChangeEmailSection } from '@/modules/settings/components/ChangeEmailSection'
+import { PersonalPreferencesSection } from '@/modules/settings/components/PersonalPreferencesSection'
 import { MemberSection } from '@/modules/settings/components/MemberSection'
 import { PreferencesSection } from '@/modules/settings/components/PreferencesSection'
-import { SectionShell } from '@/modules/settings/components/SectionShell'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { canManageExpenses } from '@/utils/permissions'
 
@@ -280,23 +281,9 @@ export const SettingsPage = () => {
 
             {activeGroup.id === 'account' && (
               <>
-                <SectionShell
-                  id={SETTINGS_ANCHORS.changeName}
-                  title={m.settings_change_name()}
-                  description={m.settings_change_name_desc()}
-                  canManage
-                >
-                  <div />
-                </SectionShell>
-                <ProfileSection />
-                <SectionShell
-                  id={SETTINGS_ANCHORS.personalPreferences}
-                  title={m.settings_personal_preferences()}
-                  description={m.settings_personal_preferences_desc()}
-                  canManage
-                >
-                  <div />
-                </SectionShell>
+                <ChangeNameSection />
+                <ChangeEmailSection />
+                <PersonalPreferencesSection />
               </>
             )}
           </div>

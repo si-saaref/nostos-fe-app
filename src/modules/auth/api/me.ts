@@ -44,6 +44,8 @@ export const useChangeName = () => {
           last_name: input.lastName.trim(),
         }),
       ),
-    onSuccess: (profile) => queryClient.setQueryData(meKey, profile),
+    // The profile is returned authoritatively. Write only its session cache:
+    // a personal rename does not make any household catalogue stale.
+    onSuccess: (profile) => queryClient.setQueryData<Me | null>(meKey, profile),
   })
 }
