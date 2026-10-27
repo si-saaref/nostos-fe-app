@@ -1,3 +1,4 @@
+import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
 import { HouseholdBalance } from '@/modules/financial/components/HouseholdBalance'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
@@ -147,9 +148,10 @@ export const IncomePage = () => {
       incomeTypes?.find((type) => type.id === typeId)?.name ?? '—',
     [incomeTypes],
   )
+  const memberLabels = useMemo(() => compactMemberLabels(users ?? []), [users])
   const nameOfUser = useCallback(
-    (userId: string) => users?.find((user) => user.id === userId)?.name ?? '—',
-    [users],
+    (userId: string) => memberLabels.get(userId) ?? '—',
+    [memberLabels],
   )
   const toggleOpen = useCallback(
     (id: string) => setOpenId((current) => (current === id ? null : id)),
@@ -360,6 +362,9 @@ export const IncomePage = () => {
               groups={groups}
               rimOf={rimOf}
               nameOfSource={nameOfSource}
+              categoryKeyOf={(id) =>
+                incomeTypes?.find((type) => type.id === id)?.systemKey ?? null
+              }
               nameOfType={nameOfType}
               nameOfUser={nameOfUser}
               openId={openId}

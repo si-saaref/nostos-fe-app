@@ -1,3 +1,5 @@
+import { categoryIcon } from '@/modules/settings/lib/categoryIcon'
+import type { CategorySystemKey } from '@/modules/settings/lib/categoryIcon'
 import { memo, useId, useRef } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
@@ -12,6 +14,7 @@ interface Props {
   /** Rim of the source the money landed in — where it now is. */
   rim: RimIndex
   /** Resolved from `income.typeId` by the page, like `fromName` and `toName`. */
+  categoryKey?: CategorySystemKey | null
   typeName: string
   fromName: string | null
   toName: string
@@ -24,13 +27,6 @@ interface Props {
   onEdit?: (income: Income) => void
   onDelete?: (income: Income) => void
 }
-
-const initials = (name: string) =>
-  name
-    .split(' ')
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
 
 /**
  * One row of the statement.
@@ -51,6 +47,7 @@ const IncomePlateBase = ({
   income,
   rim,
   typeName,
+  categoryKey = null,
   fromName,
   toName,
   recorderName,
@@ -114,9 +111,12 @@ const IncomePlateBase = ({
               aria-hidden="true"
               className={`grid h-4 w-4 shrink-0 place-items-center rounded text-[7px] font-bold text-white sm:h-[19px] sm:w-[19px] sm:text-[8.5px] ${RIM_CLASS[rim]}`}
             >
-              {initials(recorderName)}
+              {isTransfer ? '↔' : categoryIcon(categoryKey, 'income')}
             </span>
-            <span className="text-muted truncate text-[10px] sm:text-[11px]">
+            <span
+              title={recorderName}
+              className="text-muted truncate text-[10px] sm:text-[11px]"
+            >
               {isTransfer ? m.inc_form_kind_transfer() : typeName} ·{' '}
               {recorderName}
             </span>

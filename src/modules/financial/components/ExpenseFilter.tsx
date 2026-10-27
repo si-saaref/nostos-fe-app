@@ -1,3 +1,4 @@
+import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
 import { useEffect, useRef, useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { Select } from '@/components/Select'
@@ -137,7 +138,10 @@ export const ExpenseFilter = ({ householdId, filters, onChange }: Props) => {
           onChange({ paidByUserId: value || undefined, page: 1 })
         }
         options={
-          users?.map((user) => ({ value: user.id, label: user.name })) ?? []
+          users?.map((user) => ({
+            value: user.id,
+            label: compactMemberLabels(users ?? []).get(user.id) ?? user.name,
+          })) ?? []
         }
       />
     </div>

@@ -1,3 +1,4 @@
+import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMessages } from '@/i18n/useMessages'
@@ -352,7 +353,7 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
             options={
               users?.map((member) => ({
                 value: member.id,
-                label: member.name,
+                label: compactMemberLabels(users).get(member.id) ?? member.name,
               })) ?? []
             }
           />

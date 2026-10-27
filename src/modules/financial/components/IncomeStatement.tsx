@@ -1,3 +1,4 @@
+import type { CategorySystemKey } from '@/modules/settings/lib/categoryIcon'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
@@ -13,6 +14,7 @@ interface Props {
   groups: DayIncomeGroup[]
   rimOf: (sourceId: string) => RimIndex
   nameOfSource: (sourceId: string) => string
+  categoryKeyOf?: (id: string) => CategorySystemKey | null
   nameOfType: (typeId: string) => string
   nameOfUser: (userId: string) => string
   openId: string | null
@@ -39,6 +41,7 @@ export const IncomeStatement = ({
   rimOf,
   nameOfSource,
   nameOfType,
+  categoryKeyOf,
   nameOfUser,
   openId,
   onToggle,
@@ -150,6 +153,7 @@ export const IncomeStatement = ({
                       : nameOfSource(income.fromSourceId)
                   }
                   toName={nameOfSource(income.toSourceId)}
+                  categoryKey={categoryKeyOf?.(income.typeId ?? '')}
                   typeName={income.typeId ? nameOfType(income.typeId) : ''}
                   recorderName={nameOfUser(income.createdByUserId ?? '')}
                   isOpen={openId === income.id}
