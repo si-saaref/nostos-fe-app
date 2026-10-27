@@ -139,15 +139,15 @@ export const MonthGrid = ({
 
       <div className="border-hair text-muted mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 border-t pt-2.5 text-[10.5px]">
         <span className="flex items-center gap-1.5 font-medium">
-          <i className="bg-flow-out block h-3 w-2 rounded-[2px]" />
+          <i className="bg-flow-out block h-3 w-2 rounded-[2px]" />−{' '}
           {m.cal_legend_out()}
         </span>
         <span className="flex items-center gap-1.5 font-medium">
-          <i className="bg-flow-in block h-3 w-2 rounded-[2px]" />
+          <i className="bg-flow-in block h-3 w-2 rounded-[2px]" />+{' '}
           {m.cal_legend_in()}
         </span>
         <span className="flex items-center gap-1.5 font-medium">
-          <i className="bg-flow-moved block h-1.5 w-2 rounded-[2px]" />
+          <i className="bg-flow-moved block h-1.5 w-2 rounded-[2px]" />↔{' '}
           {m.cal_legend_moved()}
         </span>
         <span className="ml-auto hidden font-medium opacity-85 sm:block">
@@ -216,26 +216,35 @@ const DayCell = ({
           aria-hidden="true"
           className="mt-auto flex h-5 items-end gap-[3px] sm:h-11 sm:gap-1"
         >
-          <Mark
-            value={day.spent}
-            max={calendar.maxSpent}
-            className="bg-flow-out w-[7px] sm:w-[9px]"
-          />
-          <Mark
-            value={day.inflow}
-            max={calendar.maxInflow}
-            className="bg-flow-in w-[7px] sm:w-[9px]"
-          />
-          {day.moved > 0 && (
+          <span className="flex flex-col items-center">
+            <span className="text-[9px] font-bold">−</span>
             <Mark
-              value={day.moved}
-              max={calendar.maxMoved}
-              // Short and muted, and capped well below the other two: a
-              // transfer is real movement but it changed nothing, and a bar
-              // as tall as a salary's would say otherwise.
-              cap={0.45}
-              className="bg-flow-moved w-[5px] sm:w-[6px]"
+              value={day.spent}
+              max={calendar.maxSpent}
+              className="bg-flow-out w-[7px] sm:w-[9px]"
             />
+          </span>
+          <span className="flex flex-col items-center">
+            <span className="text-[9px] font-bold">+</span>
+            <Mark
+              value={day.inflow}
+              max={calendar.maxInflow}
+              className="bg-flow-in w-[7px] sm:w-[9px]"
+            />
+          </span>
+          {day.moved > 0 && (
+            <span className="flex flex-col items-center">
+              <span className="text-[9px] font-bold">↔</span>
+              <Mark
+                value={day.moved}
+                max={calendar.maxMoved}
+                // Short and muted, and capped well below the other two: a
+                // transfer is real movement but it changed nothing, and a bar
+                // as tall as a salary's would say otherwise.
+                cap={0.45}
+                className="bg-flow-moved w-[5px] sm:w-[6px]"
+              />
+            </span>
           )}
         </span>
       )}

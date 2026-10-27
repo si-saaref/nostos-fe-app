@@ -241,6 +241,9 @@ const Row = ({
           kind === 'in' ? 'text-flow-in' : 'text-muted'
         }`}
       >
+        <span aria-hidden="true">
+          {kind === 'out' ? '−' : kind === 'in' ? '+' : '↔'}{' '}
+        </span>
         {kindLabel}
       </span>
     </div>

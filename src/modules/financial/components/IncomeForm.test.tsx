@@ -27,7 +27,7 @@ describe('IncomeForm', () => {
 
     await userEvent.type(screen.getByLabelText(/keterangan/i), 'Gaji')
     await userEvent.type(screen.getByLabelText(/jumlah/i), '5000000')
-    await chooseOption(/jenis/i, INCOME_TYPE_NAMES[0])
+    await chooseOption(/kategori pemasukan/i, INCOME_TYPE_NAMES[0])
     await chooseOption(/masuk ke sumber/i, /^QRIS$/)
     await userEvent.click(screen.getByRole('button', { name: /catat/i }))
 
@@ -59,7 +59,9 @@ describe('IncomeForm', () => {
 
     renderWithProviders(<IncomeForm income={income} />)
 
-    const trigger = await screen.findByRole('combobox', { name: /jenis/i })
+    const trigger = await screen.findByRole('combobox', {
+      name: /kategori pemasukan/i,
+    })
     await waitFor(() => expect(trigger).toHaveTextContent(archived.name))
     expect(trigger).not.toHaveTextContent(archived.id)
   })
@@ -77,7 +79,9 @@ describe('IncomeForm', () => {
     renderWithProviders(<IncomeForm onSuccess={onSuccess} />)
 
     await chooseOption(/uang ini dari mana/i, /pindah antar akun/i)
-    expect(screen.queryByRole('combobox', { name: /jenis/i })).toBeNull()
+    expect(
+      screen.queryByRole('combobox', { name: /kategori pemasukan/i }),
+    ).toBeNull()
     await userEvent.type(screen.getByLabelText(/keterangan/i), 'Isi dompet')
     await userEvent.type(screen.getByLabelText(/jumlah/i), '100000')
     await chooseOption(/dari sumber/i, /kartu debit bca/i)
@@ -102,7 +106,9 @@ describe('IncomeForm', () => {
     const onSuccess = vi.fn()
     renderWithProviders(<IncomeForm income={transfer} onSuccess={onSuccess} />)
 
-    expect(screen.queryByRole('combobox', { name: /jenis/i })).toBeNull()
+    expect(
+      screen.queryByRole('combobox', { name: /kategori pemasukan/i }),
+    ).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: /simpan/i }))
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
@@ -136,7 +142,7 @@ describe('IncomeForm when the household is not set up', () => {
     const reason = document.getElementById(
       submit.getAttribute('aria-describedby') ?? '',
     )
-    expect(reason).toHaveTextContent(/jenis pemasukan/i)
+    expect(reason).toHaveTextContent(/kategori pemasukan/i)
 
     await userEvent.click(submit)
     server.events.removeListener('request:start', record)

@@ -296,7 +296,7 @@ describe('IncomePage', () => {
     // form's own — so this one is addressed inside the form.
     const form = screen.getByRole('form', { name: /catat|record/i })
     const typeTrigger = within(form).getByRole('combobox', {
-      name: /jenis|type/i,
+      name: /kategori pemasukan|income category/i,
     })
     await userEvent.click(typeTrigger)
     await userEvent.click(
@@ -434,7 +434,9 @@ describe('IncomePage — requests', () => {
 
       const type = db.incomeTypes[0]
       await userEvent.click(
-        screen.getByRole('combobox', { name: /jenis pemasukan|income type/i }),
+        screen.getByRole('combobox', {
+          name: /kategori pemasukan|income category/i,
+        }),
       )
       await userEvent.click(
         await screen.findByRole('option', { name: type.name }),
