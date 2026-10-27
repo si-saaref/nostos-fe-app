@@ -56,4 +56,27 @@ describe('BalanceAdjustmentPanel', () => {
     expect(screen.getByLabelText(/saldo target/i)).toHaveValue('250.000')
     expect(screen.getByLabelText(/alasan koreksi/i)).toHaveValue('Cocokkan rekening')
   })
+
+  it.each([
+    ['0', 0],
+    ['-100000', -100000],
+  ])('reconciles to the signed target %s', async (typed, expected) => {
+    const account = db.accounts[0]
+    renderWithProviders(
+      <BalanceAdjustmentPanel
+        householdId={account.householdId}
+        account={account}
+        canManage
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /koreksi saldo/i }))
+    await userEvent.type(screen.getByLabelText(/saldo target/i), typed)
+    await userEvent.type(screen.getByLabelText(/alasan koreksi/i), 'Saldo riil')
+    await userEvent.click(screen.getByRole('button', { name: /^simpan$/i }))
+
+    await waitFor(() =>
+      expect(db.adjustments[0]?.delta).toBe(expected - account.openingBalance),
+    )
+  })
 })

@@ -37,6 +37,15 @@ describe('normalizeAmountInput', () => {
   it('refuses a third decimal place', () => {
     expect(normalizeAmountInput('10.999', 'en-US', false)).toBe('10.99')
   })
+
+  it('preserves zero and a leading minus when a signed balance opts in', () => {
+    const signed = { allowNegative: true, allowZero: true }
+
+    expect(normalizeAmountInput('0', 'id-ID', true, signed)).toBe('0')
+    expect(normalizeAmountInput('-100000', 'id-ID', true, signed)).toBe(
+      '-100000',
+    )
+  })
 })
 
 describe('groupAmount', () => {
@@ -59,6 +68,13 @@ describe('parseAmount', () => {
   it('gives nothing for an empty or half-typed field', () => {
     expect(parseAmount('', 'id-ID', true)).toBeUndefined()
     expect(parseAmount('12,', 'id-ID', true)).toBeUndefined()
+  })
+
+  it('parses signed zero and negative balances when opted in', () => {
+    const signed = { allowNegative: true, allowZero: true }
+
+    expect(parseAmount('0', 'id-ID', true, signed)).toBe(0)
+    expect(parseAmount('-100.000', 'id-ID', true, signed)).toBe(-100000)
   })
 })
 

@@ -95,7 +95,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
       description: income?.description ?? '',
       // No zero seed: an empty field asks for the amount, a `0` states one.
       amount: income?.amount,
-      typeId: income?.typeId ?? '',
+      typeId: income?.kind === 'TRANSFER' ? null : (income?.typeId ?? ''),
       fromSourceId: income?.fromSourceId ?? null,
       toSourceId: income?.toSourceId ?? '',
       date: income?.date ?? today,
@@ -117,6 +117,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     const input = {
       ...data,
       amount: Number(data.amount),
+      typeId: data.kind === 'TRANSFER' ? null : data.typeId,
       // The Select trades in strings, so "no source chosen" arrives as `''`.
       // It has to reach the wire as an explicit null: on this field null is a
       // value — money from outside the household — and an empty string would
@@ -178,7 +179,8 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
    * income types, and the banner would otherwise flash on every open.
    */
   const candidates: (Blocker | false)[] = [
-    types !== undefined &&
+    kind === 'EXTERNAL_INCOME' &&
+      types !== undefined &&
       typeOptions.length === 0 && {
         id: 'types',
         text: m.inc_blocked_types(),
@@ -232,7 +234,12 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
             onChange={(value) => {
               field.onChange(value)
               clearErrors('fromSourceId')
-              if (value === 'EXTERNAL_INCOME') setValue('fromSourceId', null)
+              if (value === 'TRANSFER') {
+                setValue('typeId', null)
+                clearErrors('typeId')
+              } else {
+                setValue('fromSourceId', null)
+              }
             }}
             options={[
               { value: 'EXTERNAL_INCOME', label: m.inc_form_kind_external() },
@@ -292,22 +299,24 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
         )}
       />
 
-      <Controller
-        control={control}
-        name="typeId"
-        rules={{ required: m.inc_err_type() }}
-        render={({ field, fieldState }) => (
-          <Select
-            label={m.inc_form_type()}
-            placeholder={m.form_choose()}
-            value={field.value ?? ''}
-            onChange={changeAndClear('typeId', field.onChange)}
-            error={fieldState.error?.message}
-            disabled={typeOptions.length === 0}
-            options={typeOptions}
-          />
-        )}
-      />
+      {kind === 'EXTERNAL_INCOME' && (
+        <Controller
+          control={control}
+          name="typeId"
+          rules={{ required: m.inc_err_type() }}
+          render={({ field, fieldState }) => (
+            <Select
+              label={m.inc_form_type()}
+              placeholder={m.form_choose()}
+              value={field.value ?? ''}
+              onChange={changeAndClear('typeId', field.onChange)}
+              error={fieldState.error?.message}
+              disabled={typeOptions.length === 0}
+              options={typeOptions}
+            />
+          )}
+        />
+      )}
 
       {kind === 'TRANSFER' && (
         <Controller

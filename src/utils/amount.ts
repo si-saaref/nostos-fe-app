@@ -34,6 +34,11 @@ const markOf = (locale: string, type: 'decimal' | 'group'): string =>
 /** The separator this locale puts before a fraction: `,` in id-ID, `.` in en-US. */
 export const decimalMark = (locale: string): string => markOf(locale, 'decimal')
 
+interface AmountInputOptions {
+  allowNegative?: boolean
+  allowZero?: boolean
+}
+
 /**
  * What the user typed, cleaned to the canonical form.
  *
@@ -46,8 +51,10 @@ export const normalizeAmountInput = (
   raw: string,
   locale: string,
   wholeUnit: boolean,
+  options: AmountInputOptions = {},
 ): string => {
   const mark = decimalMark(locale)
+  const isNegative = options.allowNegative && raw.trimStart().startsWith('-')
   let digits = ''
   let hasPoint = false
   for (const char of raw) {
@@ -60,15 +67,19 @@ export const normalizeAmountInput = (
 
   const [whole = '', fraction] = digits.split('.')
   const integer = whole.replace(/^0+(?=\d)/, '')
+  const sign = isNegative && integer !== '0' ? '-' : ''
   if (fraction === undefined) {
-    return wholeUnit && integer === '0' ? '' : integer
+    if (integer === '') return isNegative ? '-' : ''
+    return wholeUnit && integer === '0' && !options.allowZero
+      ? ''
+      : `${sign}${integer}`
   }
-  return `${integer || '0'}.${fraction.slice(0, MONEY_PLACES)}`
+  return `${sign}${integer || '0'}.${fraction.slice(0, MONEY_PLACES)}`
 }
 
 /** Canonical text as the user should see it, grouped. Fraction left as typed. */
 export const groupAmount = (canonical: string, locale: string): string => {
-  if (canonical === '') return ''
+  if (canonical === '' || canonical === '-') return canonical
   const [whole, fraction] = canonical.split('.')
   const grouped = Number(whole || '0').toLocaleString(locale, {
     maximumFractionDigits: 0,
@@ -83,9 +94,12 @@ export const parseAmount = (
   text: string,
   locale: string,
   wholeUnit: boolean,
+  options: AmountInputOptions = {},
 ): number | undefined => {
-  const canonical = normalizeAmountInput(text, locale, wholeUnit)
-  if (canonical === '' || canonical.endsWith('.')) return undefined
+  const canonical = normalizeAmountInput(text, locale, wholeUnit, options)
+  if (canonical === '' || canonical === '-' || canonical.endsWith('.')) {
+    return undefined
+  }
   const value = Number(canonical)
   return Number.isFinite(value) ? value : undefined
 }

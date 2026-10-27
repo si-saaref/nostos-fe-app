@@ -93,6 +93,12 @@ export const isValidMoney = (value: number): boolean =>
   value <= MONEY_MAX &&
   roundMoney(value) === value
 
+/** A reconciled balance may be zero or negative, but uses the same column. */
+export const isValidSignedMoney = (value: number): boolean =>
+  Number.isFinite(value) &&
+  Math.abs(value) <= MONEY_MAX &&
+  roundMoney(value) === value
+
 /** Decimal places the column holds. Two, per `API-SPEC-EXPENSE.md` §3.2. */
 export const MONEY_PLACES = 2
 
@@ -115,7 +121,7 @@ export const fromWireMoney = (value: string): number => {
 
 /** Convert a validated nonnegative form amount to canonical decimal text. */
 export const toWireSignedMoney = (value: number): string => {
-  if (!Number.isFinite(value)) {
+  if (!Number.isFinite(value) || Math.abs(value) > MONEY_MAX) {
     throw new RangeError('Invalid money amount')
   }
   const text = value.toFixed(2)

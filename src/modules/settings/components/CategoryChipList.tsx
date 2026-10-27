@@ -22,7 +22,7 @@ interface Props {
   saveLabel: string
   archiveLabel: string
   restoreLabel: string
-  onRename: (item: CategoryChipItem, name: string) => void
+  onRename: (item: CategoryChipItem, name: string) => Promise<unknown>
   onArchive: (item: CategoryChipItem) => void
   onRestore: (item: CategoryChipItem) => void
 }
@@ -42,6 +42,7 @@ export const CategoryChipList = ({
 }: Props) => {
   const [openId, setOpenId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   const close = () => setOpenId(null)
 
@@ -50,6 +51,7 @@ export const CategoryChipList = ({
       {items.map((item) => {
         const isOpen = openId === item.id
         const isArchived = Boolean(item.archivedAt)
+        const isSaving = savingId === item.id
         return (
           <li key={item.id} className={isOpen ? 'w-full' : 'max-w-full'}>
             <button
@@ -80,14 +82,27 @@ export const CategoryChipList = ({
 
             {isOpen && canManage && (
               <form
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault()
                   const name = draftName.trim()
-                  if (name && name !== item.name) onRename(item, name)
-                  close()
+                  if (!name) return
+                  if (name === item.name) {
+                    close()
+                    return
+                  }
+                  setSavingId(item.id)
+                  try {
+                    await onRename(item, name)
+                    close()
+                  } catch {
+                    // The owning section renders the mutation error. Keeping
+                    // this disclosure open preserves the rejected draft.
+                  } finally {
+                    setSavingId(null)
+                  }
                 }}
                 onKeyDown={(event) => {
-                  if (event.key === 'Escape') {
+                  if (event.key === 'Escape' && !isSaving) {
                     event.preventDefault()
                     close()
                   }
@@ -98,7 +113,7 @@ export const CategoryChipList = ({
                   <input
                     autoFocus
                     value={draftName}
-                    disabled={isArchived}
+                    disabled={isArchived || isSaving}
                     onChange={(event) => setDraftName(event.target.value)}
                     className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
                   />
@@ -129,7 +144,8 @@ export const CategoryChipList = ({
                       </button>
                       <button
                         type="submit"
-                        className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold"
+                        disabled={isSaving}
+                        className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
                       >
                         {saveLabel}
                       </button>

@@ -11,7 +11,7 @@ import {
 } from '@/modules/settings/api/adjustments'
 import { getErrorMessage } from '@/utils/errors'
 import { formatCurrency, formatDate } from '@/utils/formatters'
-import { isValidMoney } from '@/utils/money'
+import { isValidSignedMoney } from '@/utils/money'
 import type { Account } from '@/types/catalog'
 
 interface Props {
@@ -43,7 +43,7 @@ export const BalanceAdjustmentPanel = ({
     event.preventDefault()
     if (
       targetBalance === undefined ||
-      !(targetBalance === 0 || isValidMoney(targetBalance)) ||
+      !isValidSignedMoney(targetBalance) ||
       !reason.trim()
     ) {
       setValidationError(true)
@@ -88,6 +88,8 @@ export const BalanceAdjustmentPanel = ({
             label={m.acc_target_balance()}
             value={targetBalance}
             onChange={setTargetBalance}
+            allowNegative
+            allowZero
             className="w-[160px]"
           />
           <FormField

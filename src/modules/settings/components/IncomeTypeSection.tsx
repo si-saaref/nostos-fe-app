@@ -45,8 +45,11 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
     isPending: isCreating,
     error: createError,
   } = useCreateIncomeType(householdId)
-  const { mutate: update, error: updateError } =
-    useUpdateIncomeType(householdId)
+  const {
+    mutate: update,
+    mutateAsync: updateAsync,
+    error: updateError,
+  } = useUpdateIncomeType(householdId)
 
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -155,7 +158,7 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
         archiveLabel={m.act_archive()}
         restoreLabel={m.act_restore()}
         onRename={(type, name) =>
-          update({ id: type.id, name: capitalizeFirst(name) })
+          updateAsync({ id: type.id, name: capitalizeFirst(name) })
         }
         onArchive={setToArchive}
         onRestore={(type) => update({ id: type.id, archivedAt: null })}

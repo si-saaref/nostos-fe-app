@@ -1,8 +1,10 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/test-utils'
 import { db, resetMockState } from '@/mocks/db'
+import { server } from '@/mocks/server'
 import { MOCK_ME } from '@/mocks/fixtures/household'
 import { IncomeTypeSection } from '@/modules/settings/components/IncomeTypeSection'
 
@@ -87,6 +89,38 @@ describe('IncomeTypeSection', () => {
     // Case-insensitive: "Gaji" and "gaji" are one word to the family that
     // typed them.
     expect(await screen.findByRole('alert')).toHaveTextContent(/sudah ada/i)
+  })
+
+  it('keeps a rejected rename and its draft open', async () => {
+    server.use(
+      http.patch('*/api/v1/income-categories/:id', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'CONFLICT',
+              message: '"gaji" sudah ada',
+              status_code: 409,
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    render()
+    await screen.findByText('bonus')
+
+    await userEvent.click(screen.getByRole('button', { name: 'bonus' }))
+    const input = screen.getByLabelText(/nama kategori pemasukan/i)
+    await userEvent.clear(input)
+    await userEvent.type(input, 'gaji')
+    await userEvent.click(screen.getByRole('button', { name: /simpan/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/sudah ada/i)
+    expect(screen.getByLabelText(/nama kategori pemasukan/i)).toHaveValue(
+      'gaji',
+    )
   })
 
   it('shows a member the list without any way to change it', async () => {

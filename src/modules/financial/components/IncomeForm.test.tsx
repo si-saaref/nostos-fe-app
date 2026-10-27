@@ -63,6 +63,52 @@ describe('IncomeForm', () => {
     await waitFor(() => expect(trigger).toHaveTextContent(archived.name))
     expect(trigger).not.toHaveTextContent(archived.id)
   })
+
+  it('creates a transfer without requiring or sending an income category', async () => {
+    db.incomeTypes.length = 0
+    const bodies: Record<string, unknown>[][] = []
+    const record = async ({ request }: { request: Request }) => {
+      if (request.method === 'POST') {
+        bodies.push((await request.clone().json()) as Record<string, unknown>[])
+      }
+    }
+    server.events.on('request:start', record)
+    const onSuccess = vi.fn()
+    renderWithProviders(<IncomeForm onSuccess={onSuccess} />)
+
+    await chooseOption(/uang ini dari mana/i, /pindah antar akun/i)
+    expect(screen.queryByRole('combobox', { name: /jenis/i })).toBeNull()
+    await userEvent.type(screen.getByLabelText(/keterangan/i), 'Isi dompet')
+    await userEvent.type(screen.getByLabelText(/jumlah/i), '100000')
+    await chooseOption(/dari sumber/i, /kartu debit bca/i)
+    await chooseOption(/masuk ke sumber/i, /tunai/i)
+    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+    server.events.removeListener('request:start', record)
+    expect(bodies[0][0].type_id).toBeNull()
+  })
+
+  it('edits a category-free transfer while categories are unavailable', async () => {
+    db.incomeTypes.length = 0
+    const transfer = db.income.find((row) => row.kind === 'TRANSFER')!
+    const bodies: Record<string, unknown>[] = []
+    const record = async ({ request }: { request: Request }) => {
+      if (request.method === 'PATCH') {
+        bodies.push((await request.clone().json()) as Record<string, unknown>)
+      }
+    }
+    server.events.on('request:start', record)
+    const onSuccess = vi.fn()
+    renderWithProviders(<IncomeForm income={transfer} onSuccess={onSuccess} />)
+
+    expect(screen.queryByRole('combobox', { name: /jenis/i })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: /simpan/i }))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+    server.events.removeListener('request:start', record)
+    expect(bodies[0].type_id).toBeNull()
+  })
 })
 
 describe('IncomeForm when the household is not set up', () => {

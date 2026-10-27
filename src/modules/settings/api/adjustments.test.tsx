@@ -43,6 +43,51 @@ describe('useReconcileAccount', () => {
     })
   })
 
+  it('serializes a negative target balance as signed fixed-scale money', async () => {
+    let targetBalance: unknown
+    server.use(
+      http.post(
+        '*/api/v1/payment-sources/:id/reconcile',
+        async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          targetBalance = body.target_balance
+          return HttpResponse.json({
+            success: true,
+            data: {
+              adjustment: {
+                id: 'adjustment-negative',
+                household_id: 'household-001',
+                source_id: 'source-tunai',
+                created_by_user_id: 'user-001',
+                delta: '-4600000.00',
+                date: '2026-10-27',
+                reason: 'Matched debt',
+                created_at: '2026-10-27T00:00:00.000Z',
+              },
+              previous_balance: '4500000.00',
+              balance: '-100000.00',
+            },
+          })
+        },
+      ),
+    )
+    const { wrapper } = setup()
+    const { result } = renderHook(
+      () => useReconcileAccount('household-001'),
+      { wrapper },
+    )
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        sourceId: 'source-tunai',
+        targetBalance: -100000,
+        reason: 'Matched debt',
+      })
+    })
+
+    expect(targetBalance).toBe('-100000.00')
+  })
+
   it('leaves adjustment and position caches unchanged when reconciliation fails', async () => {
     server.use(
       http.post('*/api/v1/payment-sources/:id/reconcile', () =>

@@ -32,4 +32,22 @@ describe('CategorySection duplicate names', () => {
       await screen.findByText('Kategori "Belanja" sudah ada'),
     ).toBeInTheDocument()
   })
+
+  it('keeps a rejected rename and its draft open', async () => {
+    renderWithProviders(
+      <CategorySection householdId={MOCK_ME.household_id} canManage />,
+    )
+    await screen.findByText('Utilitas')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Utilitas' }))
+    const input = screen.getByLabelText('Nama kategori')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Belanja')
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    expect(
+      await screen.findByText('Kategori "Belanja" sudah ada'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Nama kategori')).toHaveValue('Belanja')
+  })
 })

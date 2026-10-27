@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import { fromWireMoney, toWireMoney } from '@/utils/money'
+import { fromWireMoney, toWireMoney, toWireSignedMoney } from '@/utils/money'
 import type { ApiEnvelope } from '@/types/api'
 import type { BalanceAdjustment, WireBalanceAdjustment } from '@/types/catalog'
 
@@ -97,7 +97,7 @@ export const useReconcileAccount = (householdId: string) => {
         await apiClient.post<ApiEnvelope<WireReconcileResult>>(
           `/payment-sources/${input.sourceId}/reconcile`,
           {
-            target_balance: toWireMoney(input.targetBalance),
+            target_balance: toWireSignedMoney(input.targetBalance),
             reason: input.reason.trim(),
           },
         ),

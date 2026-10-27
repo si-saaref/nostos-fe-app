@@ -33,7 +33,8 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
     isPending: isCreating,
     error: createError,
   } = useCreateCategory(householdId)
-  const { mutate: update, error: updateError } = useUpdateCategory(householdId)
+  const { mutate: update, mutateAsync: updateAsync, error: updateError } =
+    useUpdateCategory(householdId)
 
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -112,7 +113,7 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
         archiveLabel={m.act_archive()}
         restoreLabel={m.act_restore()}
         onRename={(category, name) =>
-          update({ id: category.id, name: capitalizeFirst(name) })
+          updateAsync({ id: category.id, name: capitalizeFirst(name) })
         }
         onArchive={setCategoryToArchive}
         onRestore={(category) =>
