@@ -1,3 +1,4 @@
+import { invalidateFinancial } from './invalidateFinancial'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
@@ -257,7 +258,7 @@ export const useCreateExpense = (householdId: string) => {
       )
       return toExpense(created[0])
     },
-    onMutate: async (input) => {
+    onSuccess: async (created, input) => {
       await queryClient.cancelQueries({
         queryKey: expenseKeys.lists(householdId),
       })
@@ -265,7 +266,7 @@ export const useCreateExpense = (householdId: string) => {
         queryKey: expenseKeys.lists(householdId),
       })
       const optimistic: Expense = {
-        id: `${OPTIMISTIC_PREFIX}${crypto.randomUUID()}`,
+        id: created.id,
         householdId,
         ...input,
       }
@@ -282,13 +283,9 @@ export const useCreateExpense = (householdId: string) => {
       })
       return { previous }
     },
-    onError: (_error, _input, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all(householdId) })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'expenses')
     },
   })
 }
@@ -323,8 +320,9 @@ export const useUpdateExpense = (householdId: string) => {
         updated,
       )
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all(householdId) })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'expenses')
     },
   })
 }
@@ -335,7 +333,7 @@ export const useDeleteExpense = (householdId: string) => {
     mutationFn: async (id: string) => {
       await apiClient.delete(`/expenses/${id}`)
     },
-    onMutate: async (id) => {
+    onSuccess: async (_result, id) => {
       await queryClient.cancelQueries({
         queryKey: expenseKeys.lists(householdId),
       })
@@ -348,13 +346,9 @@ export const useDeleteExpense = (householdId: string) => {
       })
       return { previous }
     },
-    onError: (_error, _id, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all(householdId) })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'expenses')
     },
   })
 }

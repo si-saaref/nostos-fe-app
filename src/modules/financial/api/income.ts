@@ -1,3 +1,4 @@
+import { invalidateFinancial } from './invalidateFinancial'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
@@ -262,7 +263,7 @@ export const useCreateIncome = (householdId: string) => {
       )
       return toIncome(created[0])
     },
-    onMutate: async (input) => {
+    onSuccess: async (created, input) => {
       await queryClient.cancelQueries({
         queryKey: incomeKeys.lists(householdId),
       })
@@ -270,7 +271,7 @@ export const useCreateIncome = (householdId: string) => {
         queryKey: incomeKeys.lists(householdId),
       })
       const optimistic: Income = {
-        id: `${OPTIMISTIC_PREFIX}${crypto.randomUUID()}`,
+        id: created.id,
         householdId,
         ...input,
       }
@@ -287,16 +288,9 @@ export const useCreateIncome = (householdId: string) => {
       })
       return { previous }
     },
-    onError: (_error, _input, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: incomeKeys.all(householdId) })
-      queryClient.invalidateQueries({
-        queryKey: entityKey(householdId, 'positions'),
-      })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'income')
     },
   })
 }
@@ -321,11 +315,9 @@ export const useUpdateIncome = (householdId: string) => {
           ),
         ),
       ),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: incomeKeys.all(householdId) })
-      queryClient.invalidateQueries({
-        queryKey: entityKey(householdId, 'positions'),
-      })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'income')
     },
   })
 }
@@ -336,7 +328,7 @@ export const useDeleteIncome = (householdId: string) => {
     mutationFn: async (id: string) => {
       await apiClient.delete(`${BASE_PATH}/${id}`)
     },
-    onMutate: async (id) => {
+    onSuccess: async (_result, id) => {
       await queryClient.cancelQueries({
         queryKey: incomeKeys.lists(householdId),
       })
@@ -349,16 +341,9 @@ export const useDeleteIncome = (householdId: string) => {
       })
       return { previous }
     },
-    onError: (_error, _id, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: incomeKeys.all(householdId) })
-      queryClient.invalidateQueries({
-        queryKey: entityKey(householdId, 'positions'),
-      })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'income')
     },
   })
 }
