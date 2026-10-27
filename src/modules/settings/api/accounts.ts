@@ -56,10 +56,13 @@ export const toAccount = (row: WireAccount): Account => ({
 })
 
 /** Only what the caller passed — see `toCategoryBody` for why. */
-const toAccountBody = (patch: Partial<Account>) => {
+type UpdateAccountInput = Partial<
+  Pick<Account, 'name' | 'order' | 'archivedAt'>
+>
+
+const toAccountBody = (patch: UpdateAccountInput) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
-  if (patch.kind !== undefined) body.kind = KIND_TO_WIRE[patch.kind]
   if (patch.order !== undefined) body.order = patch.order
   if (patch.archivedAt !== undefined) body.archived_at = patch.archivedAt
   return body
@@ -106,7 +109,7 @@ export const useCreateAccount = (householdId: string) =>
 export const useUpdateAccount = (householdId: string) =>
   useInvalidatingMutation(
     [accountKeys.all(householdId)],
-    async ({ id, ...patch }: { id: string } & Partial<Account>) =>
+    async ({ id, ...patch }: { id: string } & UpdateAccountInput) =>
       toAccount(
         unwrap(
           await apiClient.patch<ApiEnvelope<WireAccount>>(

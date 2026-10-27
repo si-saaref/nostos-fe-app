@@ -29,9 +29,9 @@ interface Props {
   canManage: boolean
 }
 
-const emptyDraft = (): AccountInput => ({
+const emptyDraft = (kind: AccountKind = 'cash'): AccountInput => ({
   name: '',
-  kind: 'cash',
+  kind,
   openingBalance: 0,
   asOf: isoDay(new Date()),
 })
@@ -54,7 +54,9 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
   const { mutate: update, error: updateError } = useUpdateAccount(householdId)
 
   const [openId, setOpenId] = useState<string | null>(null)
-  const [isAdding, setIsAdding] = useState(false)
+  const [addingKind, setAddingKind] = useState<
+    Extract<AccountKind, 'cash' | 'bank'> | null
+  >(null)
   // Two drafts, not one: opening a row used to overwrite whatever had been
   // typed into the add form, which was still on screen and still bound to it.
   const [newDraft, setNewDraft] = useState<AccountInput>(emptyDraft)
@@ -86,22 +88,6 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
         />
       </FormField>
-      <FormField label={m.acc_kind()}>
-        <select
-          value={draft.kind}
-          disabled={disabled}
-          onChange={(event) =>
-            setDraft({ ...draft, kind: event.target.value as AccountKind })
-          }
-          className="well-shadow bg-chip rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
-        >
-          {KINDS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </FormField>
       {includeOpening && (
         <>
           <AmountInput
@@ -122,6 +108,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             label={m.acc_as_of()}
             className="w-[190px]"
             value={draft.asOf}
+            max={isoDay(new Date())}
             disabled={disabled}
             onChange={(value) => setDraft({ ...draft, asOf: value })}
           />
@@ -143,28 +130,41 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
       actionError={createError ?? updateError}
       isEmpty={(accounts?.length ?? 0) === 0}
       emptyText={m.acc_empty()}
-      addLabel={m.acc_add()}
-      onAdd={
-        canManage
-          ? () => {
-              setNewDraft(emptyDraft())
-              setIsAdding(true)
-            }
-          : undefined
+      actions={
+        canManage ? (
+          <div className="flex flex-wrap gap-2">
+            {([
+              ['cash', m.acc_add_cash()],
+              ['bank', m.acc_add_bank()],
+            ] as const).map(([kind, label]) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => {
+                  setNewDraft(emptyDraft(kind))
+                  setAddingKind(kind)
+                }}
+                className="bg-accent text-accent-ink min-h-11 shrink-0 rounded-lg px-4 py-2 text-[12px] font-semibold"
+              >
+                + {label}
+              </button>
+            ))}
+          </div>
+        ) : undefined
       }
     >
       <ul className="flex flex-col gap-1.5">
-        {isAdding && (
+        {addingKind && (
           <li>
             <DismissablePanel
-              onDismiss={() => setIsAdding(false)}
+              onDismiss={() => setAddingKind(null)}
               className="bg-card lift-shadow flex flex-col gap-3 rounded-lg p-3"
             >
               {fields(newDraft, setNewDraft)}
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsAdding(false)}
+                  onClick={() => setAddingKind(null)}
                   className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
                 >
                   {m.act_cancel()}
@@ -174,7 +174,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                   onClick={() =>
                     create(
                       { ...newDraft, name: newDraft.name.trim() },
-                      { onSuccess: () => setIsAdding(false) },
+                      { onSuccess: () => setAddingKind(null) },
                     )
                   }
                   disabled={
@@ -198,21 +198,33 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             <SettingPlate
               key={account.id}
               title={account.name}
-              meta={`${kindLabel(account.kind)} · ${m.acc_opening()} ${formatCurrency(
-                account.openingBalance,
-                currency,
-                locale,
-              )} · ${m.acc_as_of()} ${new Intl.DateTimeFormat(locale, {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              }).format(fromIsoDay(account.asOf))}`}
+              meta={
+                <span className="flex flex-wrap items-baseline gap-x-1.5">
+                  <span>{kindLabel(account.kind)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-ink tnum text-[12.5px] font-medium">
+                    {formatCurrency(account.openingBalance, currency, locale)}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>
+                    {m.acc_as_of()} {new Intl.DateTimeFormat(locale, {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    }).format(fromIsoDay(account.asOf))}
+                  </span>
+                </span>
+              }
               rim={rimFor(account.order)}
               muted={isArchived}
               trailing={
                 isArchived ? (
                   <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
                     {m.cat_archived()}
+                  </span>
+                ) : account.isProtected ? (
+                  <span className="bg-chip text-muted rounded-full px-2 py-1 text-[9px] font-bold tracking-[0.06em] uppercase">
+                    {m.acc_default_badge()}
                   </span>
                 ) : undefined
               }
@@ -230,19 +242,23 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
               {canManage ? (
                 <div className="flex flex-col gap-3">
                   {fields(editDraft, setEditDraft, isArchived, false)}
+                  {account.isProtected && (
+                    <p className="bg-chip text-muted rounded-lg px-3 py-2 text-[11px]">
+                      {m.acc_protected_note()}
+                    </p>
+                  )}
                   <RowActions
                     onSave={() => {
                       update(
                         {
                           id: account.id,
                           name: editDraft.name.trim(),
-                          kind: editDraft.kind,
                         },
                         { onSuccess: () => setOpenId(null) },
                       )
                     }}
                     onArchive={
-                      isArchived
+                      isArchived || account.isProtected
                         ? undefined
                         : () => setAccountToArchive(account)
                     }

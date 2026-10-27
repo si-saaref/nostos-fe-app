@@ -1,21 +1,18 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { AmountInput } from '@/components/AmountInput'
-import { DateField } from '@/components/DateField'
 import { FormField } from '@/components/FormField'
 import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
 import { useMessages } from '@/i18n/useMessages'
 import {
   useAdjustments,
-  useCreateAdjustment,
+  useReconcileAccount,
 } from '@/modules/settings/api/adjustments'
-import { isoDay } from '@/utils/dates'
 import { getErrorMessage } from '@/utils/errors'
 import { formatCurrency, formatDate } from '@/utils/formatters'
 import { isValidMoney } from '@/utils/money'
 import type { Account } from '@/types/catalog'
-import type { CreateAdjustmentInput } from '@/modules/settings/api/adjustments'
 
 interface Props {
   householdId: string
@@ -36,36 +33,30 @@ export const BalanceAdjustmentPanel = ({
     account.id,
     true,
   )
-  const create = useCreateAdjustment(householdId)
+  const reconcile = useReconcileAccount(householdId)
   const [isAdding, setIsAdding] = useState(false)
-  const [direction, setDirection] =
-    useState<CreateAdjustmentInput['direction']>('INCREASE')
-  const [amount, setAmount] = useState<number | undefined>()
-  const [date, setDate] = useState(isoDay(new Date()))
+  const [targetBalance, setTargetBalance] = useState<number | undefined>()
   const [reason, setReason] = useState('')
   const [validationError, setValidationError] = useState(false)
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (
-      amount === undefined ||
-      !isValidMoney(amount) ||
-      date < account.asOf ||
-      date > isoDay(new Date()) ||
+      targetBalance === undefined ||
+      !(targetBalance === 0 || isValidMoney(targetBalance)) ||
       !reason.trim()
     ) {
       setValidationError(true)
       return
     }
     setValidationError(false)
-    create.mutate(
-      { sourceId: account.id, direction, amount, date, reason },
+    reconcile.mutate(
+      { sourceId: account.id, targetBalance, reason },
       {
         onSuccess: () => {
           setIsAdding(false)
-          setAmount(undefined)
+          setTargetBalance(undefined)
           setReason('')
-          setDate(isoDay(new Date()))
         },
       },
     )
@@ -78,7 +69,11 @@ export const BalanceAdjustmentPanel = ({
         {canManage && !isAdding && (
           <button
             type="button"
-            onClick={() => setIsAdding(true)}
+            onClick={() => {
+              reconcile.reset()
+              setValidationError(false)
+              setIsAdding(true)
+            }}
             className="border-hair rounded-lg border px-3 py-2 text-xs font-semibold"
           >
             {m.acc_adjust()}
@@ -89,32 +84,11 @@ export const BalanceAdjustmentPanel = ({
 
       {isAdding && (
         <form onSubmit={submit} className="mt-3 flex flex-wrap items-end gap-2">
-          <FormField label={m.acc_adjust()}>
-            <select
-              value={direction}
-              onChange={(event) =>
-                setDirection(
-                  event.target.value as CreateAdjustmentInput['direction'],
-                )
-              }
-              className="well-shadow bg-chip rounded-lg px-3 py-2 text-xs"
-            >
-              <option value="INCREASE">{m.acc_adjust_increase()}</option>
-              <option value="DECREASE">{m.acc_adjust_decrease()}</option>
-            </select>
-          </FormField>
           <AmountInput
-            label={m.acc_adjust_amount()}
-            value={amount}
-            onChange={setAmount}
+            label={m.acc_target_balance()}
+            value={targetBalance}
+            onChange={setTargetBalance}
             className="w-[160px]"
-          />
-          <DateField
-            label={m.acc_adjust_date()}
-            value={date}
-            onChange={setDate}
-            max={isoDay(new Date())}
-            className="w-[190px]"
           />
           <FormField
             label={m.acc_adjust_reason()}
@@ -130,10 +104,10 @@ export const BalanceAdjustmentPanel = ({
           </FormField>
           <button
             type="submit"
-            disabled={create.isPending}
+            disabled={reconcile.isPending}
             className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50"
           >
-            {create.isPending ? m.act_saving() : m.act_save()}
+            {reconcile.isPending ? m.act_saving() : m.act_save()}
           </button>
           <button
             type="button"
@@ -147,12 +121,21 @@ export const BalanceAdjustmentPanel = ({
               {m.acc_adjust_invalid()}
             </p>
           )}
-          {create.isError && (
+          {reconcile.isError && (
             <p role="alert" className="text-xs text-red-600">
-              {getErrorMessage(create.error)}
+              {getErrorMessage(reconcile.error)}
             </p>
           )}
         </form>
+      )}
+
+      {reconcile.data && (
+        <p role="status" className="bg-chip mt-3 rounded-lg px-3 py-2 text-xs">
+          {m.acc_current_balance()}:{' '}
+          <strong className="tnum text-[12.5px]">
+            {formatCurrency(reconcile.data.balance, currency, locale)}
+          </strong>
+        </p>
       )}
 
       {listError && (

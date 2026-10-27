@@ -15,6 +15,7 @@ interface Props {
   emptyText?: string
   addLabel?: string
   onAdd?: () => void
+  actions?: ReactNode
   /**
    * A write that failed. Separate from `isError`, which is about the read: the
    * list is fine, the change was not, and the section still has to say so.
@@ -40,6 +41,7 @@ export const SectionShell = ({
   emptyText,
   addLabel,
   onAdd,
+  actions,
   actionError,
   children,
 }: Props) => {
@@ -53,7 +55,7 @@ export const SectionShell = ({
             {description}
           </p>
         </div>
-        {onAdd && addLabel && (
+        {actions ?? (onAdd && addLabel && (
           <button
             type="button"
             onClick={onAdd}
@@ -61,7 +63,7 @@ export const SectionShell = ({
           >
             + {addLabel}
           </button>
-        )}
+        ))}
       </header>
 
       {!canManage && (
