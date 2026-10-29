@@ -106,8 +106,8 @@ export const IncomeStatement = ({
             {/* A day is a group and the spacing says so: 24px above the header
                 against 6px between its rows. Sticky, because a day with a
                 dozen entries otherwise loses its own date off the top. */}
-            <header className="bg-ground sticky top-0 z-10 flex items-center gap-3 pb-2">
-              <h3 className="font-display text-[11px] font-bold tracking-[0.12em] uppercase">
+            <header className="bg-ground sticky top-0 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 pb-2">
+              <h3 className="font-display shrink-0 text-[11px] font-bold tracking-[0.12em] whitespace-nowrap uppercase">
                 {new Intl.DateTimeFormat(locale, {
                   weekday: 'short',
                   day: 'numeric',
@@ -115,7 +115,7 @@ export const IncomeStatement = ({
                 }).format(date)}
               </h3>
               <span aria-hidden="true" className="bg-hair h-px flex-1" />
-              <span className="tnum text-[12px] whitespace-nowrap">
+              <span className="tnum min-w-0 text-[12px] lg:whitespace-nowrap">
                 {figures.map((figure, index) => (
                   <span key={figure}>
                     {index > 0 && (

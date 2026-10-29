@@ -91,9 +91,9 @@ const IncomePlateBase = ({
           onClick={() => onToggle(income.id)}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:grid sm:h-[42px] sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_13rem_8rem] sm:items-center sm:gap-3 sm:py-0"
+          className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 px-3 py-2 text-left sm:h-[42px] sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_13rem_8rem] sm:gap-3 sm:py-0"
         >
-          <span className="flex items-baseline justify-between gap-3 sm:min-w-0 sm:items-center">
+          <span className="col-span-2 flex min-w-0 items-baseline justify-between gap-3 sm:col-span-1 sm:items-center">
             <span className="truncate pl-1 text-[12.5px] font-medium">
               {income.name}
             </span>
@@ -126,7 +126,7 @@ const IncomePlateBase = ({
               every row put its arrow at a different x and the column read as
               ragged. From-chip ends on one line, arrow on one, to-chip starts
               on one. */}
-          <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 pl-1 sm:pl-0">
+          <span className="grid max-w-[9rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 text-[9px] sm:max-w-none sm:gap-1.5">
             <Route fromName={fromName} toName={toName} />
           </span>
 
