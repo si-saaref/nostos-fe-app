@@ -419,5 +419,7 @@
   "email_change_signin": "Ke halaman masuk",
   "metric_previous": "Metrik sebelumnya",
   "metric_next": "Metrik berikutnya",
-  "action_close": "Tutup"
+  "action_close": "Tutup",
+  "mem_invite_first_name": "Nama depan",
+  "mem_invite_last_name": "Nama belakang"
 }

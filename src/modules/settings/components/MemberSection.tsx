@@ -45,7 +45,8 @@ export const MemberSection = ({
   const { mutate: remove, error: removeError } = useRemoveMember(householdId)
   const { locale } = useSettings()
 
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false)
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null)
@@ -61,11 +62,14 @@ export const MemberSection = ({
   }
 
   const nameError =
-    hasAttemptedSubmit && !name.trim() ? m.mem_err_name() : undefined
+    hasAttemptedSubmit && !firstName.trim() ? m.mem_err_name() : undefined
   // Includes the empty case on purpose: submitting a blank address used to be
   // blocked with nothing said, which reads as a dead button.
   const emailError =
     hasAttemptedSubmit && !isAsciiEmail(email) ? m.mem_err_email() : undefined
+
+  const lastNameError =
+    hasAttemptedSubmit && !lastName.trim() ? m.mem_err_name() : undefined
 
   const canInvite = canManage && householdActive
 
@@ -96,12 +100,14 @@ export const MemberSection = ({
           onSubmit={(event) => {
             event.preventDefault()
             setHasAttemptedSubmit(true)
-            if (!name.trim() || !isAsciiEmail(email)) return
+            if (!firstName.trim() || !lastName.trim() || !isAsciiEmail(email))
+              return
             invite(
-              { name: name.trim(), email },
+              { firstName: firstName.trim(), lastName: lastName.trim(), email },
               {
                 onSuccess: () => {
-                  setName('')
+                  setFirstName('')
+                  setLastName('')
                   setEmail('')
                   setHasAttemptedSubmit(false)
                 },
@@ -116,13 +122,26 @@ export const MemberSection = ({
           </p>
           <div className="flex flex-wrap items-start gap-2">
             <FormField
-              label={m.mem_invite_name()}
+              label={m.mem_invite_first_name()}
               error={nameError}
               className="min-w-[150px] flex-1"
             >
               <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
+              />
+            </FormField>
+            <FormField
+              label={m.mem_invite_last_name()}
+              error={lastNameError}
+              className="min-w-[150px] flex-1"
+            >
+              <input
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
                 className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
               />
             </FormField>

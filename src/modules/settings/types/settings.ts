@@ -24,6 +24,8 @@ export type MemberDeletionReason = 'HOUSEHOLD' | 'LEFT' | 'REMOVED' | null
  * screen and `pending` on another.
  */
 export interface WireMember {
+  first_name?: string | null
+  last_name?: string | null
   id: string
   name: string
   email: string
@@ -40,6 +42,8 @@ export interface WireMember {
 }
 
 export interface Member {
+  firstName?: string | null
+  lastName?: string | null
   id: string
   name: string
   email: string
@@ -72,7 +76,8 @@ export interface AccountInput {
 }
 
 export interface InviteInput {
-  name: string
+  firstName: string
+  lastName: string
   email: string
 }
 

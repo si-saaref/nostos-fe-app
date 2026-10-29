@@ -419,5 +419,7 @@
   "email_change_signin": "Go to sign in",
   "metric_previous": "Previous metric",
   "metric_next": "Next metric",
-  "action_close": "Close"
+  "action_close": "Close",
+  "mem_invite_first_name": "First name",
+  "mem_invite_last_name": "Last name"
 }

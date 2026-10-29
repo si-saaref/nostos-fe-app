@@ -21,7 +21,8 @@ describe('MemberSection', () => {
     setup()
     await screen.findByText('Sari')
 
-    await userEvent.type(screen.getByLabelText(/nama/i), 'Nadia')
+    await userEvent.type(screen.getByLabelText(/nama depan/i), 'Nadia')
+    await userEvent.type(screen.getByLabelText(/nama belakang/i), 'Putri')
     await userEvent.type(screen.getByLabelText(/email/i), 'nadia@café.com')
     await userEvent.click(
       screen.getByRole('button', { name: /kirim undangan/i }),
@@ -37,9 +38,10 @@ describe('MemberSection', () => {
     setup()
     await screen.findByText('Sari')
 
-    await userEvent.type(screen.getByLabelText(/nama/i), 'Sari lagi')
+    await userEvent.type(screen.getByLabelText(/nama depan/i), 'Sari lagi')
     // Already active in this household — the API answers 409 with copy that is
     // itself the feature.
+    await userEvent.type(screen.getByLabelText(/nama belakang/i), 'Putri')
     await userEvent.type(screen.getByLabelText(/email/i), 'sari@example.com')
     await userEvent.click(
       screen.getByRole('button', { name: /kirim undangan/i }),
@@ -123,7 +125,8 @@ describe('MemberSection', () => {
     setup()
     await screen.findByText('Sari')
 
-    await userEvent.type(screen.getByLabelText(/nama/i), 'Baru')
+    await userEvent.type(screen.getByLabelText(/nama depan/i), 'Baru')
+    await userEvent.type(screen.getByLabelText(/nama belakang/i), 'Putri')
     await userEvent.type(screen.getByLabelText(/email/i), 'baru@example.com')
     await userEvent.click(
       screen.getByRole('button', { name: /kirim undangan/i }),

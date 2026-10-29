@@ -14,7 +14,6 @@ import {
   pause,
 } from '@/mocks/handlers/shared'
 import type {
-  InviteInput,
   Member,
   WireMember,
   WireMemberStatus,
@@ -45,6 +44,8 @@ const statusOf = (member: Member, now: number): WireMemberStatus => {
 const toWire = (member: Member, now = Date.now()): WireMember => ({
   id: member.id,
   name: member.name,
+  first_name: member.firstName ?? null,
+  last_name: member.lastName ?? null,
   email: member.email,
   role: member.role,
   household_id: member.householdId,
@@ -74,8 +75,12 @@ export const memberHandlers = [
 
   http.post('*/api/v1/households/:id/members', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
-    const input = (await request.json()) as InviteInput
-    if (!input.name?.trim()) {
+    const input = (await request.json()) as {
+      first_name: string
+      last_name: string
+      email: string
+    }
+    if (!input.first_name?.trim() || !input.last_name?.trim()) {
       return errorBody(400, 'VALIDATION_ERROR', 'Name is required')
     }
     if (!isAsciiEmail(input.email)) {
@@ -96,7 +101,9 @@ export const memberHandlers = [
     const sentAt = new Date()
     const created: Member = {
       id: nextId('user'),
-      name: input.name.trim(),
+      name: `${input.first_name.trim()} ${input.last_name.trim()}`,
+      firstName: input.first_name.trim(),
+      lastName: input.last_name.trim(),
       email: input.email,
       role: Role.MEMBER,
       householdId: MOCK_HOUSEHOLD.id,
