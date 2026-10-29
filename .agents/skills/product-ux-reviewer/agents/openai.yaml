@@ -1,0 +1,13 @@
+interface:
+  display_name: "Product UX Reviewer"
+  short_description: "Evidence-led product UX audits for this app"
+  default_prompt: "Use $product-ux-reviewer to audit the application's core user journeys and write docs/ux-audit.md."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "playwright"
+      description: "Explore and test the local application in a real browser"
+
+policy:
+  allow_implicit_invocation: true
