@@ -63,6 +63,7 @@ export const ExpensesPage = () => {
   const { mutate: deleteExpense, error: deleteError } =
     useDeleteExpense(householdId)
 
+  const editorReturnFocus = useRef<HTMLElement | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(() =>
     Boolean(
@@ -111,14 +112,12 @@ export const ExpensesPage = () => {
 
   const days = useMemo<DayTotal[]>(() => {
     if (data?.summary?.daily)
-      return [...data.summary.daily]
-        .reverse()
-        .map((day) => ({
-          date: day.date,
-          total: day.sum,
-          totalText: day.sumText,
-          count: day.count,
-        }))
+      return [...data.summary.daily].reverse().map((day) => ({
+        date: day.date,
+        total: day.sum,
+        totalText: day.sumText,
+        count: day.count,
+      }))
     if (expenses.length < (data?.pagination.total ?? 0)) return []
     return groups.map((group) => ({
       date: group.date,
@@ -253,6 +252,10 @@ export const ExpensesPage = () => {
     [],
   )
   const requestEdit = useCallback((expense: Expense) => {
+    editorReturnFocus.current =
+      document.activeElement
+        ?.closest('article')
+        ?.querySelector<HTMLElement>('button[aria-expanded]') ?? null
     setExpenseToEdit(expense)
     // One form on the page at a time. A blank "record" panel stacked above a
     // populated "edit" panel offers two submits for two different acts and
@@ -263,6 +266,7 @@ export const ExpensesPage = () => {
     setOpenId(null)
   }, [])
   const requestRecord = useCallback(() => {
+    editorReturnFocus.current = document.activeElement as HTMLElement
     setExpenseToEdit(null)
     setShowForm(true)
   }, [])
@@ -408,18 +412,18 @@ export const ExpensesPage = () => {
               onChange={updateFilters}
             />
           </div>
-          {!isRecording && (
-            <button
-              type="button"
-              onClick={requestRecord}
-              className="bg-accent text-accent-ink hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
-            >
-              + {m.action_record_long()}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={requestRecord}
+            disabled={isRecording}
+            className="bg-accent text-accent-ink hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
+          >
+            + {m.action_record_long()}
+          </button>
         </div>
 
         <LedgerEditor
+          returnFocusRef={editorReturnFocus}
           open={isRecording}
           title={
             expenseToEdit
@@ -545,18 +549,17 @@ export const ExpensesPage = () => {
         </div>
       </div>
 
-      {!isRecording && (
-        <button
-          type="button"
-          onClick={requestRecord}
-          className="bg-accent text-accent-ink fixed right-4 bottom-20 z-30 flex h-12 items-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg lg:hidden"
-        >
-          <span aria-hidden="true" className="text-lg leading-none">
-            +
-          </span>
-          {m.action_record()}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={requestRecord}
+        disabled={isRecording}
+        className="bg-accent text-accent-ink fixed right-4 bottom-20 z-30 flex h-12 items-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg lg:hidden"
+      >
+        <span aria-hidden="true" className="text-lg leading-none">
+          +
+        </span>
+        {m.action_record()}
+      </button>
 
       {/* Deleting a money record is irreversible, so it asks — the settings
           module already stops for the *less* destructive archive. */}

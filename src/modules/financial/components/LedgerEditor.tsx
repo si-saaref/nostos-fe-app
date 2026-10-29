@@ -1,5 +1,24 @@
-import { useRef, type ReactNode } from 'react'
+import {
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { Dialog } from 'radix-ui'
+
+const subscribeViewport = (notify: () => void) => {
+  const viewport = window.visualViewport
+  viewport?.addEventListener('resize', notify)
+  viewport?.addEventListener('scroll', notify)
+  return () => {
+    viewport?.removeEventListener('resize', notify)
+    viewport?.removeEventListener('scroll', notify)
+  }
+}
+const viewportSnapshot = () =>
+  window.visualViewport
+    ? `${window.visualViewport.height}:${window.visualViewport.offsetTop}`
+    : ''
 
 /** Explicit cancel/save own dismissal: incidental taps and Escape preserve drafts. */
 export const LedgerEditor = ({
@@ -7,13 +26,21 @@ export const LedgerEditor = ({
   title,
   onClose,
   children,
+  returnFocusRef,
 }: {
   open: boolean
   title: string
   onClose: () => void
   children: ReactNode
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) => {
   const returnFocus = useRef<HTMLElement | null>(null)
+  const viewport = useSyncExternalStore(
+    subscribeViewport,
+    viewportSnapshot,
+    () => '',
+  )
+  const [height, top] = viewport.split(':').map(Number)
   return (
     <Dialog.Root
       open={open}
@@ -25,8 +52,17 @@ export const LedgerEditor = ({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/35" />
         <Dialog.Content
           aria-describedby={undefined}
+          style={
+            viewport
+              ? {
+                  maxHeight: `calc(${height}px - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))`,
+                  top: `calc(${top}px + max(1rem, env(safe-area-inset-top)))`,
+                }
+              : undefined
+          }
           onOpenAutoFocus={() => {
-            returnFocus.current = document.activeElement as HTMLElement
+            returnFocus.current =
+              returnFocusRef?.current ?? (document.activeElement as HTMLElement)
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault()

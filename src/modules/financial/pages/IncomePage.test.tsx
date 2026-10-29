@@ -496,3 +496,21 @@ it('shows household balance and keeps position details with a single capture act
   ).not.toBeInTheDocument()
   expect((await screen.findAllByText(/BNI/)).length).toBeGreaterThan(0)
 })
+
+it('returns focus to the ledger row after cancelling an edit', async () => {
+  renderPage()
+  await settled()
+  const entry = db.income.find(
+    (row) => row.date >= thisMonth.from && row.date <= thisMonth.to,
+  )!
+  const row = screen.getByText(entry.name).closest('article')!
+  const trigger = within(row).getByRole('button')
+  await userEvent.click(trigger)
+  await userEvent.click(
+    within(row).getByRole('button', { name: /sunting|edit|ubah/i }),
+  )
+  await userEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: /batal/i }),
+  )
+  await waitFor(() => expect(trigger).toHaveFocus())
+})

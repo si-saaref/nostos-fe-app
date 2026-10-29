@@ -169,6 +169,9 @@ const adjustedTotals = (
   const moved = movedText === undefined ? undefined : Number(movedText)
   return {
     ...totals,
+    cash_withdrawn: undefined,
+    cashWithdrawnText: undefined,
+    cash_withdrawal_count: undefined,
     sum,
     sumText,
     count,
@@ -191,10 +194,7 @@ const withRow = (
     items: [income, ...page.items],
     pagination: { ...page.pagination, total: page.pagination.total + 1 },
     totals,
-    summary:
-      page.summary && totals
-        ? { ...page.summary, current: totals }
-        : page.summary,
+    summary: undefined,
   }
 }
 
@@ -210,10 +210,7 @@ const withoutRow = (page: Paginated<Income>, id: string): Paginated<Income> => {
       total: Math.max(0, page.pagination.total - 1),
     },
     totals,
-    summary:
-      page.summary && totals
-        ? { ...page.summary, current: totals }
-        : page.summary,
+    summary: undefined,
   }
 }
 

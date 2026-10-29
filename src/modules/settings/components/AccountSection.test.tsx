@@ -106,3 +106,48 @@ it('offers one-time start assignment only from BE eligibility and explains the b
   )
   await waitFor(() => expect(db.accounts[0].calculationStartCanSet).toBe(false))
 })
+
+it('keeps the account row open after Escape closes protected-account help', async () => {
+  renderSection()
+  const row = (await screen.findByText(db.accounts[0].name)).closest('article')!
+  const trigger = within(row).getByRole('button')
+  await userEvent.click(trigger)
+  const help = within(row).getByRole('button', { name: /^bawaan$/i })
+  await userEvent.click(help)
+  await userEvent.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  expect(help).toHaveFocus()
+})
+
+it('labels current BE balance and its date independently of opening metadata', async () => {
+  const { http, HttpResponse } = await import('msw')
+  const { server } = await import('@/mocks/server')
+  server.use(
+    http.get('*/positions', () =>
+      HttpResponse.json({
+        success: true,
+        data: [
+          {
+            source_id: db.accounts[0].id,
+            opening_balance: '5000.00',
+            balance: '72000.00',
+          },
+        ],
+        meta: {
+          summary: {
+            total_balance: '72000.00',
+            currency: 'IDR',
+            as_of: '2026-10-29',
+          },
+        },
+      }),
+    ),
+  )
+  renderSection()
+  const row = (await screen.findByText(db.accounts[0].name)).closest('article')!
+  expect(
+    await within(row).findByText(/saldo sekarang.*2026-10-29/i),
+  ).toBeInTheDocument()
+  expect(row).toHaveTextContent('72.000')
+})

@@ -23,7 +23,7 @@ import type { Income } from '@/types/income'
 import { getErrorMessage } from '@/utils/errors'
 import { sumMoney, sumMoneyText } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useRef } from 'react'
 
 /**
  * The income surface: one position card that states, one statement that lists.
@@ -68,6 +68,7 @@ export const IncomePage = () => {
   const { mutate: deleteIncome, error: deleteError } =
     useDeleteIncome(householdId)
 
+  const editorReturnFocus = useRef<HTMLElement | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [toDelete, setToDelete] = useState<Income | null>(null)
@@ -150,6 +151,10 @@ export const IncomePage = () => {
     [],
   )
   const requestEdit = useCallback((income: Income) => {
+    editorReturnFocus.current =
+      document.activeElement
+        ?.closest('article')
+        ?.querySelector<HTMLElement>('button[aria-expanded]') ?? null
     setToEdit(income)
     // One form on the page at a time. A blank "record" panel stacked above a
     // populated "edit" panel offers two submits for two different acts.
@@ -159,6 +164,7 @@ export const IncomePage = () => {
     setOpenId(null)
   }, [])
   const requestRecord = useCallback(() => {
+    editorReturnFocus.current = document.activeElement as HTMLElement
     setToEdit(null)
     setShowForm(true)
   }, [])
@@ -238,28 +244,25 @@ export const IncomePage = () => {
           />
           <p className="text-muted text-[11px] font-semibold">{scopeLine}</p>
           <span className="flex-1" />
-          {/* Gone while the form is open. A "+ Record income" button whose
-              only effect is to close the record-income form is a lie, and it
-              also put a third control named "Catat" on the page — the form's
-              own submit is the way to record once the form is there. */}
-          {!isRecording && (
-            <div className="fixed right-4 bottom-20 left-4 z-30 flex gap-2 lg:static lg:items-center">
-              <button
-                type="button"
-                onClick={requestRecord}
-                aria-label={m.action_record_income()}
-                className="bg-accent text-accent-ink flex h-12 flex-1 items-center justify-center rounded-xl px-3 text-[12px] font-semibold shadow-lg lg:h-auto lg:flex-none lg:rounded-lg lg:px-4 lg:py-2 lg:shadow-none"
-              >
-                <span className="lg:hidden">+ {m.nav_income()}</span>
-                <span className="hidden lg:inline">
-                  + {m.action_record_income()}
-                </span>
-              </button>
-            </div>
-          )}
+          {/* Keep the trigger mounted so closing the editor can restore focus. */}
+          <div className="fixed right-4 bottom-20 left-4 z-30 flex gap-2 lg:static lg:items-center">
+            <button
+              type="button"
+              onClick={requestRecord}
+              disabled={isRecording}
+              aria-label={m.action_record_income()}
+              className="bg-accent text-accent-ink flex h-12 flex-1 items-center justify-center rounded-xl px-3 text-[12px] font-semibold shadow-lg lg:h-auto lg:flex-none lg:rounded-lg lg:px-4 lg:py-2 lg:shadow-none"
+            >
+              <span className="lg:hidden">+ {m.nav_income()}</span>
+              <span className="hidden lg:inline">
+                + {m.action_record_income()}
+              </span>
+            </button>
+          </div>
         </div>
 
         <LedgerEditor
+          returnFocusRef={editorReturnFocus}
           open={isRecording}
           title={
             toEdit

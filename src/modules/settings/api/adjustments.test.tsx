@@ -21,10 +21,9 @@ const setup = () => {
 describe('useReconcileAccount', () => {
   it('posts the target balance and returns authoritative balances', async () => {
     const { wrapper } = setup()
-    const { result } = renderHook(
-      () => useReconcileAccount('household-001'),
-      { wrapper },
-    )
+    const { result } = renderHook(() => useReconcileAccount('household-001'), {
+      wrapper,
+    })
 
     let reconciled: Awaited<ReturnType<typeof result.current.mutateAsync>>
     await act(async () => {
@@ -72,10 +71,9 @@ describe('useReconcileAccount', () => {
       ),
     )
     const { wrapper } = setup()
-    const { result } = renderHook(
-      () => useReconcileAccount('household-001'),
-      { wrapper },
-    )
+    const { result } = renderHook(() => useReconcileAccount('household-001'), {
+      wrapper,
+    })
 
     await act(async () => {
       await result.current.mutateAsync({
@@ -98,16 +96,18 @@ describe('useReconcileAccount', () => {
       ),
     )
     const { client, wrapper } = setup()
-    const adjustmentKey = [...entityKey('household-001', 'adjustments'), 'source-tunai']
+    const adjustmentKey = [
+      ...entityKey('household-001', 'adjustments'),
+      'source-tunai',
+    ]
     const positionKey = entityKey('household-001', 'positions')
     const adjustments = [{ id: 'existing-adjustment' }]
     const positions = { total: 4500000 }
     client.setQueryData(adjustmentKey, adjustments)
     client.setQueryData(positionKey, positions)
-    const { result } = renderHook(
-      () => useReconcileAccount('household-001'),
-      { wrapper },
-    )
+    const { result } = renderHook(() => useReconcileAccount('household-001'), {
+      wrapper,
+    })
 
     await expect(
       result.current.mutateAsync({
@@ -120,4 +120,26 @@ describe('useReconcileAccount', () => {
     expect(client.getQueryData(adjustmentKey)).toBe(adjustments)
     expect(client.getQueryData(positionKey)).toBe(positions)
   })
+})
+
+it('refreshes server baseline eligibility after the first correction', async () => {
+  const { QueryClientProvider } = await import('@tanstack/react-query')
+  const { renderHook } = await import('@testing-library/react')
+  const { createTestQueryClient } = await import('@/test/test-utils')
+  const { accountKeys } = await import('./accounts')
+  const { useReconcileAccount } = await import('./adjustments')
+  const client = createTestQueryClient()
+  const key = accountKeys.all('household-001')
+  client.setQueryData(key, [])
+  const { result } = renderHook(() => useReconcileAccount('household-001'), {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  })
+  await result.current.mutateAsync({
+    sourceId: 'source-tunai',
+    targetBalance: 100,
+    reason: 'Counted cash',
+  })
+  expect(client.getQueryState(key)?.isInvalidated).toBe(true)
 })

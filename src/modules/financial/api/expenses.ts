@@ -174,6 +174,7 @@ const withRow = (
   const sum = Number(sumText)
   return {
     ...page,
+    summary: undefined,
     items: [expense, ...page.items],
     pagination: { ...page.pagination, total: page.pagination.total + 1 },
     totals: page.totals
@@ -202,6 +203,7 @@ const withoutRow = (
   const sum = Math.max(0, Number(sumText))
   return {
     ...page,
+    summary: undefined,
     items: page.items.filter((item) => item.id !== id),
     pagination: {
       ...page.pagination,

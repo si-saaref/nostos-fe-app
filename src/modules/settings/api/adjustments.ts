@@ -34,7 +34,9 @@ export interface ReconcileResult {
 const key = (householdId: string, sourceId: string) =>
   [...entityKey(householdId, 'adjustments'), sourceId] as const
 
-export const toAdjustment = (row: WireBalanceAdjustment): BalanceAdjustment => ({
+export const toAdjustment = (
+  row: WireBalanceAdjustment,
+): BalanceAdjustment => ({
   id: row.id,
   householdId: row.household_id,
   sourceId: row.source_id,
@@ -80,6 +82,9 @@ export const useCreateAdjustment = (householdId: string) => {
       ),
     onSuccess: (row) => {
       queryClient.invalidateQueries({
+        queryKey: entityKey(householdId, 'accounts'),
+      })
+      queryClient.invalidateQueries({
         queryKey: key(householdId, row.sourceId),
       })
       queryClient.invalidateQueries({
@@ -92,7 +97,9 @@ export const useCreateAdjustment = (householdId: string) => {
 export const useReconcileAccount = (householdId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: ReconcileAccountInput): Promise<ReconcileResult> => {
+    mutationFn: async (
+      input: ReconcileAccountInput,
+    ): Promise<ReconcileResult> => {
       const row = unwrap(
         await apiClient.post<ApiEnvelope<WireReconcileResult>>(
           `/payment-sources/${input.sourceId}/reconcile`,
@@ -109,6 +116,9 @@ export const useReconcileAccount = (householdId: string) => {
       }
     },
     onSuccess: (row) => {
+      queryClient.invalidateQueries({
+        queryKey: entityKey(householdId, 'accounts'),
+      })
       queryClient.invalidateQueries({
         queryKey: key(householdId, row.adjustment.sourceId),
       })

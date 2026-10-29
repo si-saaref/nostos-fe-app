@@ -113,3 +113,64 @@ it.each(['expense', 'income'])(
     })
   },
 )
+
+it.each(['expense', 'income'])(
+  '%s does not retain outdated server summaries after a confirmed write',
+  async (kind) => {
+    const client = createTestQueryClient()
+    const hid = 'household-001'
+    const key =
+      kind === 'expense' ? expenseKeys.list(hid) : incomeKeys.list(hid)
+    client.setQueryData(key, {
+      items: [],
+      pagination: { page: 1, limit: 400, total: 0, totalPages: 1 },
+      totals: { sum: 0, count: 0, average: 0 },
+      summary: {
+        current: { sum: 0, count: 0, average: 0 },
+        comparison: { percentage: '0.0', direction: 'flat' },
+        daily: [
+          {
+            date: '2026-10-01',
+            sum: 0,
+            sumText: '0.00',
+            count: 0,
+            cumulative: 0,
+            cumulativeText: '0.00',
+          },
+        ],
+      },
+    })
+    const { result } = renderHook(
+      () => ({ expense: useCreateExpense(hid), income: useCreateIncome(hid) }),
+      {
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        ),
+      },
+    )
+    await act(async () => {
+      if (kind === 'expense')
+        await result.current.expense.mutateAsync({
+          name: 'Lunch',
+          value: 10,
+          typeId: 'type-makan',
+          sourceId: 'source-tunai',
+          paidByUserId: 'user-001',
+          datePaid: '2026-10-01',
+        })
+      else
+        await result.current.income.mutateAsync({
+          name: 'Gift',
+          amount: 10,
+          kind: 'EXTERNAL_INCOME',
+          typeId: 'itype-0',
+          fromSourceId: null,
+          toSourceId: 'source-tunai',
+          date: '2026-10-01',
+        })
+    })
+    expect(
+      client.getQueryData<{ summary?: unknown }>(key)?.summary,
+    ).toBeUndefined()
+  },
+)

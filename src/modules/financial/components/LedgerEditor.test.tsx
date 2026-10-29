@@ -43,3 +43,30 @@ it('keeps an edited long form on Escape and restores focus after explicit cancel
   )
   expect(screen.getByRole('button', { name: 'Record' })).toHaveFocus()
 })
+
+it('bounds the editor to the visual viewport as the phone keyboard changes it', async () => {
+  const original = window.visualViewport
+  const viewport = Object.assign(new EventTarget(), {
+    height: 600,
+    offsetTop: 0,
+  })
+  Object.defineProperty(window, 'visualViewport', {
+    configurable: true,
+    value: viewport,
+  })
+  try {
+    renderWithProviders(<Capture />)
+    await userEvent.click(screen.getByRole('button', { name: 'Record' }))
+    const { act } = await import('@testing-library/react')
+    viewport.height = 300
+    act(() => {
+      viewport.dispatchEvent(new Event('resize'))
+    })
+    expect(screen.getByRole('dialog').style.maxHeight).toContain('300px')
+  } finally {
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: original,
+    })
+  }
+})

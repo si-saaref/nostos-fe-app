@@ -199,6 +199,9 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
         )}
 
         {accounts?.map((account) => {
+          const position = positions.data?.items.find(
+            (row) => row.sourceId === account.id,
+          )
           const isOpen = openId === account.id
           const isArchived = Boolean(account.archivedAt)
           return (
@@ -206,16 +209,21 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
               key={account.id}
               title={account.name}
               primaryValue={
-                positions.isSuccess &&
-                positions.data?.items.some((row) => row.sourceId === account.id)
-                  ? formatCurrency(
-                      positions.data.items.find(
-                        (row) => row.sourceId === account.id,
-                      )!.balanceText!,
-                      currency,
-                      locale,
-                    )
-                  : '—'
+                <span className="block text-right">
+                  <span className="text-muted block text-[10px] font-medium">
+                    {m.acc_current_balance()} ·{' '}
+                    {positions.data?.summary?.asOf ?? '—'}
+                  </span>
+                  <span>
+                    {positions.isSuccess && position
+                      ? formatCurrency(
+                          position.balanceText ?? position.balance,
+                          currency,
+                          locale,
+                        )
+                      : '—'}
+                  </span>
+                </span>
               }
               meta={
                 <span className="flex flex-wrap items-baseline gap-x-1.5">
