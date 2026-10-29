@@ -44,6 +44,11 @@ const toDomainKind = (kind: string): AccountKind =>
   KIND_FROM_WIRE[kind] ?? (kind as AccountKind)
 
 export const toAccount = (row: WireAccount): Account => ({
+  ...(row.baseline_status && {
+    baselineStatus: row.baseline_status,
+    baselineCanSet: row.baseline_can_set === true,
+    baselineConfirmedAt: row.baseline_confirmed_at ?? null,
+  }),
   calculationStartCanSet: row.calculation_start_can_set === true,
   calculationStartSetAt: row.calculation_start_set_at ?? null,
   id: row.id,
@@ -60,12 +65,14 @@ export const toAccount = (row: WireAccount): Account => ({
 
 /** Only what the caller passed — see `toCategoryBody` for why. */
 type UpdateAccountInput = Partial<
-  Pick<Account, 'name' | 'order' | 'archivedAt' | 'asOf'>
+  Pick<Account, 'name' | 'order' | 'archivedAt' | 'asOf' | 'openingBalance'>
 >
 
 const toAccountBody = (patch: UpdateAccountInput) => {
   const body: Record<string, unknown> = {}
   if (patch.asOf !== undefined) body.as_of = patch.asOf
+  if (patch.openingBalance !== undefined)
+    body.opening_balance = toWireMoney(patch.openingBalance)
   if (patch.name !== undefined) body.name = patch.name
   if (patch.order !== undefined) body.order = patch.order
   if (patch.archivedAt !== undefined) body.archived_at = patch.archivedAt
@@ -98,7 +105,7 @@ export const useActiveAccounts = (householdId: string) =>
 
 export const useCreateAccount = (householdId: string) =>
   useInvalidatingMutation(
-    [accountKeys.all(householdId)],
+    [accountKeys.all(householdId), positionKeys.all(householdId)],
     async (input: AccountInput) =>
       toAccount(
         unwrap(

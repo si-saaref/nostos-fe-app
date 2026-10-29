@@ -55,6 +55,9 @@ export type AccountKind = 'cash' | 'bank' | 'ewallet'
  * a real balance derivable: opening + income − expense, per account.
  */
 export interface Account {
+  baselineStatus?: 'UNVERIFIED' | 'VERIFIED'
+  baselineCanSet?: boolean
+  baselineConfirmedAt?: string | null
   calculationStartCanSet?: boolean
   calculationStartSetAt?: string | null
   id: string
@@ -108,6 +111,9 @@ export interface WireCategory {
 }
 
 export interface WireAccount {
+  baseline_status?: 'UNVERIFIED' | 'VERIFIED'
+  baseline_can_set?: boolean
+  baseline_confirmed_at?: string | null
   calculation_start_can_set?: boolean
   calculation_start_set_at?: string | null
   id: string

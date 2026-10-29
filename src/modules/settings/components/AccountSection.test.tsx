@@ -93,15 +93,16 @@ it('offers one-time start assignment only from BE eligibility and explains the b
   const row = (await screen.findByText(db.accounts[0].name)).closest('article')!
   await userEvent.click(within(row).getByRole('button'))
   expect(
-    within(row).getByRole('button', { name: /tetapkan tanggal/i }),
+    within(row).getByRole('button', { name: /tetapkan saldo awal/i }),
   ).toBeInTheDocument()
+  await userEvent.type(within(row).getByLabelText(/^saldo awal$/i), '0')
   await userEvent.click(
-    within(row).getByRole('button', { name: /tetapkan tanggal/i }),
+    within(row).getByRole('button', { name: /tetapkan saldo awal/i }),
   )
-  expect(screen.getByRole('dialog')).toHaveTextContent(/satu kali/i)
+  expect(screen.getByRole('dialog')).toHaveTextContent(/sekali/i)
   await userEvent.click(
     within(screen.getByRole('dialog')).getByRole('button', {
-      name: /tetapkan tanggal/i,
+      name: /tetapkan saldo awal/i,
     }),
   )
   await waitFor(() => expect(db.accounts[0].calculationStartCanSet).toBe(false))

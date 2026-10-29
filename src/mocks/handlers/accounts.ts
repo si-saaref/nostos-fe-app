@@ -50,6 +50,11 @@ const KIND_FROM_WIRE: Record<string, AccountKind | undefined> = {
 }
 
 const toWire = (account: Account): WireAccount => ({
+  ...(account.baselineStatus && {
+    baseline_status: account.baselineStatus,
+    baseline_can_set: account.baselineCanSet,
+    baseline_confirmed_at: account.baselineConfirmedAt,
+  }),
   id: account.id,
   name: account.name,
   kind: KIND_TO_WIRE[account.kind],
@@ -203,6 +208,15 @@ export const accountHandlers = [
       return conflict(body.name)
     }
     if (body.as_of !== undefined) {
+      if (
+        body.opening_balance === undefined ||
+        !isCanonicalWireInputMoney(body.opening_balance, true)
+      )
+        return errorBody(
+          400,
+          'VALIDATION_ERROR',
+          'Set the starting date and balance together',
+        )
       if (!db.accounts[index].calculationStartCanSet)
         return errorBody(
           409,
@@ -225,6 +239,9 @@ export const accountHandlers = [
         asOf: body.as_of,
         calculationStartCanSet: false,
         calculationStartSetAt: new Date().toISOString(),
+        baselineStatus: 'VERIFIED' as const,
+        baselineCanSet: false,
+        baselineConfirmedAt: new Date().toISOString(),
       }),
       ...(body.archived_at !== undefined && { archivedAt: body.archived_at }),
     }

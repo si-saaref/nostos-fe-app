@@ -226,23 +226,29 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                 </span>
               }
               meta={
-                <span className="flex flex-wrap items-baseline gap-x-1.5">
-                  <span>{kindLabel(account.kind)}</span>
-                  <span aria-hidden="true">·</span>
-                  <span className="text-ink tnum text-[12.5px] font-medium">
-                    {m.acc_opening()}:{' '}
-                    {formatCurrency(account.openingBalance, currency, locale)}
-                  </span>
-                  <span aria-hidden="true">·</span>
+                account.baselineStatus === 'UNVERIFIED' ? (
                   <span>
-                    {m.acc_as_of()}{' '}
-                    {new Intl.DateTimeFormat(locale, {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    }).format(fromIsoDay(account.asOf))}
+                    {kindLabel(account.kind)} · {m.acc_baseline_pending()}
                   </span>
-                </span>
+                ) : (
+                  <span className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span>{kindLabel(account.kind)}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="text-ink tnum text-[12.5px] font-medium">
+                      {m.acc_opening()}:{' '}
+                      {formatCurrency(account.openingBalance, currency, locale)}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {m.acc_as_of()}{' '}
+                      {new Intl.DateTimeFormat(locale, {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }).format(fromIsoDay(account.asOf))}
+                    </span>
+                  </span>
+                )
               }
               rim={rimFor(account.order)}
               muted={isArchived}
@@ -312,11 +318,13 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                   {m.settings_admin_only()}
                 </p>
               )}
-              <BalanceAdjustmentPanel
-                householdId={householdId}
-                account={account}
-                canManage={canManage}
-              />
+              {account.baselineStatus !== 'UNVERIFIED' && (
+                <BalanceAdjustmentPanel
+                  householdId={householdId}
+                  account={account}
+                  canManage={canManage}
+                />
+              )}
             </SettingPlate>
           )
         })}

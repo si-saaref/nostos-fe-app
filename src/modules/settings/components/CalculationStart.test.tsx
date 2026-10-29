@@ -17,8 +17,10 @@ it('uses server lock even when an account has a zero balance and no loaded histo
       }}
     />,
   )
-  expect(screen.queryByRole('button', { name: /tetapkan tanggal/i })).toBeNull()
-  expect(screen.getByText(/terkunci/i)).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: /tetapkan saldo awal/i }),
+  ).toBeNull()
+  expect(screen.getByText(/saldo awal sudah/i)).toBeInTheDocument()
 })
 
 it('preserves the chosen date and server lock error when a concurrent correction wins', async () => {
@@ -46,12 +48,13 @@ it('preserves the chosen date and server lock error when a concurrent correction
   await userEvent.click(date)
   await userEvent.click(screen.getByRole('button', { name: /^kemarin$/i }))
   const chosen = date.textContent
-  const assign = screen.getByRole('button', { name: /tetapkan tanggal/i })
+  await userEvent.type(screen.getByLabelText(/^saldo awal$/i), '0')
+  const assign = screen.getByRole('button', { name: /tetapkan saldo awal/i })
   await waitFor(() => expect(assign).toBeEnabled())
   await userEvent.click(assign)
   await userEvent.click(
     within(screen.getByRole('dialog')).getByRole('button', {
-      name: /tetapkan tanggal/i,
+      name: /tetapkan saldo awal/i,
     }),
   )
   expect(await screen.findByRole('alert')).toHaveTextContent(
