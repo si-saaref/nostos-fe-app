@@ -7,7 +7,7 @@ export interface StripFigure {
   value: string
   note?: string | null
   /** `delta` tints the note as a movement worth noticing rather than context. */
-  tone?: 'muted' | 'delta'
+  tone?: 'muted' | 'delta' | 'favorable' | 'unfavorable'
   sub?: string
   /** A name rather than a figure: sized down so a long one survives. */
   isText?: boolean
@@ -123,14 +123,18 @@ export const StripShell = ({ label, children, figures }: Props) => {
                 figure.isNil || figure.isLoading
                   ? 'text-on-strip-muted'
                   : 'text-on-strip'
-              } ${figure.isText ? 'sm:text-[19px]' : ''}`}
+              } ${figure.isText ? 'sm:text-[19px]' : ''} ${figure.tone === 'favorable' ? 'text-strip-favorable' : figure.tone === 'unfavorable' ? 'text-strip-unfavorable' : ''}`}
             >
               {figure.isLoading ? '—' : figure.value}
             </dd>
             {!figure.isLoading && figure.note && (
               <p
                 className={`mt-1 text-[10.5px] font-semibold break-words ${
-                  figure.tone === 'delta' ? 'text-delta' : 'text-on-strip-muted'
+                  figure.tone === 'favorable'
+                    ? 'text-strip-favorable'
+                    : figure.tone === 'unfavorable' || figure.tone === 'delta'
+                      ? 'text-strip-unfavorable'
+                      : 'text-on-strip-muted'
                 }`}
               >
                 {figure.note}

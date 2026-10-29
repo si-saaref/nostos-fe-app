@@ -1,7 +1,7 @@
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
-import { useIncome } from '@/modules/financial/api/income'
+import { useBalanceFigure } from '@/modules/financial/hooks/useBalanceFigure'
 import { MonthStepper } from '@/modules/financial/components/MonthStepper'
 import { StripShell } from '@/modules/financial/components/StripShell'
 import { formatCurrency } from '@/utils/formatters'
@@ -68,56 +68,23 @@ export const InflowStrip = ({
   totals,
   summary,
   listLoaded,
-  opening,
-  openingText,
-  hasOpening,
   figures,
 }: Props) => {
   const m = useMessages()
   const { locale } = useSettings()
   const currency = useCurrency()
 
-  // A whole second request for one number, and only because the list route
-  // could not answer "and what did last month close at?". It stands down the
-  // moment a summary carries it.
-  const askPrevious = listLoaded && summary?.previous === undefined
-  const previousQuery = useIncome(
-    householdId,
-    {
-      dateFrom: previousMonth.from,
-      dateTo: previousMonth.to,
-      page: 1,
-      limit: 1,
-    },
-    { enabled: askPrevious },
-  )
-  const previousTotals = summary?.previous ?? previousQuery.data?.totals
-
-  // One flag for the four cells — they come from one response. The opening
-  // figure is the exception: it is the position endpoint's, and it has its own
-  // settled "unknown" already.
+  const balance = useBalanceFigure(householdId)
   const isLoading = !listLoaded
   const sum = totals?.sum ?? 0
-  const previousSum = previousTotals?.sum ?? 0
-  const thisMonthLabel = monthLabel(month, locale)
+  const previousTotals = summary?.previous
   const previousLabel = monthLabel(fromIsoDay(previousMonth.from), locale)
   const money = (value: number | string) =>
     formatCurrency(value, currency, locale)
-
-  /**
-   * The fresh-month rule.
-   *
-   * A month-over-month delta on the first of the month is arithmetically true
-   * and practically a lie: every new month opens at −100%. So the comparison
-   * only claims a percentage once there is something in this month to compare,
-   * and otherwise states the figure the previous month actually closed at —
-   * which is the useful fact on 1 October anyway.
-   */
-  const hasComparison = sum > 0 && previousSum > 0
-  const deltaPct = hasComparison
-    ? Math.round(((sum - previousSum) / previousSum) * 1000) / 10
-    : null
-
+  const deltaPct =
+    summary?.comparison?.percentage == null
+      ? null
+      : Number(summary.comparison.percentage)
   const countNote = (
     n: number | null,
     one: string,
@@ -125,20 +92,12 @@ export const InflowStrip = ({
   ) => (n === null ? m.inc_in_note_unknown() : n === 1 ? one : many({ n }))
 
   const stripFigures: StripFigure[] = [
-    {
-      id: 'opening',
-      key: m.inc_opened_at({ month: thisMonthLabel }),
-      // A dash rather than Rp 0: the position endpoint not having answered is
-      // not the same claim as a household that opened the month with nothing.
-      value: hasOpening ? money(openingText ?? opening ?? 0) : m.inc_unknown(),
-      note: m.inc_carried_from({ month: previousLabel }),
-      isNil: !hasOpening,
-    },
+    balance,
     {
       id: 'in',
       isLoading,
       key: m.inc_in(),
-      value: money(totals?.sumText ?? sum),
+      value: totals ? money(totals.sumText ?? sum) : '—',
       note: countNote(
         figures.externalCount,
         m.inc_in_note_one(),
@@ -159,34 +118,41 @@ export const InflowStrip = ({
         m.inc_moved_note_one(),
         m.inc_moved_note,
       ),
+      sub:
+        summary?.current.cash_withdrawn === undefined
+          ? m.cash_withdrawal_unavailable()
+          : m.cash_withdrawal({
+              amount: money(
+                summary.current.cashWithdrawnText ??
+                  summary.current.cash_withdrawn,
+              ),
+            }),
       isNil: figures.moved === null || figures.moved === 0,
     },
     {
       id: 'previous',
       isLoading,
       key: m.inc_vs({ month: previousLabel }),
-      // A zero change has no direction, and `▼ 0%` claimed one — the arrow
-      // only appears when the figure actually moved.
       value:
         deltaPct === null
           ? m.inc_unknown()
-          : deltaPct === 0
-            ? m.inc_vs_flat()
-            : `${deltaPct > 0 ? '▲' : '▼'} ${Math.abs(deltaPct).toLocaleString(locale)}%`,
+          : `${deltaPct > 0 ? '▲ +' : deltaPct < 0 ? '▼ −' : ''}${Math.abs(deltaPct).toLocaleString(locale)}%`,
       note:
-        !previousTotals && previousQuery.isLoading
-          ? undefined
-          : hasComparison
-            ? m.inc_vs_note({
-                month: previousLabel,
-                amount: money(previousTotals?.sumText ?? previousSum),
-              })
-            : m.inc_vs_closed({
-                month: previousLabel,
-                amount: money(previousTotals?.sumText ?? previousSum),
-              }),
-      tone: deltaPct !== null && deltaPct > 0 ? 'delta' : 'muted',
-      isNil: deltaPct === null || deltaPct === 0,
+        deltaPct === null
+          ? m.comparison_unavailable()
+          : m.inc_vs_note({
+              month: previousLabel,
+              amount: money(
+                previousTotals?.sumText ?? previousTotals?.sum ?? 0,
+              ),
+            }),
+      tone:
+        deltaPct === null || deltaPct === 0
+          ? 'muted'
+          : deltaPct > 0
+            ? 'favorable'
+            : 'unfavorable',
+      isNil: deltaPct === null,
     },
   ]
 

@@ -1,3 +1,4 @@
+import { comparisonFor } from '@/mocks/summary'
 import { http } from 'msw'
 import {
   averageMoneyText,
@@ -109,6 +110,14 @@ const metaFor = (
   previous: StoredExpense[] | null,
 ): WireMeta => {
   const current = totalsFor(items)
+  let cumulative = '0.00'
+  const dates = [...new Set(items.map((row) => row.datePaid))].sort()
+  const daily = dates.map((date) => {
+    const rows = items.filter((row) => row.datePaid === date)
+    const sum = sumMoneyText(rows.map((row) => row.value))
+    cumulative = sumMoneyText([cumulative, sum])
+    return { date, sum, count: rows.length, cumulative }
+  })
   return {
     pagination: {
       page,
@@ -119,6 +128,11 @@ const metaFor = (
     totals: current,
     summary: {
       current,
+      daily,
+      comparison: comparisonFor(
+        current.sum,
+        previous ? totalsFor(previous).sum : undefined,
+      ),
       ...(previous ? { previous: totalsFor(previous) } : {}),
       // Always present, `[]` included: "nothing matched" is an answer.
       breakdown: {

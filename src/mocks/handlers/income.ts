@@ -1,3 +1,4 @@
+import { comparisonFor } from '@/mocks/summary'
 import { http } from 'msw'
 import {
   averageMoneyText,
@@ -62,6 +63,20 @@ const totalsFor = (items: StoredIncome[]) => {
     count: items.length,
     average: averageMoneyText(sum, items.length - transfers.length),
     moved: outOf,
+    cash_withdrawn: sumMoneyText(
+      transfers
+        .filter(
+          (row) =>
+            row.kind === 'TRANSFER' &&
+            db.accounts.find((a) => a.id === row.toSourceId)?.kind === 'cash',
+        )
+        .map((row) => row.amount),
+    ),
+    cash_withdrawal_count: transfers.filter(
+      (row) =>
+        row.kind === 'TRANSFER' &&
+        db.accounts.find((a) => a.id === row.toSourceId)?.kind === 'cash',
+    ).length,
     external_count: items.length - transfers.length,
     transfer_count: transfers.length,
   }
@@ -86,6 +101,10 @@ const metaFor = (
     // so a by-member ranking here would answer a question nobody asked.
     summary: {
       current,
+      comparison: comparisonFor(
+        current.sum,
+        previous ? totalsFor(previous).sum : undefined,
+      ),
       ...(previous ? { previous: totalsFor(previous) } : {}),
     },
   }
@@ -144,7 +163,11 @@ const badRef = (
   body: Partial<WireIncome>,
   current?: StoredIncome,
 ): ReturnType<typeof errorBody> | null => {
-  if (body.type_id !== undefined && body.type_id !== null && !liveType(body.type_id)) {
+  if (
+    body.type_id !== undefined &&
+    body.type_id !== null &&
+    !liveType(body.type_id)
+  ) {
     return errorBody(422, 'INVALID_TYPE', 'Jenis pemasukan tidak tersedia')
   }
   if (body.to_source_id !== undefined && !liveSource(body.to_source_id)) {

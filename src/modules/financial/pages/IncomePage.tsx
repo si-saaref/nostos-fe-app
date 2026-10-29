@@ -1,12 +1,11 @@
 import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
-import { HouseholdBalance } from '@/modules/financial/components/HouseholdBalance'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LedgerEditor } from '@/modules/financial/components/LedgerEditor'
 import { useHousehold } from '@/contexts/useHousehold'
 import { useSettings } from '@/contexts/useSettings'
 import { useMessages } from '@/i18n/useMessages'
 import { useDeleteIncome, useIncome } from '@/modules/financial/api/income'
-import { usePositions } from '@/modules/financial/api/positions'
+import { useCurrentPositions } from '@/modules/financial/api/positions'
 import { IncomeFilter } from '@/modules/financial/components/IncomeFilter'
 import { IncomeForm } from '@/modules/financial/components/IncomeForm'
 import { IncomeStatement } from '@/modules/financial/components/IncomeStatement'
@@ -21,7 +20,6 @@ import { useIncomeTypes } from '@/modules/settings/api/incomeCategories'
 import { useRoster } from '@/modules/settings/api/members'
 import { rimFor } from '@/theme/rims'
 import type { Income } from '@/types/income'
-import { monthRange } from '@/utils/dates'
 import { getErrorMessage } from '@/utils/errors'
 import { sumMoney, sumMoneyText } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
@@ -58,13 +56,7 @@ export const IncomePage = () => {
     refetch,
   } = useIncomeFilters(householdId)
 
-  const positions = usePositions(householdId, {
-    asOf,
-    // `useIncomeFilters` always resolves a month, so the fallback is
-    // unreachable — but the route rejects a missing `from` outright, so it
-    // must not depend on that being true.
-    from: filters.dateFrom ?? monthRange(month).from,
-  })
+  const positions = useCurrentPositions(householdId)
   // Every source, not only the live ones: an archived source can still hold
   // money, and the position card has to be able to name what it renders.
   const { data: accounts } = useAccounts(householdId)
@@ -210,7 +202,6 @@ export const IncomePage = () => {
           co-equal, and a position you have to scroll back up to find is not.
           It is also what the sticky day shelves stick beneath. */}
       <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
-        <HouseholdBalance />
         <InflowStrip
           householdId={householdId}
           month={month}
@@ -231,7 +222,7 @@ export const IncomePage = () => {
           groups={positionGroups}
           total={positions.data?.totals.balance ?? 0}
           totalText={positions.data?.totals.balanceText}
-          asOf={asOf}
+          asOf={positions.data?.summary?.asOf ?? asOf}
           isLoading={positions.isLoading}
           isUnavailable={positions.isError}
         />

@@ -42,7 +42,26 @@ export interface ApiMeta {
  *
  * Requested in `notes/FE-App/API-CHANGES-2026-09-10.md` §2.
  */
+export interface Comparison {
+  percentage: string | null
+  direction: 'up' | 'down' | 'flat' | 'unavailable'
+}
+export interface DailySummary {
+  date: string
+  sum: number
+  sumText: string
+  count: number
+  cumulative: number
+  cumulativeText: string
+}
 export interface WireSummary {
+  comparison?: Comparison
+  daily?: Array<{
+    date: string
+    sum: string
+    count: number
+    cumulative: string
+  }>
   current: WireTotals
   /** The same filters over the preceding period of equal length. */
   previous?: WireTotals
@@ -79,6 +98,8 @@ export interface WirePagination {
  * money that the server never made.
  */
 export interface WireTotals {
+  cash_withdrawn?: string
+  cash_withdrawal_count?: number
   sum: string
   count: number
   average: string
@@ -147,6 +168,8 @@ export interface Paginated<T> {
 
 /** Domain mirror of `WireSummary`. See it for what each block is for. */
 export interface Summary {
+  comparison?: Comparison
+  daily?: DailySummary[]
   current: Totals
   previous?: Totals
   breakdown?: {
@@ -169,6 +192,9 @@ export interface SummarySlice {
  * they cannot be recomputed client-side from `items`.
  */
 export interface Totals {
+  cash_withdrawn?: number
+  cashWithdrawnText?: string
+  cash_withdrawal_count?: number
   sum: number
   /** Exact server decimal text for display; arithmetic uses cent helpers. */
   sumText?: string

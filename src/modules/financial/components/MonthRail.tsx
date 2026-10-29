@@ -15,7 +15,7 @@ interface Props {
   activeDate?: string
   onJump: (date: string) => void
   /** Cumulative spend through the day currently in view. */
-  cumulative: number
+  cumulative?: number
   cumulativeText?: string
   monthTotal: number
   variant?: 'rail' | 'index'
@@ -72,7 +72,12 @@ export const MonthRail = ({
   }, [rangeFrom, rangeTo, days])
 
   const peak = days.reduce((max, day) => Math.max(max, day.total), 0) || 1
-  const pct = monthTotal > 0 ? Math.round((cumulative / monthTotal) * 100) : 0
+  const pct =
+    cumulative === undefined
+      ? undefined
+      : monthTotal > 0
+        ? Math.round((cumulative / monthTotal) * 100)
+        : 0
 
   // Nothing to profile and nowhere to jump: an empty month drew thirty-one
   // blank ticks over a "through —", which is a control that cannot be used
@@ -209,7 +214,9 @@ export const MonthRail = ({
           })}
         </p>
         <p className="font-display tnum mt-1 text-[13.5px] leading-none font-bold">
-          {formatCurrency(cumulativeText ?? cumulative, currency, locale)}
+          {cumulative === undefined
+            ? m.rail_unavailable()
+            : formatCurrency(cumulativeText ?? cumulative, currency, locale)}
         </p>
         <div className="mt-2 flex items-center gap-1.5">
           <span
@@ -218,10 +225,12 @@ export const MonthRail = ({
           >
             <span
               className="bg-accent block h-full rounded-full"
-              style={{ width: `${pct}%` }}
+              style={{ width: `${pct ?? 0}%` }}
             />
           </span>
-          <span className="text-muted tnum text-[8px] font-bold">{pct}%</span>
+          <span className="text-muted tnum text-[8px] font-bold">
+            {pct === undefined ? '—' : `${pct}%`}
+          </span>
         </div>
       </div>
     </nav>

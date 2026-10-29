@@ -142,6 +142,8 @@
   --color-on-strip-muted: var(--on-strip-muted);
   --color-strip-key: var(--strip-key);
   --color-delta: var(--delta);
+  --color-strip-favorable: #a3e6c5;
+  --color-strip-unfavorable: var(--delta);
   --color-rim-1: var(--rim-1);
   --color-rim-2: var(--rim-2);
   --color-rim-3: var(--rim-3);

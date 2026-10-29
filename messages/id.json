@@ -427,5 +427,14 @@
   "acc_start_help": "Catatan sebelumnya tetap terlihat di buku kas. Hanya catatan pada atau setelah tanggal mulai akun ini yang dihitung dalam saldo saat ini. Tanggal dapat ditetapkan satu kali sebelum koreksi saldo pertama.",
   "acc_start_locked": "Tanggal mulai terkunci atau belum tersedia.",
   "acc_start_confirm": "Mulai hitung dari {date}? Ini hanya dapat ditetapkan satu kali. Catatan sebelumnya tetap terlihat tetapi tidak dihitung dalam saldo akun ini.",
-  "acc_adjust_help_title": "Tentang penyesuaian saldo"
+  "acc_adjust_help_title": "Tentang penyesuaian saldo",
+  "balance_remaining": "Sisa saldo total",
+  "balance_today": "Hari ini · {date}, semua akun",
+  "balance_unavailable": "Saldo tidak tersedia",
+  "count_transactions": "Transaksi",
+  "count_expenses": "{n} pengeluaran dalam periode ini",
+  "comparison_unavailable": "Tidak ada total sebelumnya untuk dibandingkan",
+  "cash_withdrawal": "Tarik tunai: {amount}",
+  "cash_withdrawal_unavailable": "Subtotal tarik tunai belum tersedia",
+  "rail_unavailable": "Total belum tersedia"
 }

@@ -1,5 +1,6 @@
+import { usePhone } from '@/hooks/usePhone'
+import { railCumulative, pageForDay } from '@/modules/financial/lib/railFigures'
 import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
-import { HouseholdBalance } from '@/modules/financial/components/HouseholdBalance'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LedgerEditor } from '@/modules/financial/components/LedgerEditor'
 import { useHousehold } from '@/contexts/useHousehold'
@@ -84,6 +85,9 @@ export const ExpensesPage = () => {
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null)
   const dayNodes = useRef(new Map<string, HTMLElement>())
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pageRef = useRef<HTMLElement>(null)
+  const pendingJump = useRef<string | null>(null)
+  const phone = usePhone()
 
   const expenses = useMemo(() => data?.items ?? [], [data])
 
@@ -105,16 +109,25 @@ export const ExpensesPage = () => {
       }))
   }, [expenses])
 
-  const days = useMemo<DayTotal[]>(
-    () =>
-      groups.map((group) => ({
-        date: group.date,
-        total: group.total,
-        totalText: group.totalText,
-        count: group.expenses.length,
-      })),
-    [groups],
-  )
+  const days = useMemo<DayTotal[]>(() => {
+    if (data?.summary?.daily)
+      return [...data.summary.daily]
+        .reverse()
+        .map((day) => ({
+          date: day.date,
+          total: day.sum,
+          totalText: day.sumText,
+          count: day.count,
+        }))
+    if (expenses.length < (data?.pagination.total ?? 0)) return []
+    return groups.map((group) => ({
+      date: group.date,
+      total: group.total,
+      totalText: group.totalText,
+      count: group.expenses.length,
+    }))
+  }, [data, expenses.length, groups])
+  const visibleDays = groups.map((group) => group.date)
 
   // Derived, never stored: before any scroll the newest day is the one in view.
   //
@@ -129,31 +142,14 @@ export const ExpensesPage = () => {
   // drop the day you had scrolled to, and a cumulative total counted up to a
   // day that is no longer shown is the whole filtered sum wearing a date.
   const activeDate = atEnd
-    ? days[days.length - 1]?.date
-    : days.some((day) => day.date === scrolledDate)
+    ? visibleDays[visibleDays.length - 1]
+    : visibleDays.includes(scrolledDate ?? '')
       ? scrolledDate
-      : days[0]?.date
+      : visibleDays[0]
 
-  /** Spend from the newest day down to the day currently in view. */
-  const cumulative = useMemo(() => {
-    if (!activeDate) return data?.totals?.sum ?? 0
-    const upToActive: number[] = []
-    for (const group of groups) {
-      upToActive.push(group.total)
-      if (group.date === activeDate) break
-    }
-    return sumMoney(upToActive)
-  }, [groups, activeDate, data])
-
-  const cumulativeText = useMemo(() => {
-    if (!activeDate) return data?.totals?.sumText ?? '0.00'
-    const terms: string[] = []
-    for (const group of groups) {
-      terms.push(group.totalText ?? group.total.toFixed(2))
-      if (group.date === activeDate) break
-    }
-    return sumMoneyText(terms)
-  }, [groups, activeDate, data])
+  const cumulativeText = railCumulative(data?.summary?.daily, activeDate)
+  const cumulative =
+    cumulativeText === undefined ? undefined : Number(cumulativeText)
 
   const registerDay = useCallback(
     (date: string, element: HTMLElement | null) => {
@@ -166,7 +162,7 @@ export const ExpensesPage = () => {
   // The rail reports where you are, so it has to follow the scroll rather than
   // only respond to clicks.
   useEffect(() => {
-    const root = scrollRef.current
+    const root = phone ? pageRef.current : scrollRef.current
     const nodes = [...dayNodes.current.entries()]
 
     const readEnd = () => {
@@ -200,14 +196,33 @@ export const ExpensesPage = () => {
       root?.removeEventListener('scroll', readEnd)
       window.removeEventListener('resize', readEnd)
     }
-  }, [groups])
+  }, [groups, phone])
 
-  const jumpTo = useCallback((date: string) => {
-    setScrolledDate(date)
-    dayNodes.current
-      .get(date)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [])
+  const jumpTo = (date: string) => {
+    const node = dayNodes.current.get(date)
+    if (node) {
+      setScrolledDate(date)
+      setAtEnd(false)
+      node.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else if (data?.summary?.daily) {
+      pendingJump.current = date
+      updateFilters({
+        page: pageForDay(data.summary.daily, date, filters.limit),
+        sortBy: 'datePaid',
+        sortOrder: 'desc',
+      })
+    }
+  }
+  useEffect(() => {
+    const date = pendingJump.current
+    const node = date && dayNodes.current.get(date)
+    if (node) {
+      pendingJump.current = null
+      setScrolledDate(date!)
+      setAtEnd(false)
+      node.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [groups])
 
   // Stable identities: the tape memoises each plate, and a lookup rebuilt every
   // render would re-render all 200 of them on every disclosure toggle.
@@ -363,11 +378,13 @@ export const ExpensesPage = () => {
   }, [expenses, data, filters.typeId, nameOfType, nameOfUser])
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-y-auto lg:overflow-hidden">
+    <section
+      ref={pageRef}
+      className="flex h-full min-h-0 flex-col overflow-y-auto lg:overflow-hidden"
+    >
       {/* Pinned: the count and the filters never scroll away from the ledger
           they describe, because a total you cannot see cannot be trusted. */}
       <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
-        <HouseholdBalance />
         <CountStrip
           householdId={householdId}
           filters={filters}

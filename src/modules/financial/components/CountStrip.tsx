@@ -1,10 +1,9 @@
 import { useMessages } from '@/i18n/useMessages'
-import { useExpenses } from '@/modules/financial/api/expenses'
+import { useBalanceFigure } from '@/modules/financial/hooks/useBalanceFigure'
 import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
 import { formatCurrency } from '@/utils/formatters'
-import { roundMoneyToWholeText } from '@/utils/money'
-import { fromIsoDay, isoDay, previousMonthRange } from '@/utils/dates'
+import { fromIsoDay, previousMonthRange } from '@/utils/dates'
 import { MonthStepper } from '@/modules/financial/components/MonthStepper'
 import { StripShell } from '@/modules/financial/components/StripShell'
 import { RIM_CLASS } from '@/theme/rims'
@@ -58,7 +57,6 @@ const monthLabel = (date: Date, locale: string) =>
  */
 export const CountStrip = ({
   householdId,
-  filters,
   totals,
   summary,
   listLoaded,
@@ -75,100 +73,44 @@ export const CountStrip = ({
   const currency = useCurrency()
   const previous = previousMonthRange(month)
 
-  // A whole second request for one number. It exists only because the list
-  // route could not answer "and what was last month?", and it disappears the
-  // moment the route can: `enabled` is false as soon as a summary carries it.
-  const askPrevious = listLoaded && summary?.previous === undefined
-  const previousQuery = useExpenses(
-    householdId,
-    {
-      ...filters,
-      dateFrom: previous.from,
-      dateTo: previous.to,
-      page: 1,
-      limit: 1,
-    },
-    { enabled: askPrevious },
-  )
-  const previousTotals = summary?.previous ?? previousQuery.data?.totals
-
-  // One flag for the four cells: they come from one response, so lighting
-  // them up one at a time would be theatre.
+  const balance = useBalanceFigure(householdId)
   const isLoading = !listLoaded
   const sum = totals?.sum ?? 0
   const count = totals?.count ?? 0
-  const average = totals?.average ?? 0
-  const previousSum = previousTotals?.sum ?? 0
+  const comparison = summary?.comparison
   const deltaPct =
-    previousSum > 0
-      ? Math.round(((sum - previousSum) / previousSum) * 1000) / 10
-      : null
-
-  // Elapsed days, not calendar days: five days into September, dividing by
-  // thirty reports a household spending a third of what it actually is.
-  const today = isoDay(new Date())
-  const from = filters.dateFrom ?? today
-  const to = (filters.dateTo ?? today) > today ? today : (filters.dateTo ?? '')
-  const days = Math.max(
-    1,
-    Math.round(
-      (fromIsoDay(to).getTime() - fromIsoDay(from).getTime()) / 86_400_000,
-    ) + 1,
-  )
-  const perDay = Math.round((count / days) * 10) / 10
+    comparison?.percentage == null ? null : Number(comparison.percentage)
+  const movement =
+    deltaPct === null
+      ? m.comparison_unavailable()
+      : `${deltaPct > 0 ? '▲ +' : deltaPct < 0 ? '▼ −' : ''}${Math.abs(deltaPct).toLocaleString(locale)}%`
 
   const figures: StripFigure[] = [
+    balance,
     {
       id: 'total',
       isLoading,
       key: m.count_total(),
-      value: formatCurrency(totals?.sumText ?? sum, currency, locale),
-      note:
-        deltaPct === null
-          ? null
-          : m.count_vs_previous({
-              pct: `${deltaPct > 0 ? '▲' : '▼'} ${Math.abs(deltaPct).toLocaleString(locale)}%`,
-              month: monthLabel(fromIsoDay(previous.from), locale),
-            }),
-      tone: deltaPct !== null && deltaPct > 0 ? 'delta' : 'muted',
-    },
-    {
-      id: 'previous',
-      isLoading,
-      key: m.count_previous(),
-      value:
-        !previousTotals && previousQuery.isLoading
-          ? '—'
-          : formatCurrency(
-              previousTotals?.sumText ?? previousSum,
-              currency,
-              locale,
-            ),
-      note: previousTotals
-        ? previousTotals.count === 1
-          ? m.tape_entries_one()
-          : m.tape_entries_short({ n: previousTotals.count })
-        : null,
-      tone: 'muted',
+      value: totals
+        ? formatCurrency(totals.sumText ?? sum, currency, locale)
+        : '—',
+      note: m.count_vs_previous({
+        pct: movement,
+        month: monthLabel(fromIsoDay(previous.from), locale),
+      }),
+      tone:
+        deltaPct === null || deltaPct === 0
+          ? 'muted'
+          : deltaPct > 0
+            ? 'unfavorable'
+            : 'favorable',
     },
     {
       id: 'entries',
       isLoading,
-      key: m.count_entries(),
-      value: String(count),
-      // Rounded: an average is a summary figure, and printing it to the cent
-      // ("avg IDR 73,842.11") claims a precision the number does not have.
-      note: m.count_avg({
-        amount: formatCurrency(
-          totals?.averageText
-            ? roundMoneyToWholeText(totals.averageText)
-            : Math.round(average),
-          currency,
-          locale,
-        ),
-      }),
-      tone: 'muted',
-      sub: m.count_per_day({ n: perDay.toLocaleString(locale) }),
+      key: m.count_transactions(),
+      value: totals ? String(count) : '—',
+      note: totals ? m.count_expenses({ n: count }) : undefined,
     },
     {
       id: 'slice',

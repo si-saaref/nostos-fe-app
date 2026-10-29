@@ -63,6 +63,8 @@ export const ok = <T>(data: T, init?: { status?: number; message?: string }) =>
   )
 
 export interface WireTotalsBlock {
+  cash_withdrawn?: string
+  cash_withdrawal_count?: number
   sum: string
   count: number
   average: string
@@ -81,6 +83,13 @@ export interface WireMeta {
   /** @deprecated Superseded by `summary` (BACKEND.md, the expenditure surface). */
   totals?: WireTotalsBlock
   summary?: {
+    comparison?: import('@/types/api').Comparison
+    daily?: Array<{
+      date: string
+      sum: string
+      count: number
+      cumulative: string
+    }>
     current: WireTotalsBlock
     /** Only when the request carried BOTH date bounds. */
     previous?: WireTotalsBlock

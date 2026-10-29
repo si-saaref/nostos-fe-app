@@ -165,3 +165,53 @@ describe('unwrapPage — meta.summary', () => {
     expect(page.summary).toBeUndefined()
   })
 })
+
+it('preserves exact BE cumulative, withdrawal and comparison values across partial pages', () => {
+  const response = {
+    data: {
+      success: true,
+      data: [],
+      meta: {
+        pagination: { page: 1, limit: 1, total: 100, total_pages: 100 },
+        summary: {
+          current: {
+            sum: '61215500.00',
+            count: 100,
+            average: '612155.00',
+            cash_withdrawn: '100.30',
+            cash_withdrawal_count: 2,
+          },
+          daily: [
+            {
+              date: '2026-10-01',
+              sum: '30000.00',
+              count: 1,
+              cumulative: '30000.00',
+            },
+            {
+              date: '2026-10-24',
+              sum: '61185500.00',
+              count: 99,
+              cumulative: '61215500.00',
+            },
+          ],
+          comparison: { percentage: '0.0', direction: 'flat' },
+        },
+      },
+    },
+  } as unknown as AxiosResponse<ApiEnvelope<unknown[]>>
+  const page = unwrapPage(response, (row) => row)
+  expect(page.summary?.daily?.[1]).toMatchObject({
+    date: '2026-10-24',
+    cumulativeText: '61215500.00',
+  })
+  expect(page.totals).toMatchObject({
+    cash_withdrawn: 100.3,
+    cashWithdrawnText: '100.30',
+    cash_withdrawal_count: 2,
+  })
+  expect(page.summary?.comparison).toEqual({
+    percentage: '0.0',
+    direction: 'flat',
+  })
+})

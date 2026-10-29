@@ -427,5 +427,14 @@
   "acc_start_help": "Earlier records remain visible in the ledger. Only records on or after this account’s start date contribute to its current balance. You can assign this date once before the first balance correction.",
   "acc_start_locked": "Start date is locked or unavailable.",
   "acc_start_confirm": "Set the calculation start to {date}? This is a one-time assignment. Earlier ledger records remain visible but are excluded from this account’s balance.",
-  "acc_adjust_help_title": "About balance corrections"
+  "acc_adjust_help_title": "About balance corrections",
+  "balance_remaining": "Remaining total balance",
+  "balance_today": "Today · {date}, all accounts",
+  "balance_unavailable": "Balance unavailable",
+  "count_transactions": "Transactions",
+  "count_expenses": "{n} expenses in this period",
+  "comparison_unavailable": "No previous total to compare",
+  "cash_withdrawal": "Cash withdrawals: {amount}",
+  "cash_withdrawal_unavailable": "Cash withdrawals unavailable",
+  "rail_unavailable": "Total unavailable"
 }

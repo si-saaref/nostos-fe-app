@@ -120,9 +120,22 @@ const toTotals = (wire: WireTotals): Totals => ({
   averageText: wire.average,
   moved: wire.moved === undefined ? undefined : fromWireMoney(wire.moved),
   movedText: wire.moved,
+  cash_withdrawn:
+    wire.cash_withdrawn === undefined
+      ? undefined
+      : fromWireMoney(wire.cash_withdrawn),
+  cashWithdrawnText: wire.cash_withdrawn,
 })
 
 const toSummary = (wire: WireSummary): Summary => ({
+  comparison: wire.comparison,
+  daily: wire.daily?.map((day) => ({
+    ...day,
+    sum: fromWireMoney(day.sum),
+    sumText: day.sum,
+    cumulative: fromWireMoney(day.cumulative),
+    cumulativeText: day.cumulative,
+  })),
   current: toTotals(wire.current),
   previous: wire.previous && toTotals(wire.previous),
   breakdown: wire.breakdown && {
