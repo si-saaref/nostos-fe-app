@@ -1,3 +1,4 @@
+import { isoDay } from '@/utils/dates'
 import { http } from 'msw'
 import {
   fromWireMoney,
@@ -54,6 +55,8 @@ const toWire = (account: Account): WireAccount => ({
   kind: KIND_TO_WIRE[account.kind],
   opening_balance: toWireMoney(account.openingBalance),
   as_of: account.asOf,
+  calculation_start_can_set: account.calculationStartCanSet === true,
+  calculation_start_set_at: account.calculationStartSetAt ?? null,
   order: account.order,
   archived_at: account.archivedAt,
   household_id: account.householdId,
@@ -83,9 +86,11 @@ export const accountHandlers = [
         target_balance: string
         reason: string
       }
-      const current = source.openingBalance + db.adjustments
-        .filter((row) => row.sourceId === source.id)
-        .reduce((sum, row) => sum + row.delta, 0)
+      const current =
+        source.openingBalance +
+        db.adjustments
+          .filter((row) => row.sourceId === source.id)
+          .reduce((sum, row) => sum + row.delta, 0)
       const target = fromWireMoney(body.target_balance)
       const created: BalanceAdjustment = {
         id: nextId('adjustment'),
@@ -197,6 +202,16 @@ export const accountHandlers = [
     if (body.name !== undefined && nameTaken(body.name, String(params.id))) {
       return conflict(body.name)
     }
+    if (body.as_of !== undefined) {
+      if (!db.accounts[index].calculationStartCanSet)
+        return errorBody(
+          409,
+          'CALCULATION_START_LOCKED',
+          'Calculation start is locked',
+        )
+      if (body.as_of > isoDay(new Date()))
+        return errorBody(400, 'FUTURE_DATE', 'Date cannot be in the future')
+    }
     db.accounts[index] = {
       ...db.accounts[index],
       ...(body.name !== undefined && { name: body.name }),
@@ -206,7 +221,11 @@ export const accountHandlers = [
       ...(body.opening_balance !== undefined && {
         openingBalance: fromWireMoney(body.opening_balance),
       }),
-      ...(body.as_of !== undefined && { asOf: body.as_of }),
+      ...(body.as_of !== undefined && {
+        asOf: body.as_of,
+        calculationStartCanSet: false,
+        calculationStartSetAt: new Date().toISOString(),
+      }),
       ...(body.archived_at !== undefined && { archivedAt: body.archived_at }),
     }
     return ok(toWire(db.accounts[index]))

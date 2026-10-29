@@ -5,9 +5,7 @@ import { db } from '@/mocks/db'
 import { renderWithProviders } from '@/test/test-utils'
 
 const renderSection = () =>
-  renderWithProviders(
-    <AccountSection householdId="household-001" canManage />,
-  )
+  renderWithProviders(<AccountSection householdId="household-001" canManage />)
 
 describe('AccountSection', () => {
   it('offers exactly the two product account actions and seeds their kinds', async () => {
@@ -15,11 +13,16 @@ describe('AccountSection', () => {
 
     const cash = await screen.findByRole('button', { name: /tambah tunai/i })
     const bank = screen.getByRole('button', { name: /tambah akun bank/i })
-    expect(screen.queryByRole('button', { name: /^\+? tambah akun$/i })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: /^\+? tambah akun$/i }),
+    ).toBeNull()
 
     await userEvent.click(cash)
     expect(screen.queryByLabelText(/^jenis$/i)).toBeNull()
-    await userEvent.type(screen.getByLabelText(/^nama akun$/i), 'Dompet perjalanan')
+    await userEvent.type(
+      screen.getByLabelText(/^nama akun$/i),
+      'Dompet perjalanan',
+    )
     await userEvent.click(screen.getByRole('button', { name: /^tambah$/i }))
     await waitFor(() =>
       expect(db.accounts.at(-1)).toMatchObject({
@@ -29,7 +32,10 @@ describe('AccountSection', () => {
     )
 
     await userEvent.click(bank)
-    await userEvent.type(screen.getByLabelText(/^nama akun$/i), 'Rekening liburan')
+    await userEvent.type(
+      screen.getByLabelText(/^nama akun$/i),
+      'Rekening liburan',
+    )
     await userEvent.click(screen.getByRole('button', { name: /^tambah$/i }))
     await waitFor(() =>
       expect(db.accounts.at(-1)).toMatchObject({
@@ -41,32 +47,62 @@ describe('AccountSection', () => {
 
   it('allows today and past opening dates but disables future dates', async () => {
     renderSection()
-    await userEvent.click(await screen.findByRole('button', { name: /tambah tunai/i }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: /tambah tunai/i }),
+    )
     await userEvent.click(screen.getByLabelText(/^tanggal mulai hitung$/i))
 
     expect(screen.getByRole('button', { name: /^hari ini$/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /^kemarin$/i })).toBeEnabled()
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowLabel = new Intl.DateTimeFormat('id', { dateStyle: 'full' })
-      .format(tomorrow)
+    const tomorrowLabel = new Intl.DateTimeFormat('id', {
+      dateStyle: 'full',
+    }).format(tomorrow)
     expect(screen.getByRole('button', { name: tomorrowLabel })).toBeDisabled()
   })
 
   it('explains protected defaults and withholds archive while ordinary accounts can archive', async () => {
     renderSection()
 
-    const protectedRow = (await screen.findByText('Tunai — kotak dapur'))
-      .closest('article')!
+    const protectedRow = (
+      await screen.findByText('Tunai — kotak dapur')
+    ).closest('article')!
     await userEvent.click(within(protectedRow).getByRole('button'))
-    expect(within(protectedRow).getByText(/akun bawaan/i)).toBeInTheDocument()
-    expect(within(protectedRow).queryByRole('button', { name: /arsipkan/i }))
-      .toBeNull()
+    await userEvent.click(
+      within(protectedRow).getByRole('button', { name: /^bawaan$/i }),
+    )
+    expect(screen.getByRole('dialog')).toHaveTextContent(/akun bawaan/i)
+    await userEvent.click(screen.getByRole('button', { name: /tutup/i }))
+    expect(
+      within(protectedRow).queryByRole('button', { name: /arsipkan/i }),
+    ).toBeNull()
     expect(within(protectedRow).queryByLabelText(/^jenis$/i)).toBeNull()
 
     const ordinaryRow = screen.getByText('QRIS').closest('article')!
     await userEvent.click(within(ordinaryRow).getByRole('button'))
-    expect(within(ordinaryRow).getByRole('button', { name: /arsipkan/i }))
-      .toBeInTheDocument()
+    expect(
+      within(ordinaryRow).getByRole('button', { name: /arsipkan/i }),
+    ).toBeInTheDocument()
   })
+})
+
+it('offers one-time start assignment only from BE eligibility and explains the baseline', async () => {
+  db.accounts[0].calculationStartCanSet = true
+  renderSection()
+  const row = (await screen.findByText(db.accounts[0].name)).closest('article')!
+  await userEvent.click(within(row).getByRole('button'))
+  expect(
+    within(row).getByRole('button', { name: /tetapkan tanggal/i }),
+  ).toBeInTheDocument()
+  await userEvent.click(
+    within(row).getByRole('button', { name: /tetapkan tanggal/i }),
+  )
+  expect(screen.getByRole('dialog')).toHaveTextContent(/satu kali/i)
+  await userEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', {
+      name: /tetapkan tanggal/i,
+    }),
+  )
+  await waitFor(() => expect(db.accounts[0].calculationStartCanSet).toBe(false))
 })

@@ -1,3 +1,6 @@
+import { CalculationStart } from './CalculationStart'
+import { InfoPopover } from '@/components/InfoPopover'
+import { useCurrentPositions } from '@/modules/financial/api/positions'
 import { useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
@@ -40,6 +43,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
   const m = useMessages()
   const { locale } = useSettings()
   const currency = useCurrency()
+  const positions = useCurrentPositions(householdId)
   const {
     data: accounts,
     isLoading,
@@ -54,9 +58,10 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
   const { mutate: update, error: updateError } = useUpdateAccount(householdId)
 
   const [openId, setOpenId] = useState<string | null>(null)
-  const [addingKind, setAddingKind] = useState<
-    Extract<AccountKind, 'cash' | 'bank'> | null
-  >(null)
+  const [addingKind, setAddingKind] = useState<Extract<
+    AccountKind,
+    'cash' | 'bank'
+  > | null>(null)
   // Two drafts, not one: opening a row used to overwrite whatever had been
   // typed into the add form, which was still on screen and still bound to it.
   const [newDraft, setNewDraft] = useState<AccountInput>(emptyDraft)
@@ -122,7 +127,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
       id={SETTINGS_ANCHORS.accounts}
       title={m.acc_title()}
       description={m.acc_desc()}
-      note={m.acc_balance_note()}
+
       canManage={canManage}
       isLoading={isLoading}
       isError={isError}
@@ -133,10 +138,12 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
       actions={
         canManage ? (
           <div className="flex flex-wrap gap-2">
-            {([
-              ['cash', m.acc_add_cash()],
-              ['bank', m.acc_add_bank()],
-            ] as const).map(([kind, label]) => (
+            {(
+              [
+                ['cash', m.acc_add_cash()],
+                ['bank', m.acc_add_bank()],
+              ] as const
+            ).map(([kind, label]) => (
               <button
                 key={kind}
                 type="button"
@@ -198,16 +205,30 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             <SettingPlate
               key={account.id}
               title={account.name}
+              primaryValue={
+                positions.isSuccess &&
+                positions.data?.items.some((row) => row.sourceId === account.id)
+                  ? formatCurrency(
+                      positions.data.items.find(
+                        (row) => row.sourceId === account.id,
+                      )!.balanceText!,
+                      currency,
+                      locale,
+                    )
+                  : '—'
+              }
               meta={
                 <span className="flex flex-wrap items-baseline gap-x-1.5">
                   <span>{kindLabel(account.kind)}</span>
                   <span aria-hidden="true">·</span>
                   <span className="text-ink tnum text-[12.5px] font-medium">
+                    {m.acc_opening()}:{' '}
                     {formatCurrency(account.openingBalance, currency, locale)}
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>
-                    {m.acc_as_of()} {new Intl.DateTimeFormat(locale, {
+                    {m.acc_as_of()}{' '}
+                    {new Intl.DateTimeFormat(locale, {
                       day: 'numeric',
                       month: 'short',
                       year: 'numeric',
@@ -243,10 +264,15 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                 <div className="flex flex-col gap-3">
                   {fields(editDraft, setEditDraft, isArchived, false)}
                   {account.isProtected && (
-                    <p className="bg-chip text-muted rounded-lg px-3 py-2 text-[11px]">
+                    <InfoPopover label={m.acc_default_badge()}>
                       {m.acc_protected_note()}
-                    </p>
+                    </InfoPopover>
                   )}
+                  <CalculationStart
+                    key={account.id}
+                    account={account}
+                    householdId={householdId}
+                  />
                   <RowActions
                     onSave={() => {
                       update(

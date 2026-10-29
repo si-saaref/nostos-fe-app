@@ -34,6 +34,8 @@ describe('toAccount', () => {
 
   it('leaves the rest of the row alone', () => {
     expect(toAccount(wire('CASH'))).toEqual({
+      calculationStartCanSet: false,
+      calculationStartSetAt: null,
       id: 'source-tunai',
       name: 'Tunai',
       kind: 'cash',
@@ -115,4 +117,51 @@ describe('mock financial validation', () => {
       ).rejects.toMatchObject({ response: { status: 400 } })
     },
   )
+})
+
+it('maps explicit server start-date eligibility without deriving it from balances', () => {
+  expect(
+    toAccount({
+      ...wire('CASH'),
+      calculation_start_can_set: true,
+      calculation_start_set_at: null,
+    }),
+  ).toMatchObject({ calculationStartCanSet: true, calculationStartSetAt: null })
+  expect(toAccount(wire('CASH')).calculationStartCanSet).toBe(false)
+})
+
+it('patches only an explicit start date and invalidates current positions', async () => {
+  const { http, HttpResponse } = await import('msw')
+  const { server } = await import('@/mocks/server')
+  const { useUpdateAccount } = await import('./accounts')
+  const { positionKeys } = await import('@/modules/financial/api/positions')
+  let body: unknown
+  server.use(
+    http.patch('*/payment-sources/:id', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true,
+        data: {
+          ...wire('CASH'),
+          as_of: '2026-10-01',
+          calculation_start_can_set: false,
+          calculation_start_set_at: '2026-10-29T00:00:00Z',
+        },
+      })
+    }),
+  )
+  const client = createTestQueryClient()
+  const positionKey = positionKeys.scoped('household-001', {
+    asOf: '2026-10-29',
+    from: '2026-10-01',
+  })
+  client.setQueryData(positionKey, { balance: '123' })
+  const { result } = renderHook(() => useUpdateAccount('household-001'), {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  })
+  await result.current.mutateAsync({ id: 'source-tunai', asOf: '2026-10-01' })
+  expect(body).toEqual({ as_of: '2026-10-01' })
+  expect(client.getQueryState(positionKey)?.isInvalidated).toBe(true)
 })

@@ -6,6 +6,7 @@ import type { RimIndex } from '@/theme/rims'
 
 interface Props {
   title: string
+  primaryValue?: ReactNode
   /** Secondary line: kind, balance, email — whatever identifies the row. */
   meta?: ReactNode
   /** Right-aligned status, before the disclosure. */
@@ -24,6 +25,7 @@ interface Props {
  */
 export const SettingPlate = ({
   title,
+  primaryValue,
   meta,
   trailing,
   rim,
@@ -70,6 +72,11 @@ export const SettingPlate = ({
               </span>
             )}
           </span>
+          {primaryValue && (
+            <span className="font-display tnum shrink-0 text-sm font-bold">
+              {primaryValue}
+            </span>
+          )}
           {trailing}
         </button>
 

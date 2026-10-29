@@ -1,3 +1,4 @@
+import { InfoPopover } from '@/components/InfoPopover'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { AmountInput } from '@/components/AmountInput'
@@ -80,7 +81,9 @@ export const BalanceAdjustmentPanel = ({
           </button>
         )}
       </div>
-      <p className="text-muted mt-1 text-xs">{m.acc_adjust_note()}</p>
+      <InfoPopover label={m.acc_adjust_help_title()}>
+        {m.acc_adjust_note()}
+      </InfoPopover>
 
       {isAdding && (
         <form onSubmit={submit} className="mt-3 flex flex-wrap items-end gap-2">

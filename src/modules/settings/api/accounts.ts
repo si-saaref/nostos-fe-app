@@ -1,3 +1,4 @@
+import { positionKeys } from '@/modules/financial/api/positions'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
 import { entityKey } from '@/api/keys'
@@ -43,6 +44,8 @@ const toDomainKind = (kind: string): AccountKind =>
   KIND_FROM_WIRE[kind] ?? (kind as AccountKind)
 
 export const toAccount = (row: WireAccount): Account => ({
+  calculationStartCanSet: row.calculation_start_can_set === true,
+  calculationStartSetAt: row.calculation_start_set_at ?? null,
   id: row.id,
   name: row.name,
   kind: toDomainKind(row.kind),
@@ -57,11 +60,12 @@ export const toAccount = (row: WireAccount): Account => ({
 
 /** Only what the caller passed — see `toCategoryBody` for why. */
 type UpdateAccountInput = Partial<
-  Pick<Account, 'name' | 'order' | 'archivedAt'>
+  Pick<Account, 'name' | 'order' | 'archivedAt' | 'asOf'>
 >
 
 const toAccountBody = (patch: UpdateAccountInput) => {
   const body: Record<string, unknown> = {}
+  if (patch.asOf !== undefined) body.as_of = patch.asOf
   if (patch.name !== undefined) body.name = patch.name
   if (patch.order !== undefined) body.order = patch.order
   if (patch.archivedAt !== undefined) body.archived_at = patch.archivedAt
@@ -110,7 +114,7 @@ export const useCreateAccount = (householdId: string) =>
 
 export const useUpdateAccount = (householdId: string) =>
   useInvalidatingMutation(
-    [accountKeys.all(householdId)],
+    [accountKeys.all(householdId), positionKeys.all(householdId)],
     async ({ id, ...patch }: { id: string } & UpdateAccountInput) =>
       toAccount(
         unwrap(
