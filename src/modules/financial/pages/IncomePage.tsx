@@ -245,13 +245,13 @@ export const IncomePage = () => {
           <p className="text-muted text-[11px] font-semibold">{scopeLine}</p>
           <span className="flex-1" />
           {/* Keep the trigger mounted so closing the editor can restore focus. */}
-          <div className="fixed right-4 bottom-20 left-4 z-30 flex gap-2 lg:static lg:items-center">
+          <div className="fixed right-4 bottom-20 z-30 flex gap-2 lg:static lg:items-center">
             <button
               type="button"
               onClick={requestRecord}
               disabled={isRecording}
               aria-label={m.action_record_income()}
-              className="bg-accent text-accent-ink flex h-12 flex-1 items-center justify-center rounded-xl px-3 text-[12px] font-semibold shadow-lg lg:h-auto lg:flex-none lg:rounded-lg lg:px-4 lg:py-2 lg:shadow-none"
+              className="bg-accent text-accent-ink flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg disabled:invisible lg:h-auto lg:rounded-lg lg:px-4 lg:py-2 lg:text-[12px] lg:shadow-none"
             >
               <span className="lg:hidden">+ {m.nav_income()}</span>
               <span className="hidden lg:inline">
