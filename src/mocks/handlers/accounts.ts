@@ -180,7 +180,19 @@ export const accountHandlers = [
     ) {
       return errorBody(400, 'VALIDATION_ERROR', 'Invalid opening balance')
     }
+    if ((body.as_of !== undefined) !== (body.opening_balance !== undefined))
+      return errorBody(
+        400,
+        'VALIDATION_ERROR',
+        'Set the starting date and balance together',
+      )
+    const confirmed = body.as_of !== undefined
     const created: Account = {
+      baselineStatus: confirmed ? 'VERIFIED' : 'UNVERIFIED',
+      baselineCanSet: !confirmed,
+      baselineConfirmedAt: confirmed ? new Date().toISOString() : null,
+      calculationStartCanSet: !confirmed,
+      calculationStartSetAt: confirmed ? new Date().toISOString() : null,
       id: nextId('source'),
       name,
       kind: KIND_FROM_WIRE[body.kind ?? 'CASH'] ?? 'cash',
@@ -188,7 +200,7 @@ export const accountHandlers = [
         body.opening_balance === undefined
           ? 0
           : fromWireMoney(body.opening_balance),
-      asOf: body.as_of ?? '',
+      asOf: body.as_of ?? isoDay(new Date()),
       order: db.accounts.reduce((max, row) => Math.max(max, row.order), -1) + 1,
       archivedAt: null,
       householdId: MOCK_HOUSEHOLD.id,

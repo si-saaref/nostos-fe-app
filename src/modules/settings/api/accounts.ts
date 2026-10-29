@@ -112,8 +112,10 @@ export const useCreateAccount = (householdId: string) =>
           await apiClient.post<ApiEnvelope<WireAccount>>('/payment-sources', {
             name: input.name,
             kind: KIND_TO_WIRE[input.kind],
-            opening_balance: toWireMoney(input.openingBalance),
-            as_of: input.asOf,
+            ...(input.openingBalance !== undefined && {
+              opening_balance: toWireMoney(input.openingBalance),
+            }),
+            ...(input.asOf !== undefined && { as_of: input.asOf }),
           }),
         ),
       ),

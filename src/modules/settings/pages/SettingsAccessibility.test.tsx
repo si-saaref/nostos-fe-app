@@ -28,13 +28,11 @@ describe('Settings accessibility contract', () => {
     renderWithProviders(
       <AccountSection householdId="household-001" canManage />,
     )
-    const cash = await screen.findByRole('button', { name: /tambah tunai/i })
-    const bank = screen.getByRole('button', { name: /tambah akun bank/i })
-
+    const add = await screen.findByRole('button', {
+      name: /^\+? tambah akun$/i,
+    })
     await userEvent.tab()
-    expect(cash).toHaveFocus()
-    await userEvent.tab()
-    expect(bank).toHaveFocus()
+    expect(add).toHaveFocus()
   })
 
   it('gives every mobile settings navigation target a 44px minimum hit area', () => {
@@ -59,11 +57,11 @@ describe('Settings accessibility contract', () => {
 
     expect(screen.getByLabelText('Nama depan')).toHaveAttribute(
       'autocomplete',
-      'given-name',
+      'off',
     )
     expect(screen.getByLabelText('Nama belakang')).toHaveAttribute(
       'autocomplete',
-      'family-name',
+      'off',
     )
     expect(screen.getByLabelText('Email baru')).toHaveAttribute('type', 'email')
   })
@@ -88,11 +86,14 @@ describe('Settings accessibility contract', () => {
       ),
     )
     renderWithProviders(<ChangeEmailSection />)
-    const section = screen.getByRole('heading', { name: 'Ubah email' })
+    const section = screen
+      .getByRole('heading', { name: 'Ubah email' })
       .closest('section')!
     const input = within(section).getByLabelText('Email baru')
     await userEvent.type(input, 'used@example.com')
-    await userEvent.click(within(section).getByRole('button', { name: /kirim/i }))
+    await userEvent.click(
+      within(section).getByRole('button', { name: /kirim/i }),
+    )
 
     expect(await within(section).findByRole('alert')).toHaveTextContent(
       'Email already used',

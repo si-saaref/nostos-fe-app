@@ -5,9 +5,7 @@ import { useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
-import { AmountInput } from '@/components/AmountInput'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { DateField } from '@/components/DateField'
 import { DismissablePanel } from '@/components/DismissablePanel'
 import { FormField } from '@/components/FormField'
 import { SettingPlate } from '@/modules/settings/components/SettingPlate'
@@ -21,7 +19,6 @@ import {
 } from '@/modules/settings/api/accounts'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { formatCurrency } from '@/utils/formatters'
-import { isValidMoney } from '@/utils/money'
 import { fromIsoDay, isoDay } from '@/utils/dates'
 import { rimFor } from '@/theme/rims'
 import type { Account, AccountKind } from '@/types/catalog'
@@ -58,17 +55,13 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
   const { mutate: update, error: updateError } = useUpdateAccount(householdId)
 
   const [openId, setOpenId] = useState<string | null>(null)
-  const [addingKind, setAddingKind] = useState<Extract<
-    AccountKind,
-    'cash' | 'bank'
-  > | null>(null)
+  const [isAdding, setIsAdding] = useState(false)
+  const [addingKind, setAddingKind] = useState<AccountKind | null>(null)
   // Two drafts, not one: opening a row used to overwrite whatever had been
   // typed into the add form, which was still on screen and still bound to it.
   const [newDraft, setNewDraft] = useState<AccountInput>(emptyDraft)
   const [editDraft, setEditDraft] = useState<AccountInput>(emptyDraft)
   const [accountToArchive, setAccountToArchive] = useState<Account | null>(null)
-
-  const openingIsValid = (value: number) => value === 0 || isValidMoney(value)
 
   const KINDS: Array<{ value: AccountKind; label: string }> = [
     { value: 'cash', label: m.acc_kind_cash() },
@@ -82,45 +75,16 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
     draft: AccountInput,
     setDraft: (next: AccountInput) => void,
     disabled = false,
-    includeOpening = true,
   ) => (
-    <div className="flex flex-wrap items-end gap-2">
-      <FormField label={m.acc_name()} className="min-w-[180px] flex-1">
-        <input
-          autoComplete="off"
-          value={draft.name}
-          disabled={disabled}
-          onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-          className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
-        />
-      </FormField>
-      {includeOpening && (
-        <>
-          <AmountInput
-            label={m.acc_opening()}
-            className="w-[150px]"
-            value={draft.openingBalance}
-            error={
-              openingIsValid(draft.openingBalance)
-                ? undefined
-                : m.acc_opening_invalid()
-            }
-            disabled={disabled}
-            onChange={(value) =>
-              setDraft({ ...draft, openingBalance: value ?? 0 })
-            }
-          />
-          <DateField
-            label={m.acc_as_of()}
-            className="w-[190px]"
-            value={draft.asOf}
-            max={isoDay(new Date())}
-            disabled={disabled}
-            onChange={(value) => setDraft({ ...draft, asOf: value })}
-          />
-        </>
-      )}
-    </div>
+    <FormField label={m.acc_name()} className="min-w-0 flex-1">
+      <input
+        autoComplete="off"
+        value={draft.name}
+        disabled={disabled}
+        onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+        className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
+      />
+    </FormField>
   )
 
   return (
@@ -138,58 +102,81 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
       emptyText={m.acc_empty()}
       actions={
         canManage ? (
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ['cash', m.acc_add_cash()],
-                ['bank', m.acc_add_bank()],
-              ] as const
-            ).map(([kind, label]) => (
-              <button
-                key={kind}
-                type="button"
-                onClick={() => {
-                  setNewDraft(emptyDraft(kind))
-                  setAddingKind(kind)
-                }}
-                className="bg-accent text-accent-ink min-h-11 shrink-0 rounded-lg px-4 py-2 text-[12px] font-semibold"
-              >
-                + {label}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsAdding(true)
+              setAddingKind(null)
+              setNewDraft(emptyDraft())
+            }}
+            className="bg-accent text-accent-ink min-h-11 shrink-0 rounded-lg px-4 py-2 text-[12px] font-semibold"
+          >
+            + {m.acc_add()}
+          </button>
         ) : undefined
       }
     >
       <ul className="flex flex-col gap-1.5">
-        {addingKind && (
+        {isAdding && (
           <li>
             <DismissablePanel
-              onDismiss={() => setAddingKind(null)}
+              onDismiss={() => setIsAdding(false)}
               className="bg-card lift-shadow flex flex-col gap-3 rounded-lg p-3"
             >
+              <fieldset>
+                <legend className="text-muted mb-2 text-[10px] font-bold tracking-wider uppercase">
+                  {m.acc_kind()}
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {KINDS.map((option) => (
+                    <label
+                      key={option.value}
+                      className={`focus-within:outline-accent flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 text-xs font-semibold focus-within:outline-2 focus-within:outline-offset-2 ${addingKind === option.value ? 'border-accent bg-accent text-accent-ink' : 'border-hair text-ink'}`}
+                    >
+                      <input
+                        type="radio"
+                        name="account-kind"
+                        value={option.value}
+                        checked={addingKind === option.value}
+                        onChange={() => setAddingKind(option.value)}
+                        className="sr-only"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               {fields(newDraft, setNewDraft)}
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setAddingKind(null)}
+                  onClick={() => setIsAdding(false)}
                   className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
                 >
                   {m.act_cancel()}
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (!addingKind) return
                     create(
-                      { ...newDraft, name: newDraft.name.trim() },
-                      { onSuccess: () => setAddingKind(null) },
+                      { name: newDraft.name.trim(), kind: addingKind },
+                      {
+                        onSuccess: (account) => {
+                          setIsAdding(false)
+                          setAddingKind(null)
+                          setOpenId(account.id)
+                          setEditDraft({
+                            name: account.name,
+                            kind: account.kind,
+                            openingBalance: account.openingBalance,
+                            asOf: account.asOf,
+                          })
+                        },
+                      },
                     )
-                  }
-                  disabled={
-                    isCreating ||
-                    !newDraft.name.trim() ||
-                    !openingIsValid(newDraft.openingBalance)
-                  }
+                  }}
+                  disabled={isCreating || !addingKind || !newDraft.name.trim()}
                   className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
                 >
                   {isCreating ? m.act_saving() : m.act_add()}
@@ -279,7 +266,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                 <div className="flex flex-col gap-3">
                   <div className="flex items-end gap-1">
                     <div className="min-w-0 flex-1">
-                      {fields(editDraft, setEditDraft, isArchived, false)}
+                      {fields(editDraft, setEditDraft, isArchived)}
                     </div>
                     {account.isProtected && (
                       <InfoPopover label={m.acc_default_badge()}>

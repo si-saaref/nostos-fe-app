@@ -71,8 +71,8 @@ export interface CategoryInput {
 export interface AccountInput {
   name: string
   kind: AccountKind
-  openingBalance: number
-  asOf: string
+  openingBalance?: number
+  asOf?: string
 }
 
 export interface InviteInput {
