@@ -87,6 +87,7 @@ export const ExpenseFilter = ({ householdId, filters, onChange }: Props) => {
           />
         </svg>
         <input
+          data-composite-focus
           type="search"
           value={searchDraft}
           placeholder={m.filter_search()}

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -199,4 +200,26 @@ it('records external income immediately using live household defaults', async ()
   await userEvent.type(screen.getByLabelText(/jumlah/i), '1000')
   await userEvent.click(screen.getByRole('button', { name: /catat/i }))
   await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
+})
+
+it('clears both accounts when switching to transfer and does not refill on rerender', async () => {
+  const Probe = () => {
+    const [tick, setTick] = useState(0)
+    return (
+      <>
+        <button onClick={() => setTick(tick + 1)}>Refresh {tick}</button>
+        <IncomeForm />
+      </>
+    )
+  }
+  renderWithProviders(<Probe />)
+  const destination = screen.getByRole('combobox', { name: /masuk ke sumber/i })
+  await waitFor(() => expect(destination).toHaveTextContent(/BCA/i))
+  await chooseOption(/uang ini dari mana/i, /pindah antar akun/i)
+  expect(destination).not.toHaveTextContent(/BCA/i)
+  const origin = screen.getByRole('combobox', { name: /dari sumber/i })
+  expect(origin).not.toHaveTextContent(/BCA|Tunai/i)
+  // Force an ordinary rerender, as catalogue refreshes do.
+  await userEvent.click(screen.getByRole('button', { name: /refresh/i }))
+  expect(destination).not.toHaveTextContent(/BCA/i)
 })

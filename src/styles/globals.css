@@ -251,7 +251,9 @@ body {
 
 /* No `border-radius` here: an outline already follows the element's own
    corners, and forcing 4px squared off the rings on pills and round buttons. */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+:where(a, button, input, select, textarea, [tabindex]):not(
+    [data-composite-focus]
+  ):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

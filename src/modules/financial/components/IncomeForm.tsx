@@ -117,7 +117,11 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
       typeOptions.length
     )
       setValue('typeId', typeOptions[0].value)
-    if (!getValues('toSourceId') && accounts?.length)
+    if (
+      getValues('kind') === 'EXTERNAL_INCOME' &&
+      !getValues('toSourceId') &&
+      accounts?.length
+    )
       setValue(
         'toSourceId',
         (accounts.find((a) => a.systemKey === 'DEFAULT_BANK') ?? accounts[0])
@@ -278,6 +282,8 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
               field.onChange(value)
               clearErrors('fromSourceId')
               if (value === 'TRANSFER') {
+                setValue('fromSourceId', null)
+                setValue('toSourceId', '')
                 setValue('typeId', null)
                 clearErrors('typeId')
               } else {
