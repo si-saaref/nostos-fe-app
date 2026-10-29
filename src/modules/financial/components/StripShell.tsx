@@ -47,7 +47,9 @@ export const StripShell = ({ label, children, figures }: Props) => {
     const index = Math.max(0, Math.min(figures.length - 1, active + delta))
     setActive(index)
     track.current?.children[index]?.scrollIntoView({
-      behavior: 'smooth',
+      behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : 'smooth',
       block: 'nearest',
       inline: 'start',
     })
@@ -62,92 +64,122 @@ export const StripShell = ({ label, children, figures }: Props) => {
       }}
     >
       <div className="mb-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-2">
-        <h2 className="font-display text-strip-key text-[10px] font-bold tracking-[0.15em] uppercase">
+        <h2 className="font-display text-strip-key hidden text-[10px] font-bold tracking-[0.15em] uppercase lg:block">
           {label}
         </h2>
         {children}
       </div>
 
-      <div className="mb-2 flex items-center justify-end gap-3 lg:hidden">
-        <button
-          type="button"
-          aria-label={m.metric_previous()}
-          disabled={active === 0}
-          onClick={() => move(-1)}
-          className="text-on-strip min-h-11 min-w-11 rounded-lg disabled:opacity-40"
-        >
-          ←
-        </button>
-        <span role="status" className="text-on-strip-muted text-xs">
-          {active + 1} / {figures.length}
-        </span>
-        <button
-          type="button"
-          aria-label={m.metric_next()}
-          disabled={active === figures.length - 1}
-          onClick={() => move(1)}
-          className="text-on-strip min-h-11 min-w-11 rounded-lg disabled:opacity-40"
-        >
-          →
-        </button>
-      </div>
-      <dl
-        ref={track}
-        onScroll={() => {
-          const el = track.current
-          if (el && el.children[0])
-            setActive(
-              Math.min(
-                figures.length - 1,
-                Math.round(
-                  el.scrollLeft / el.children[0].getBoundingClientRect().width,
-                ),
-              ),
-            )
-        }}
-        className="flex snap-x snap-mandatory gap-px overflow-x-auto rounded-xl bg-white/15 lg:grid lg:grid-cols-4 lg:overflow-visible"
-      >
-        {figures.map((figure) => (
-          <div
-            key={figure.id}
-            className="bg-strip-cell min-w-0 shrink-0 basis-[86%] snap-start p-3 sm:p-3.5"
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 items-center justify-between lg:hidden">
+          <button
+            type="button"
+            aria-label={m.metric_previous()}
+            disabled={active === 0}
+            onClick={() => move(-1)}
+            className="bg-card text-ink pointer-events-auto -ml-2 grid h-11 w-11 place-items-center rounded-full shadow-lg disabled:invisible"
           >
-            <dt className="text-on-strip-muted text-[9px] font-bold tracking-[0.11em] uppercase">
-              {figure.key}
-            </dt>
-            <dd
-              // A break-wordsd name is unreadable without its full text somewhere,
-              // and only a name can be long enough to break-words.
-              title={figure.isText ? figure.value : undefined}
-              className={`font-display tnum mt-1.5 text-xl font-bold break-words sm:text-[22px] ${
-                figure.isNil || figure.isLoading
-                  ? 'text-on-strip-muted'
-                  : 'text-on-strip'
-              } ${figure.isText ? 'sm:text-[19px]' : ''} ${figure.tone === 'favorable' ? 'text-strip-favorable' : figure.tone === 'unfavorable' ? 'text-strip-unfavorable' : ''}`}
+            <Chevron back />
+          </button>
+          <span role="status" className="sr-only">
+            {active + 1} / {figures.length}
+          </span>
+          <button
+            type="button"
+            aria-label={m.metric_next()}
+            disabled={active === figures.length - 1}
+            onClick={() => move(1)}
+            className="bg-card text-ink pointer-events-auto -mr-2 grid h-11 w-11 place-items-center rounded-full shadow-lg disabled:invisible"
+          >
+            <Chevron />
+          </button>
+        </div>
+        <dl
+          ref={track}
+          onScroll={() => {
+            const el = track.current
+            if (el && el.children[0])
+              setActive(
+                Math.min(
+                  figures.length - 1,
+                  Math.round(
+                    el.scrollLeft /
+                      el.children[0].getBoundingClientRect().width,
+                  ),
+                ),
+              )
+          }}
+          className="flex snap-x snap-mandatory [scrollbar-width:none] gap-px overflow-x-auto rounded-xl bg-white/15 lg:grid lg:grid-cols-4 lg:overflow-visible [&::-webkit-scrollbar]:hidden"
+        >
+          {figures.map((figure) => (
+            <div
+              key={figure.id}
+              className="bg-strip-cell min-w-0 shrink-0 basis-full snap-start px-11 py-3 lg:p-3.5"
             >
-              {figure.isLoading ? '—' : figure.value}
-            </dd>
-            {!figure.isLoading && figure.note && (
-              <p
-                className={`mt-1 text-[10.5px] font-semibold break-words ${
-                  figure.tone === 'favorable'
-                    ? 'text-strip-favorable'
-                    : figure.tone === 'unfavorable' || figure.tone === 'delta'
-                      ? 'text-strip-unfavorable'
-                      : 'text-on-strip-muted'
-                }`}
+              <dt className="text-on-strip-muted text-[9px] font-bold tracking-[0.11em] uppercase">
+                {figure.key}
+              </dt>
+              <dd
+                // A break-wordsd name is unreadable without its full text somewhere,
+                // and only a name can be long enough to break-words.
+                title={figure.isText ? figure.value : undefined}
+                className={`font-display tnum mt-1.5 text-xl font-bold break-words sm:text-[22px] ${
+                  figure.isNil || figure.isLoading
+                    ? 'text-on-strip-muted'
+                    : 'text-on-strip'
+                } ${figure.isText ? 'sm:text-[19px]' : ''} ${figure.tone === 'favorable' ? 'text-strip-favorable' : figure.tone === 'unfavorable' ? 'text-strip-unfavorable' : ''}`}
               >
-                {figure.note}
-              </p>
-            )}
-            {!figure.isLoading && figure.sub && (
-              <p className="text-on-strip-muted text-[10.5px] font-semibold break-words">
-                {figure.sub}
-              </p>
-            )}
-          </div>
+                {figure.isLoading ? '—' : figure.value}
+              </dd>
+              {!figure.isLoading && figure.note && (
+                <p
+                  className={`mt-1 text-[10.5px] font-semibold break-words ${
+                    figure.tone === 'favorable'
+                      ? 'text-strip-favorable'
+                      : figure.tone === 'unfavorable' || figure.tone === 'delta'
+                        ? 'text-strip-unfavorable'
+                        : 'text-on-strip-muted'
+                  }`}
+                >
+                  {figure.note}
+                </p>
+              )}
+              {!figure.isLoading && figure.sub && (
+                <p className="text-on-strip-muted text-[10.5px] font-semibold break-words">
+                  {figure.sub}
+                </p>
+              )}
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div
+        aria-hidden="true"
+        className="mt-2 flex justify-center gap-1.5 lg:hidden"
+      >
+        {figures.map((figure, index) => (
+          <span
+            key={figure.id}
+            className={`h-1 rounded-full ${index === active ? 'bg-on-strip w-4' : 'w-1 bg-white/30'}`}
+          />
         ))}
-      </dl>
+      </div>
     </section>
   )
 }
+
+const Chevron = ({ back = false }: { back?: boolean }) => (
+  <svg
+    aria-hidden="true"
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d={back ? 'm14 6-6 6 6 6' : 'm10 6 6 6-6 6'} />
+  </svg>
+)
