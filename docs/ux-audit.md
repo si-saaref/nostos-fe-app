@@ -32,6 +32,78 @@ did not exercise. No new browser acceptance or implementation is claimed here.
 | 17 correction no-op error               | Deferred by product owner, 2026-10-29      | Explicitly excluded from this implementation round. Do not change the no-op response or its presentation as part of these plans.                                                                                                                                                                                                                                                                                                                                                                                               |
 | 18 member names still unsplit           | P1 integration defect, FE                  | MemberSection uses one name field; InviteInput and `toInviteBody` still send name/email and discard structured names on read. BE InviteMemberDto requires first_name/last_name/email. Split invite inputs and wire mapping, preserve structured fields in roster, and retain last-name labels with duplicate fallback. Existing test mocks accepted an obsolete contract.                                                                                                                                                      |
 
+### FE recovery execution — 2026-10-29
+
+FE implementation is on `fix/findings-uat`, executed inline with no subagents.
+Final review fixes are committed as `36b9cf0`.
+This is **implementation evidence, not browser acceptance**. Every October 29
+owner finding remains visually unverified until the matrix below is executed.
+Note 17 remains deferred and its no-op behavior/presentation is unchanged.
+
+| FE scope             | Implementation evidence                                                                                                                                                                                                                                                                                                                                                                    | Browser verdict                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Notes 6, 7, 12–14    | `36e9c73`: bounded dialog editor; incidental dismissal preserves drafts; phone metric carousel with manual controls; collapsed position detail; mobile Calendar dialog; Settings gets a bounded flex scroll region. Review fixes additionally handle visual viewport changes and restore edit-row focus.                                                                                   | Unverified at 393×852, 375×667, landscape and desktop; real keyboard not tested.                     |
+| Note 18              | `f17034c`: first/last invite fields send exactly `first_name`, `last_name`, `email`; roster preserves names; legacy reads remain compatible. Mocks reject obsolete name-only requests.                                                                                                                                                                                                     | Real BE invite, duplicate-label and legacy-member journeys unverified.                               |
+| Notes 1, 15, 16      | `7e47bb8`: consume `calculation_start_can_set` / `calculation_start_set_at`; explicit one-time date confirmation; household-timezone future guard; successful assignment invalidates positions. Account rows label current BE balance separately from opening metadata; accessible help replaces permanent explanation blocks. First correction refreshes account eligibility.             | Baseline reassignment, correction lock, concurrent races and live before/after positions unverified. |
+| Notes 2, 5, 8, 9, 11 | `6deec62`: revised four-cell strips; current balance independently requests household-local today; canonical `daily[].cumulative`, comparison and withdrawal fields preserve server decimal strings. Rail stays visually descending; jumps beyond a page use complete BE daily counts. Missing aggregate is unavailable. Confirmed writes discard stale canonical summaries until refetch. | Real rail example, narrowed/partial datasets, every theme and all comparison states unverified.      |
+| Notes 3, 4, 10       | `539701a`: default links omit defaults; historical whole months use `month`; legacy/custom ranges and meaningful settings survive. Search replaces debounce history. Composite-owned input is excluded from the global focus rule. Transfer switch clears both accounts and external-only defaults cannot refill them.                                                                     | Computed focus, browser back/forward, filter clear and real bank-to-cash submit unverified.          |
+
+Automated FE gate: `npm run type-check`, `npm run lint`, `npm test`
+(**71 files / 531 tests**) and `npm run build` pass. The build reported a
+non-failing Paraglide plugin timing warning. Tests cover interactions and wire
+contracts; they do not prove CSS geometry, real keyboard behavior or visual contrast.
+The final author review was performed inline because the user prohibited
+subagents; it provides weaker independence than a fresh reviewer.
+
+| Joint acceptance case                                                                                                           | Executed result                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Create and edit expense, external income and transfer at both phone sizes; long description; keyboard; cancel/save reachability | **Unverified** — no current-build browser submission, screenshot or real keyboard evidence. |
+| Phone ledger visibility, swipe/keyboard carousel, readable card copy                                                            | **Unverified** — interaction tests pass; geometry not observed.                             |
+| Final Household accounting / My Account save; mobile Calendar choose/read/close and retained selection                          | **Unverified** — interaction tests pass; final browser controls not exercised.              |
+| Cash Oct 28 baseline vs Oct 27 51k and Bank Oct 28 71.5k; once-only date change; future/correction lock                         | **Unverified in FE browser** — BE handoff contains read-only diagnosis, not FE acceptance.  |
+| Concurrent date assignments and correction/date race                                                                            | **Unverified in FE browser** — BE e2e handoff is separate evidence.                         |
+| Oct 1=30k, Oct 24=61,215,500 cumulative; scroll/click/end highlighting; filters; multiple pages                                 | **Unverified** — exact BE-shaped adapter/helper fixtures pass.                              |
+| Transfer has empty accounts; Cash destination; edit saved values; neutral household total                                       | **Unverified in browser** — form/API tests pass.                                            |
+| Structured member invitation, compact last name, duplicate fallback and legacy display                                          | **Unverified against live BE** — contract/component/label tests pass.                       |
+| Default/cleared URL and historical month; legacy date links; browser navigation                                                 | **Unverified in browser** — parser and router-hook tests pass.                              |
+| Each theme: one computed rounded search ring; semantic deltas; numeric 0%; zero prior total                                     | **Unverified** — no computed-style/theme screenshots captured.                              |
+| Deferred note 17                                                                                                                | **Unchanged in source**; no live no-op correction was submitted.                            |
+| Admin and member roles through the matrix                                                                                       | **Unverified** — no disposable acceptance household/session was established.                |
+
+Browser attempt: native Chrome inspection found an existing authenticated
+`localhost:6060/settings` page with the old interface, but the first inspection
+took over twelve minutes. A subsequent action detected that the active window
+had switched to unrelated Jira content. Automatic approval review rejected a
+stale-target click and then a further tree read, to prevent unrelated interaction
+or private-content access. No rejected action ran. Approval to open a dedicated
+NOSTOS tab was requested; browser work remains pending that approval. The FE dev
+server was started at `http://127.0.0.1:6060` after its initial sandbox socket
+failure. No new screenshots or network acceptance artifacts are claimed.
+
+BE integration prerequisite: deploy migration
+`20261029000000_account_calculation_start` and the additive API contracts using
+the owning BE runbook (`be-app/docs/deployment/2026-10-29-uat-recovery.md`). Its
+implementation commits are `cfe4c97`, `4177380`, `b81d1e5` (handoff `2256c41`).
+This FE session did not migrate, seed, reset or alter the user's DB, send a live
+invite, push, merge or publish. The browser release gate remains **open**.
+
+Execution rulings retained for handoff:
+
+- Used the clean existing `fix/findings-uat` checkout in place; this avoids moving
+  the working checkout but provides less filesystem isolation than a worktree.
+- Performed author self-review because the user prohibited all subagents;
+  independent reviewer blind-spot protection is absent.
+- Consolidated browser checks into Task 6 after integration; this delays the
+  discovery of layout defects.
+- The supplied plan had no exact test commands or Expected lines; focused
+  Vitest commands and the master full gate were used. An unstated check may
+  remain uncovered.
+- Missing new BE summary fields render unavailable during additive rollout;
+  this temporarily reduces summary detail until the BE is deployed.
+
+Deferred minors: none. Execution ledger/logs are retained in this plan's ignored
+workspace so pending browser acceptance can resume without repeating tasks.
+
 ### Business decisions that must stay on BE
 
 - Canonical account balance = opening baseline + eligible income - eligible
