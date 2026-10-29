@@ -1,4 +1,6 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { Dialog } from 'radix-ui'
+import { usePhone } from '@/hooks/usePhone'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { useHousehold } from '@/contexts/useHousehold'
@@ -31,6 +33,9 @@ const PAGE_SIZE = 500
  */
 export const CalendarPage = () => {
   const m = useMessages()
+  const phone = usePhone()
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const dayTrigger = useRef<HTMLElement | null>(null)
   const { locale } = useSettings()
   const { householdId } = useHousehold()
   const {
@@ -116,7 +121,7 @@ export const CalendarPage = () => {
         />
       </div>
 
-      <div className="min-h-0 flex-1 px-4 pb-6 lg:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-24 lg:px-6 lg:pb-6">
         {isError && (
           <div
             role="alert"
@@ -176,7 +181,11 @@ export const CalendarPage = () => {
                 calendar={calendar}
                 selectedDate={selectedDate}
                 today={today}
-                onSelect={selectDate}
+                onSelect={(date) => {
+                  dayTrigger.current = document.activeElement as HTMLElement
+                  selectDate(date)
+                  setSheetOpen(true)
+                }}
               />
 
               {isEmpty && (
@@ -191,12 +200,44 @@ export const CalendarPage = () => {
               )}
             </div>
 
-            <DaySheet
-              day={openDay}
-              today={today}
-              nameOf={nameOf}
-              rimOf={rimOf}
-            />
+            {phone ? (
+              <Dialog.Root
+                open={sheetOpen && !!openDay}
+                onOpenChange={setSheetOpen}
+              >
+                <Dialog.Portal>
+                  <Dialog.Overlay className="fixed inset-0 z-40 bg-black/35" />
+                  <Dialog.Content
+                    aria-describedby={undefined}
+                    onCloseAutoFocus={(event) => {
+                      event.preventDefault()
+                      dayTrigger.current?.focus()
+                    }}
+                    className="bg-card fixed inset-x-3 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 max-h-[85dvh] overflow-y-auto rounded-2xl p-3"
+                  >
+                    <Dialog.Title className="sr-only">
+                      {m.cal_title()}
+                    </Dialog.Title>
+                    <Dialog.Close className="text-accent min-h-11 px-4 font-semibold">
+                      {m.action_close()}
+                    </Dialog.Close>
+                    <DaySheet
+                      day={openDay}
+                      today={today}
+                      nameOf={nameOf}
+                      rimOf={rimOf}
+                    />
+                  </Dialog.Content>
+                </Dialog.Portal>
+              </Dialog.Root>
+            ) : (
+              <DaySheet
+                day={openDay}
+                today={today}
+                nameOf={nameOf}
+                rimOf={rimOf}
+              />
+            )}
           </div>
         )}
       </div>

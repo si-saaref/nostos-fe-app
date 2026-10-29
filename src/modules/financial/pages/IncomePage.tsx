@@ -1,7 +1,7 @@
 import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
 import { HouseholdBalance } from '@/modules/financial/components/HouseholdBalance'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { DismissablePanel } from '@/components/DismissablePanel'
+import { LedgerEditor } from '@/modules/financial/components/LedgerEditor'
 import { useHousehold } from '@/contexts/useHousehold'
 import { useSettings } from '@/contexts/useSettings'
 import { useMessages } from '@/i18n/useMessages'
@@ -204,7 +204,7 @@ export const IncomePage = () => {
         : m.inc_scope_count({ month: monthLabel, n: entryCount })
 
   return (
-    <section className="flex h-full flex-col">
+    <section className="flex h-full min-h-0 flex-col overflow-y-auto lg:overflow-hidden">
       {/* Pinned. The month figures and the position never scroll away from
           the statement they describe — the two questions this page answers are
           co-equal, and a position you have to scroll back up to find is not.
@@ -268,36 +268,31 @@ export const IncomePage = () => {
           )}
         </div>
 
-        {showForm && (
-          <DismissablePanel
-            onDismiss={() => setShowForm(false)}
-            className="bg-card lift-shadow rounded-xl p-4"
-          >
-            <IncomeForm
-              onSuccess={() => setShowForm(false)}
-              onCancel={() => setShowForm(false)}
-            />
-          </DismissablePanel>
-        )}
-
-        {toEdit && (
-          <DismissablePanel
-            onDismiss={() => setToEdit(null)}
-            className="bg-card lift-shadow rounded-xl p-4"
-          >
-            <h2 className="font-display mb-3 text-[12.5px] font-bold">
-              {m.inc_form_edit_title({ name: toEdit.name })}
-            </h2>
-            {/* Keyed on the row: hitting Edit on a second plate while one is
-                open must reset the fields, not keep the first row's values. */}
-            <IncomeForm
-              key={toEdit.id}
-              income={toEdit}
-              onSuccess={() => setToEdit(null)}
-              onCancel={() => setToEdit(null)}
-            />
-          </DismissablePanel>
-        )}
+        <LedgerEditor
+          open={isRecording}
+          title={
+            toEdit
+              ? m.inc_form_edit_title({ name: toEdit.name })
+              : m.action_record_income()
+          }
+          onClose={() => {
+            setShowForm(false)
+            setToEdit(null)
+          }}
+        >
+          <IncomeForm
+            key={toEdit?.id ?? 'create'}
+            income={toEdit ?? undefined}
+            onSuccess={() => {
+              setShowForm(false)
+              setToEdit(null)
+            }}
+            onCancel={() => {
+              setShowForm(false)
+              setToEdit(null)
+            }}
+          />
+        </LedgerEditor>
 
         {deleteError && (
           <p
@@ -309,8 +304,8 @@ export const IncomePage = () => {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 lg:px-6">
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-2">
+      <div className="flex shrink-0 flex-col px-4 pb-24 lg:min-h-0 lg:flex-1 lg:shrink lg:px-6 lg:pb-4">
+        <div className="min-w-0 flex-1 pr-1 lg:min-h-0 lg:overflow-y-auto lg:pb-2">
           {/* {isLoading && <Loading full label={m.inc_loading()} />} */}
 
           {isError && (

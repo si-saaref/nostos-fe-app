@@ -208,7 +208,7 @@ export const SettingsPage = () => {
           })}
         </nav>
 
-        <div className="min-h-0 min-w-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Mobile: the same index, flattened into a scrollable chip row. */}
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
             {groups.map((group) => (
@@ -250,7 +250,7 @@ export const SettingsPage = () => {
 
           <div
             ref={scrollRef}
-            className="h-full overflow-y-auto pr-1 pb-24 lg:pb-4"
+            className="min-h-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-4"
           >
             {activeGroup.id === 'household' && (
               <>

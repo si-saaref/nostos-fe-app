@@ -11,7 +11,7 @@ import { useHousehold } from '@/contexts/useHousehold'
 export const DashboardLayout = () => {
   const { me } = useHousehold()
   return (
-    <div className="bg-ground flex h-screen overflow-hidden">
+    <div className="bg-ground flex h-dvh overflow-hidden">
       <a
         href="#main"
         className="bg-card text-ink sr-only rounded-lg px-4 py-2 text-sm font-semibold focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50"

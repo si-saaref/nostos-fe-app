@@ -1,7 +1,7 @@
 import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
 import { HouseholdBalance } from '@/modules/financial/components/HouseholdBalance'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { DismissablePanel } from '@/components/DismissablePanel'
+import { LedgerEditor } from '@/modules/financial/components/LedgerEditor'
 import { useHousehold } from '@/contexts/useHousehold'
 import { useSettings } from '@/contexts/useSettings'
 import { useMessages } from '@/i18n/useMessages'
@@ -363,7 +363,7 @@ export const ExpensesPage = () => {
   }, [expenses, data, filters.typeId, nameOfType, nameOfUser])
 
   return (
-    <section className="flex h-full flex-col">
+    <section className="flex h-full min-h-0 flex-col overflow-y-auto lg:overflow-hidden">
       {/* Pinned: the count and the filters never scroll away from the ledger
           they describe, because a total you cannot see cannot be trusted. */}
       <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
@@ -402,36 +402,31 @@ export const ExpensesPage = () => {
           )}
         </div>
 
-        {showForm && (
-          <DismissablePanel
-            onDismiss={() => setShowForm(false)}
-            className="bg-card lift-shadow rounded-xl p-4"
-          >
-            <ExpenseForm
-              onSuccess={() => setShowForm(false)}
-              onCancel={() => setShowForm(false)}
-            />
-          </DismissablePanel>
-        )}
-
-        {expenseToEdit && (
-          <DismissablePanel
-            onDismiss={() => setExpenseToEdit(null)}
-            className="bg-card lift-shadow rounded-xl p-4"
-          >
-            <h2 className="font-display mb-3 text-[12.5px] font-bold">
-              {m.expense_edit_title({ name: expenseToEdit.name })}
-            </h2>
-            {/* Keyed on the row: hitting Edit on a second plate while one is
-                open must reset the fields, not keep the first row's values. */}
-            <ExpenseForm
-              key={expenseToEdit.id}
-              expense={expenseToEdit}
-              onSuccess={() => setExpenseToEdit(null)}
-              onCancel={() => setExpenseToEdit(null)}
-            />
-          </DismissablePanel>
-        )}
+        <LedgerEditor
+          open={isRecording}
+          title={
+            expenseToEdit
+              ? m.expense_edit_title({ name: expenseToEdit.name })
+              : m.action_record_long()
+          }
+          onClose={() => {
+            setShowForm(false)
+            setExpenseToEdit(null)
+          }}
+        >
+          <ExpenseForm
+            key={expenseToEdit?.id ?? 'create'}
+            expense={expenseToEdit ?? undefined}
+            onSuccess={() => {
+              setShowForm(false)
+              setExpenseToEdit(null)
+            }}
+            onCancel={() => {
+              setShowForm(false)
+              setExpenseToEdit(null)
+            }}
+          />
+        </LedgerEditor>
 
         {deleteError && (
           <p
@@ -443,7 +438,7 @@ export const ExpensesPage = () => {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-4 px-4 pb-4 lg:px-6">
+      <div className="flex shrink-0 gap-4 px-4 pb-24 lg:min-h-0 lg:flex-1 lg:shrink lg:px-6 lg:pb-4">
         <MonthRail
           days={days}
           rangeFrom={filters.dateFrom}
@@ -457,7 +452,7 @@ export const ExpensesPage = () => {
 
         <div
           ref={scrollRef}
-          className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-2"
+          className="min-w-0 flex-1 pr-1 lg:min-h-0 lg:overflow-y-auto lg:pb-2"
         >
           {/* {isLoading && <Loading full label={m.tape_loading()} />} */}
 

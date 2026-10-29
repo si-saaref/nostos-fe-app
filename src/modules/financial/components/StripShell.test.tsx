@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithProviders as render } from '@/test/test-utils'
 import { StripShell } from '@/modules/financial/components/StripShell'
 
 /**
@@ -49,4 +50,19 @@ describe('StripShell — loading', () => {
     )
     expect(screen.getByText('IDR 59.635.000')).toBeInTheDocument()
   })
+})
+
+it('offers manual metric navigation and announces the active position', async () => {
+  const { default: userEvent } = await import('@testing-library/user-event')
+  render(
+    <StripShell
+      label="Metrics"
+      figures={[
+        { id: 'a', key: 'A', value: '10' },
+        { id: 'b', key: 'B', value: '20' },
+      ]}
+    />,
+  )
+  await userEvent.click(screen.getByRole('button', { name: /next|berikut/i }))
+  expect(screen.getByRole('status')).toHaveTextContent('2 / 2')
 })
