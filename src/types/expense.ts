@@ -1,4 +1,5 @@
 export interface Expense {
+  transferIncomeId?: string | null
   id: string
   name: string
   /**
@@ -73,6 +74,7 @@ export interface ExpenseFilters {
  * wrong. Mapped in one direction each by `toExpense` / `toExpenseBody`.
  */
 export interface WireExpense {
+  transfer_income_id?: string | null
   id: string
   name: string
   description?: string | null

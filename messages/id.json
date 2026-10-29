@@ -1,4 +1,12 @@
 {
+  "transfer_fee_toggle": "Ada biaya admin",
+  "transfer_fee_label": "Biaya admin",
+  "transfer_fee_invalid": "Isi biaya lebih dari nol, atau matikan biaya admin.",
+  "transfer_debit": "Dari {account}: {amount}",
+  "transfer_credit": "Masuk {account}: {amount}",
+  "transfer_fee_included": "Termasuk biaya admin {amount}",
+  "transfer_fee_managed": "Biaya ini mengikuti transfer. Ubah atau hapus melalui transfer terkait di Pemasukan.",
+  "transfer_fees_note": "Biaya admin: {amount}",
   "filters_title": "Filter",
   "filters_apply": "Terapkan filter",
   "filters_reset": "Reset",

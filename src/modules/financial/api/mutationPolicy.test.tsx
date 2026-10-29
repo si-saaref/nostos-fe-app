@@ -129,7 +129,9 @@ it.each(['expense', 'income', 'transfer'])(
               input as Parameters<typeof result.current.inflow.mutateAsync>[0],
             ))
       })
-      await waitFor(() => expect(gets).toBe(before + 2))
+      await waitFor(() =>
+        expect(gets).toBe(before + (kind === 'expense' ? 2 : 3)),
+      )
     } finally {
       server.events.removeListener('request:start', record)
     }

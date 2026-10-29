@@ -98,6 +98,7 @@ export interface WirePagination {
  * money that the server never made.
  */
 export interface WireTotals {
+  transfer_fees?: string
   cash_withdrawn?: string
   cash_withdrawal_count?: number
   sum: string
@@ -192,6 +193,8 @@ export interface SummarySlice {
  * they cannot be recomputed client-side from `items`.
  */
 export interface Totals {
+  transfer_fees?: number
+  transferFeesText?: string
   cash_withdrawn?: number
   cashWithdrawnText?: string
   cash_withdrawal_count?: number

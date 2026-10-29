@@ -28,6 +28,8 @@ const toWire = (income: StoredIncome): WireIncome => ({
   name: income.name,
   description: income.description ?? null,
   amount: toWireMoney(income.amount),
+  fee_amount: toWireMoney(income.feeAmount ?? 0),
+  fee_expense_id: income.feeExpenseId ?? null,
   kind: income.kind,
   type_id: income.typeId,
   from_source_id: income.fromSourceId,
@@ -39,6 +41,49 @@ const toWire = (income: StoredIncome): WireIncome => ({
   created_at: income.createdAt,
   updated_at: income.updatedAt,
 })
+
+/** Managed fee lifecycle mirrors the atomic server relationship. */
+const syncFee = (income: StoredIncome) => {
+  let expense = db.expenses.find((row) => row.transferIncomeId === income.id)
+  if (!(income.feeAmount && income.kind === 'TRANSFER')) {
+    if (expense) expense.deletedAt = new Date().toISOString()
+    income.feeExpenseId = null
+    return
+  }
+  let category = db.categories.find((row) => row.systemKey === 'TRANSFER_FEE')
+  if (!category) {
+    category = {
+      id: nextId('category'),
+      name: 'Biaya admin',
+      systemKey: 'TRANSFER_FEE',
+      order: Math.max(-1, ...db.categories.map((row) => row.order)) + 1,
+      archivedAt: null,
+      householdId: income.householdId,
+    }
+    db.categories.push(category)
+  }
+  category.archivedAt = null
+  const data = {
+    name: `Biaya admin · ${income.name}`.slice(0, 100),
+    value: income.feeAmount,
+    sourceId: income.fromSourceId!,
+    typeId: category.id,
+    datePaid: income.date,
+    paidByUserId: income.createdByUserId ?? MOCK_USER.id,
+    transferIncomeId: income.id,
+    deletedAt: null,
+  }
+  if (expense) Object.assign(expense, data)
+  else {
+    expense = {
+      ...data,
+      id: nextId('expense'),
+      householdId: income.householdId,
+    }
+    db.expenses.unshift(expense)
+  }
+  income.feeExpenseId = expense.id
+}
 
 /** Soft delete: a tombstoned row never reaches a response. Every read starts here. */
 const live = (): StoredIncome[] =>
@@ -63,6 +108,7 @@ const totalsFor = (items: StoredIncome[]) => {
     count: items.length,
     average: averageMoneyText(sum, items.length - transfers.length),
     moved: outOf,
+    transfer_fees: sumMoneyText(transfers.map((row) => row.feeAmount ?? 0)),
     cash_withdrawn: sumMoneyText(
       transfers
         .filter(
@@ -130,6 +176,17 @@ const liveType = (id: string) =>
  * household" is spelled.
  */
 const badBody = (body: Partial<WireIncome> & Record<string, unknown>) => {
+  if (
+    body.fee_amount !== undefined &&
+    !isCanonicalWireInputMoney(body.fee_amount, true)
+  )
+    return errorBody(400, 'VALIDATION_ERROR', 'Invalid administration fee')
+  if (body.kind === 'EXTERNAL_INCOME' && Number(body.fee_amount ?? 0) > 0)
+    return errorBody(
+      400,
+      'VALIDATION_ERROR',
+      'Only transfers may have an administration fee',
+    )
   if ('household_id' in body) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
       {
@@ -328,6 +385,8 @@ export const incomeHandlers = [
         description: body.description?.trim() || null,
         amount: body.amount === undefined ? 0 : fromWireMoney(body.amount),
         kind: body.kind,
+        feeAmount:
+          body.fee_amount === undefined ? 0 : fromWireMoney(body.fee_amount),
         typeId: body.type_id ?? null,
         fromSourceId: body.from_source_id ?? null,
         toSourceId: body.to_source_id,
@@ -341,6 +400,7 @@ export const incomeHandlers = [
       })
     }
     // Validate the whole batch before changing the store.
+    created.forEach(syncFee)
     db.income.unshift(...created)
     return ok(created.map(toWire), { status: 201 })
   }),
@@ -381,6 +441,12 @@ export const incomeHandlers = [
 
     db.income[index] = {
       ...current,
+      feeAmount:
+        (body.kind ?? current.kind) === 'EXTERNAL_INCOME'
+          ? 0
+          : body.fee_amount !== undefined
+            ? fromWireMoney(body.fee_amount)
+            : (current.feeAmount ?? 0),
       ...(body.name !== undefined && { name: body.name }),
       ...(body.description !== undefined && {
         description: body.description?.trim() || null,
@@ -398,6 +464,7 @@ export const incomeHandlers = [
       updatedByAdminId: MOCK_USER.id,
       updatedAt: new Date().toISOString(),
     }
+    syncFee(db.income[index])
     return ok(toWire(db.income[index]))
   }),
 
@@ -410,6 +477,11 @@ export const incomeHandlers = [
     // existed (AC4.9) — the tombstone is not a resource.
     if (!income) return notFound('Income')
     income.deletedAt = new Date().toISOString()
+    db.expenses
+      .filter((row) => row.transferIncomeId === income.id)
+      .forEach((row) => {
+        row.deletedAt = income.deletedAt
+      })
     return ok(null, { message: 'Income deleted' })
   }),
 ]

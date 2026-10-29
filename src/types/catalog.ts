@@ -31,6 +31,7 @@ export type ExpenseCategorySystemKey =
   | 'EDUCATION'
   | 'GIFTS_DONATIONS'
   | 'SUBSCRIPTIONS'
+  | 'TRANSFER_FEE'
   | 'OTHER'
 
 export type AccountSystemKey = 'DEFAULT_CASH' | 'DEFAULT_BANK'

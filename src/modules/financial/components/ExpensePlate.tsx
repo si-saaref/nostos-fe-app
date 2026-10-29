@@ -278,7 +278,10 @@ const ExpensePlateBase = ({
                 {m.plate_history_kept()}
               </p>
 
-              {canManage && (
+              {expense.transferIncomeId && (
+                <p className="text-muted text-xs">{m.transfer_fee_managed()}</p>
+              )}
+              {canManage && !expense.transferIncomeId && (
                 <div className="flex items-center gap-2">
                   <span className="text-muted text-[8px] font-bold tracking-[0.08em] uppercase">
                     {m.plate_admin_only()}

@@ -36,6 +36,7 @@ const toWire = (expense: StoredExpense): WireExpense => ({
   value: toWireMoney(expense.value),
   type_id: expense.typeId,
   source_id: expense.sourceId,
+  transfer_income_id: expense.transferIncomeId ?? null,
   date_paid: expense.datePaid,
   paid_by_user_id: expense.paidByUserId,
   household_id: expense.householdId,
@@ -385,6 +386,12 @@ export const expenseHandlers = [
     )
     if (index === -1) return notFound('Expense')
     const current = db.expenses[index]
+    if (current.transferIncomeId)
+      return errorBody(
+        409,
+        'INVALID_STATE',
+        'Edit the linked transfer to change this fee',
+      )
     db.expenses[index] = {
       ...current,
       ...(body.name !== undefined && { name: body.name }),
@@ -412,6 +419,12 @@ export const expenseHandlers = [
       (row) => row.id === params.id && row.deletedAt === null,
     )
     if (!expense) return notFound('Expense')
+    if (expense.transferIncomeId)
+      return errorBody(
+        409,
+        'INVALID_STATE',
+        'Delete the linked transfer to remove this fee',
+      )
     // Soft delete: the row is tombstoned, not dropped. It leaves every
     // response immediately and stays in the store for the recovery window.
     expense.deletedAt = new Date().toISOString()

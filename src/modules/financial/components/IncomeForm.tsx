@@ -12,6 +12,7 @@ import { useIncomeTypes } from '@/modules/settings/api/incomeCategories'
 import { useHousehold } from '@/contexts/useHousehold'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
+import { TransferFeeFields } from './TransferFeeFields'
 import { AmountInput } from '@/components/AmountInput'
 import { DateField } from '@/components/DateField'
 import { FormField } from '@/components/FormField'
@@ -102,6 +103,8 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
       description: income?.description ?? '',
       // No zero seed: an empty field asks for the amount, a `0` states one.
       amount: income?.amount,
+      feeAmount:
+        income?.feeAmount && income.feeAmount > 0 ? income.feeAmount : 2500,
       typeId: income?.kind === 'TRANSFER' ? null : (income?.typeId ?? ''),
       fromSourceId: income?.fromSourceId ?? null,
       toSourceId: income?.toSourceId ?? '',
@@ -109,6 +112,11 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     },
   })
   const kind = useWatch({ control, name: 'kind' })
+  const [hasFee, setHasFee] = useState((income?.feeAmount ?? 0) > 0)
+  const [amount, fromSourceId, toSourceId] = useWatch({
+    control,
+    name: ['amount', 'fromSourceId', 'toSourceId'],
+  })
   useEffect(() => {
     if (isEdit) return
     if (
@@ -145,6 +153,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
         ? {
             ...data,
             kind: 'TRANSFER',
+            feeAmount: hasFee ? Number(data.feeAmount) : 0,
             amount: Number(data.amount),
             typeId: null,
             fromSourceId: data.fromSourceId!,
@@ -153,6 +162,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
             ...data,
             amount: Number(data.amount),
             kind: 'EXTERNAL_INCOME',
+            feeAmount: 0,
             typeId: data.typeId!,
             // The Select trades in strings, so "no source chosen" arrives as `''`.
             // It has to reach the wire as an explicit null: on this field null is a
@@ -421,6 +431,33 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
           into three ragged rows with half of each one empty; at the end it
           closes the form under a filled grid. */}
       <div className="sm:col-span-2 lg:col-span-3">
+        {kind === 'TRANSFER' && (
+          <Controller
+            control={control}
+            name="feeAmount"
+            rules={{
+              validate: (value) =>
+                !hasFee ||
+                (value !== undefined && isValidMoney(value)) ||
+                m.transfer_fee_invalid(),
+            }}
+            render={({ field, fieldState }) => (
+              <TransferFeeFields
+                enabled={hasFee}
+                onToggle={() => setHasFee((value) => !value)}
+                fee={field.value}
+                onFeeChange={field.onChange}
+                error={fieldState.error?.message}
+                amount={amount}
+                fromName={
+                  accounts?.find((row) => row.id === fromSourceId)?.name
+                }
+                toName={accounts?.find((row) => row.id === toSourceId)?.name}
+              />
+            )}
+          />
+        )}
+
         <FormField label={m.form_description()}>
           {/* One line to start, growing with what is typed into it. Two
                 fixed rows reserved a band of empty well on every entry that

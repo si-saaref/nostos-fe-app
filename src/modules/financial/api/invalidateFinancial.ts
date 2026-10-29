@@ -8,5 +8,12 @@ export const invalidateFinancial = (
 ) =>
   Promise.all([
     client.invalidateQueries({ queryKey: entityKey(householdId, domain) }),
+    ...(domain === 'income'
+      ? ['expenses', 'categories'].map((entity) =>
+          client.invalidateQueries({
+            queryKey: entityKey(householdId, entity),
+          }),
+        )
+      : []),
     client.invalidateQueries({ queryKey: entityKey(householdId, 'positions') }),
   ])

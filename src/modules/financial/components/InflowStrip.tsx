@@ -113,11 +113,19 @@ export const InflowStrip = ({
         figures.moved === null
           ? m.inc_unknown()
           : money(figures.movedText ?? figures.moved),
-      note: countNote(
-        figures.transferCount,
-        m.inc_moved_note_one(),
-        m.inc_moved_note,
-      ),
+      note:
+        (summary?.current.transfer_fees ?? 0) > 0
+          ? m.transfer_fees_note({
+              amount: money(
+                summary!.current.transferFeesText ??
+                  summary!.current.transfer_fees!,
+              ),
+            })
+          : countNote(
+              figures.transferCount,
+              m.inc_moved_note_one(),
+              m.inc_moved_note,
+            ),
       sub:
         summary?.current.cash_withdrawn === undefined
           ? m.cash_withdrawal_unavailable()

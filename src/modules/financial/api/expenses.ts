@@ -87,6 +87,7 @@ export const toExpense = (row: WireExpense): Expense => ({
   value: fromWireMoney(row.value),
   typeId: row.type_id,
   sourceId: row.source_id,
+  ...(row.transfer_income_id && { transferIncomeId: row.transfer_income_id }),
   datePaid: row.date_paid,
   paidByUserId: row.paid_by_user_id,
   householdId: row.household_id,

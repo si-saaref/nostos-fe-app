@@ -1,4 +1,12 @@
 {
+  "transfer_fee_toggle": "Has administration fee",
+  "transfer_fee_label": "Administration fee",
+  "transfer_fee_invalid": "Enter a fee greater than zero, or turn the fee off.",
+  "transfer_debit": "From {account}: {amount}",
+  "transfer_credit": "Into {account}: {amount}",
+  "transfer_fee_included": "Includes administration fee {amount}",
+  "transfer_fee_managed": "This fee follows its transfer. Edit or delete it through the linked transfer in Income.",
+  "transfer_fees_note": "Administration fees: {amount}",
   "filters_title": "Filters",
   "filters_apply": "Apply filters",
   "filters_reset": "Reset",

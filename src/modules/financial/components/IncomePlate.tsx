@@ -182,7 +182,12 @@ const IncomePlateBase = ({
                     <span className="text-muted">
                       {fromName}{' '}
                       <span className="font-display tnum text-[13px]">
-                        −{amount}
+                        −
+                        {formatCurrency(
+                          income.amount + (income.feeAmount ?? 0),
+                          currency,
+                          locale,
+                        )}
                       </span>
                     </span>
                     <span aria-hidden="true" className="text-muted">
@@ -198,7 +203,17 @@ const IncomePlateBase = ({
                 </span>
               </p>
               <p className="text-muted text-[10.5px] font-semibold">
-                {isTransfer ? m.inc_effect_transfer() : m.inc_effect_external()}
+                {isTransfer
+                  ? (income.feeAmount ?? 0) > 0
+                    ? m.transfer_fee_included({
+                        amount: formatCurrency(
+                          income.feeAmount!,
+                          currency,
+                          locale,
+                        ),
+                      })
+                    : m.inc_effect_transfer()
+                  : m.inc_effect_external()}
               </p>
             </div>
 

@@ -39,6 +39,7 @@ const FIELD_BY_CODE: Record<string, IncomeField | undefined> = {
 const FIELD_BY_WIRE_NAME: Record<string, IncomeField | undefined> = {
   name: 'name',
   amount: 'amount',
+  fee_amount: 'feeAmount',
   type_id: 'typeId',
   from_source_id: 'fromSourceId',
   to_source_id: 'toSourceId',

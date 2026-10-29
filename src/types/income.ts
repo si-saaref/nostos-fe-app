@@ -13,6 +13,8 @@
  * is why a transfer must never be rendered with a `+` in front of it.
  */
 export interface Income {
+  feeAmount?: number
+  feeExpenseId?: string | null
   id: string
   name: string
   /** The detail behind the name. See `Expense.description`. */
@@ -40,6 +42,7 @@ export interface Income {
 }
 
 export interface IncomeFormValues {
+  feeAmount?: number
   kind: 'EXTERNAL_INCOME' | 'TRANSFER'
   name: string
   description?: string | null
@@ -99,6 +102,8 @@ export interface IncomeFilters {
  * diffable line-by-line against the API document.
  */
 export interface WireIncome {
+  fee_amount?: string
+  fee_expense_id?: string | null
   id: string
   name: string
   description?: string | null

@@ -56,6 +56,10 @@ export const toIncome = (row: WireIncome): Income => ({
   name: row.name,
   description: row.description,
   amount: fromWireMoney(row.amount),
+  ...(row.fee_amount !== undefined && {
+    feeAmount: fromWireMoney(row.fee_amount),
+    feeExpenseId: row.fee_expense_id ?? null,
+  }),
   kind: row.kind,
   typeId: row.type_id,
   fromSourceId: row.from_source_id,
@@ -81,6 +85,9 @@ const toIncomeBody = (input: CreateIncomeInput) => ({
   // Blank is absent — see `toExpenseBody`.
   description: input.description?.trim() || null,
   amount: toWireMoney(input.amount),
+  ...(input.kind === 'TRANSFER' && {
+    fee_amount: toWireMoney(input.feeAmount ?? 0),
+  }),
   type_id: input.kind === 'TRANSFER' ? null : input.typeId,
   from_source_id: input.fromSourceId,
   to_source_id: input.toSourceId,
@@ -109,6 +116,8 @@ const toIncomePatch = (patch: UpdateIncomeInput) => {
     body.description = patch.description?.trim() || null
   }
   if (patch.amount !== undefined) body.amount = toWireMoney(patch.amount)
+  if (patch.feeAmount !== undefined)
+    body.fee_amount = toWireMoney(patch.feeAmount)
   if (patch.kind !== undefined) body.kind = patch.kind
   if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.fromSourceId !== undefined) {
@@ -169,6 +178,8 @@ const adjustedTotals = (
   const moved = movedText === undefined ? undefined : Number(movedText)
   return {
     ...totals,
+    transfer_fees: undefined,
+    transferFeesText: undefined,
     cash_withdrawn: undefined,
     cashWithdrawnText: undefined,
     cash_withdrawal_count: undefined,

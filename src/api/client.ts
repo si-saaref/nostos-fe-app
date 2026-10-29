@@ -125,6 +125,11 @@ const toTotals = (wire: WireTotals): Totals => ({
       ? undefined
       : fromWireMoney(wire.cash_withdrawn),
   cashWithdrawnText: wire.cash_withdrawn,
+  transfer_fees:
+    wire.transfer_fees === undefined
+      ? undefined
+      : fromWireMoney(wire.transfer_fees),
+  transferFeesText: wire.transfer_fees,
 })
 
 const toSummary = (wire: WireSummary): Summary => ({
