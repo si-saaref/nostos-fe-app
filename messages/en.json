@@ -1,4 +1,7 @@
 {
+  "filters_title": "Filters",
+  "filters_apply": "Apply filters",
+  "filters_reset": "Reset",
   "acc_baseline_pending": "Starting balance not set",
   "acc_baseline_ready": "Starting balance set",
   "acc_baseline_pending_note": "All recorded history is included until you set a starting date and balance.",

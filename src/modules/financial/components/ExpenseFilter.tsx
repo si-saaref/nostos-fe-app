@@ -2,6 +2,10 @@ import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
 import { useEffect, useRef, useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { Select } from '@/components/Select'
+import {
+  MobileFilterSheet,
+  type FilterField,
+} from '@/components/MobileFilterSheet'
 import { useActiveCategories } from '@/modules/settings/api/categories'
 import { useActiveAccounts } from '@/modules/settings/api/accounts'
 import { useRoster } from '@/modules/settings/api/members'
@@ -59,6 +63,40 @@ export const ExpenseFilter = ({ householdId, filters, onChange }: Props) => {
 
   useEffect(() => () => window.clearTimeout(debounceRef.current), [])
 
+  const fields: FilterField[] = [
+    {
+      key: 'typeId',
+      label: m.filter_category(),
+      all: m.count_scope_all({ what: m.count_categories() }),
+      value: filters.typeId ?? '',
+      options:
+        categories?.map((row) => ({
+          value: row.id,
+          label: row.name,
+          rim: rimFor(row.order),
+        })) ?? [],
+    },
+    {
+      key: 'sourceId',
+      label: m.filter_method(),
+      all: m.count_scope_all({ what: m.count_methods() }),
+      value: filters.sourceId ?? '',
+      options:
+        accounts?.map((row) => ({ value: row.id, label: row.name })) ?? [],
+    },
+    {
+      key: 'paidByUserId',
+      label: m.filter_paid_by(),
+      all: m.count_scope_all({ what: m.count_members() }),
+      value: filters.paidByUserId ?? '',
+      options:
+        users?.map((row) => ({
+          value: row.id,
+          label: compactMemberLabels(users ?? []).get(row.id) ?? row.name,
+        })) ?? [],
+    },
+  ]
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <label className="well-shadow bg-chip focus-within:ring-accent flex min-w-[180px] flex-1 items-center gap-2 rounded-lg px-3 py-2 focus-within:ring-2">
@@ -96,55 +134,70 @@ export const ExpenseFilter = ({ householdId, filters, onChange }: Props) => {
         />
       </label>
 
-      <Select
-        hideLabel
-        label={m.filter_category()}
-        placeholder={m.count_scope_all({ what: m.count_categories() })}
-        value={filters.typeId ?? ''}
-        onChange={(value) => onChange({ typeId: value || undefined, page: 1 })}
-        // Rim comes from the category's own order, never its index in this
-        // array: an archived row filtered out here would otherwise shift the
-        // colour of every category after it.
-        options={
-          categories?.map((category) => ({
-            value: category.id,
-            label: category.name,
-            rim: rimFor(category.order),
-          })) ?? []
+      <MobileFilterSheet
+        fields={fields}
+        onApply={(values) =>
+          onChange({
+            typeId: values.typeId || undefined,
+            sourceId: values.sourceId || undefined,
+            paidByUserId: values.paidByUserId || undefined,
+            page: 1,
+          })
         }
       />
+      <div className="hidden items-center gap-2 lg:flex">
+        <Select
+          hideLabel
+          label={m.filter_category()}
+          placeholder={m.count_scope_all({ what: m.count_categories() })}
+          value={filters.typeId ?? ''}
+          onChange={(value) =>
+            onChange({ typeId: value || undefined, page: 1 })
+          }
+          // Rim comes from the category's own order, never its index in this
+          // array: an archived row filtered out here would otherwise shift the
+          // colour of every category after it.
+          options={
+            categories?.map((category) => ({
+              value: category.id,
+              label: category.name,
+              rim: rimFor(category.order),
+            })) ?? []
+          }
+        />
 
-      <Select
-        hideLabel
-        label={m.filter_method()}
-        placeholder={m.count_scope_all({ what: m.count_methods() })}
-        value={filters.sourceId ?? ''}
-        onChange={(value) =>
-          onChange({ sourceId: value || undefined, page: 1 })
-        }
-        options={
-          accounts?.map((account) => ({
-            value: account.id,
-            label: account.name,
-          })) ?? []
-        }
-      />
+        <Select
+          hideLabel
+          label={m.filter_method()}
+          placeholder={m.count_scope_all({ what: m.count_methods() })}
+          value={filters.sourceId ?? ''}
+          onChange={(value) =>
+            onChange({ sourceId: value || undefined, page: 1 })
+          }
+          options={
+            accounts?.map((account) => ({
+              value: account.id,
+              label: account.name,
+            })) ?? []
+          }
+        />
 
-      <Select
-        hideLabel
-        label={m.filter_paid_by()}
-        placeholder={m.count_scope_all({ what: m.count_members() })}
-        value={filters.paidByUserId ?? ''}
-        onChange={(value) =>
-          onChange({ paidByUserId: value || undefined, page: 1 })
-        }
-        options={
-          users?.map((user) => ({
-            value: user.id,
-            label: compactMemberLabels(users ?? []).get(user.id) ?? user.name,
-          })) ?? []
-        }
-      />
+        <Select
+          hideLabel
+          label={m.filter_paid_by()}
+          placeholder={m.count_scope_all({ what: m.count_members() })}
+          value={filters.paidByUserId ?? ''}
+          onChange={(value) =>
+            onChange({ paidByUserId: value || undefined, page: 1 })
+          }
+          options={
+            users?.map((user) => ({
+              value: user.id,
+              label: compactMemberLabels(users ?? []).get(user.id) ?? user.name,
+            })) ?? []
+          }
+        />
+      </div>
     </div>
   )
 }

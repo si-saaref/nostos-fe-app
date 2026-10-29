@@ -1,4 +1,7 @@
 {
+  "filters_title": "Filter",
+  "filters_apply": "Terapkan filter",
+  "filters_reset": "Reset",
   "acc_baseline_pending": "Saldo awal belum diatur",
   "acc_baseline_ready": "Saldo awal sudah diatur",
   "acc_baseline_pending_note": "Seluruh riwayat catatan dihitung sampai tanggal dan saldo awal ditetapkan.",
