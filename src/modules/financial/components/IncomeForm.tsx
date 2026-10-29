@@ -300,6 +300,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
 
       <FormField label={m.inc_form_name()} error={errors.name?.message}>
         <input
+          autoComplete="off"
           maxLength={NAME_MAX}
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('name', { required: m.inc_err_name() })}
@@ -425,6 +426,7 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
                 fixed rows reserved a band of empty well on every entry that
                 never needed the field. */}
           <textarea
+            autoComplete="off"
             rows={1}
             maxLength={DESCRIPTION_MAX}
             placeholder={m.form_description_hint()}

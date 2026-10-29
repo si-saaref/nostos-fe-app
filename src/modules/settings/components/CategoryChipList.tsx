@@ -111,6 +111,7 @@ export const CategoryChipList = ({
               >
                 <FormField label={nameLabel} className="min-w-[200px] flex-1">
                   <input
+                    autoComplete="off"
                     autoFocus
                     value={draftName}
                     disabled={isArchived || isSaving}

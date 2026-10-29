@@ -125,6 +125,7 @@ export const ExpenseFilter = ({ householdId, filters, onChange }: Props) => {
           />
         </svg>
         <input
+          autoComplete="off"
           data-composite-focus
           type="search"
           value={searchDraft}

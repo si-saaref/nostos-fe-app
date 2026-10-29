@@ -33,8 +33,11 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
     isPending: isCreating,
     error: createError,
   } = useCreateCategory(householdId)
-  const { mutate: update, mutateAsync: updateAsync, error: updateError } =
-    useUpdateCategory(householdId)
+  const {
+    mutate: update,
+    mutateAsync: updateAsync,
+    error: updateError,
+  } = useUpdateCategory(householdId)
 
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -77,6 +80,7 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
           >
             <FormField label={m.cat_name()} className="min-w-[200px] flex-1">
               <input
+                autoComplete="off"
                 autoFocus
                 value={newName}
                 onChange={(event) => setNewName(event.target.value)}
@@ -116,9 +120,7 @@ export const CategorySection = ({ householdId, canManage }: Props) => {
           updateAsync({ id: category.id, name: capitalizeFirst(name) })
         }
         onArchive={setCategoryToArchive}
-        onRestore={(category) =>
-          update({ id: category.id, archivedAt: null })
-        }
+        onRestore={(category) => update({ id: category.id, archivedAt: null })}
       />
 
       <ConfirmDialog

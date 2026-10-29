@@ -127,7 +127,7 @@ export const MemberSection = ({
               className="min-w-[150px] flex-1"
             >
               <input
-                autoComplete="given-name"
+                autoComplete="off"
                 value={firstName}
                 onChange={(event) => setFirstName(event.target.value)}
                 className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
@@ -139,7 +139,7 @@ export const MemberSection = ({
               className="min-w-[150px] flex-1"
             >
               <input
-                autoComplete="family-name"
+                autoComplete="off"
                 value={lastName}
                 onChange={(event) => setLastName(event.target.value)}
                 className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
@@ -151,6 +151,7 @@ export const MemberSection = ({
               className="min-w-[200px] flex-[2]"
             >
               <input
+                autoComplete="off"
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}

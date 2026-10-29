@@ -247,7 +247,7 @@ export const SigninCard = ({
           id="signin-email"
           type="email"
           inputMode="email"
-          autoComplete="email"
+          autoComplete="off"
           autoFocus
           value={email}
           onChange={(event) => setEmail(event.target.value)}

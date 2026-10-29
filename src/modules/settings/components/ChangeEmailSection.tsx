@@ -40,16 +40,21 @@ export const ChangeEmailSection = () => {
     >
       <div className="bg-card plate-shadow rounded-xl p-4">
         <p className="text-muted text-[11px]">{m.profile_current()}</p>
-        <p className="font-display mt-1 text-[14px] font-semibold">{me?.email}</p>
+        <p className="font-display mt-1 text-[14px] font-semibold">
+          {me?.email}
+        </p>
         <form onSubmit={submit} className="mt-4 flex max-w-xl flex-col gap-2">
-          <label htmlFor="profile-new-email" className="text-[11px] font-semibold">
+          <label
+            htmlFor="profile-new-email"
+            className="text-[11px] font-semibold"
+          >
             {m.profile_new_email()}
           </label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
               id="profile-new-email"
               type="email"
-              autoComplete="email"
+              autoComplete="off"
               required
               value={newEmail}
               onChange={(event) => {
@@ -60,7 +65,11 @@ export const ChangeEmailSection = () => {
             />
             <button
               type="submit"
-              disabled={isSending || !newEmail.trim() || newEmail.trim().toLowerCase() === me?.email.toLowerCase()}
+              disabled={
+                isSending ||
+                !newEmail.trim() ||
+                newEmail.trim().toLowerCase() === me?.email.toLowerCase()
+              }
               className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
             >
               {isSending ? m.profile_sending() : m.profile_send()}
@@ -68,7 +77,10 @@ export const ChangeEmailSection = () => {
           </div>
         </form>
         {sent && (
-          <p role="status" className="bg-chip mt-3 rounded-lg px-3 py-2 text-[11px]">
+          <p
+            role="status"
+            className="bg-chip mt-3 rounded-lg px-3 py-2 text-[11px]"
+          >
             {m.profile_sent()}
           </p>
         )}

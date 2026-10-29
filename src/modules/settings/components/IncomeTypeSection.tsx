@@ -117,11 +117,9 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
             }}
             className="bg-card lift-shadow mb-3 flex flex-wrap items-end gap-2 rounded-lg p-3"
           >
-            <FormField
-              label={m.itype_name()}
-              className="min-w-[200px] flex-1"
-            >
+            <FormField label={m.itype_name()} className="min-w-[200px] flex-1">
               <input
+                autoComplete="off"
                 autoFocus
                 value={newName}
                 onChange={(event) => setNewName(event.target.value)}

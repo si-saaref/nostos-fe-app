@@ -87,6 +87,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
     <div className="flex flex-wrap items-end gap-2">
       <FormField label={m.acc_name()} className="min-w-[180px] flex-1">
         <input
+          autoComplete="off"
           value={draft.name}
           disabled={disabled}
           onChange={(event) => setDraft({ ...draft, name: event.target.value })}

@@ -9,14 +9,19 @@ import { getErrorMessage } from '@/utils/errors'
 const legacyNameParts = (name: string) => {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length < 2) return { firstName: parts[0] ?? '', lastName: '' }
-  return { firstName: parts.slice(0, -1).join(' '), lastName: parts.at(-1) ?? '' }
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts.at(-1) ?? '',
+  }
 }
 
 export const ChangeNameSection = () => {
   const m = useMessages()
   const { me } = useHousehold()
   const fallback = legacyNameParts(me?.name ?? '')
-  const [firstName, setFirstName] = useState(me?.first_name ?? fallback.firstName)
+  const [firstName, setFirstName] = useState(
+    me?.first_name ?? fallback.firstName,
+  )
   const [lastName, setLastName] = useState(me?.last_name ?? fallback.lastName)
   const changeName = useChangeName()
 
@@ -43,7 +48,7 @@ export const ChangeNameSection = () => {
               {m.profile_first_name()}
             </span>
             <input
-              autoComplete="given-name"
+              autoComplete="off"
               value={firstName}
               onChange={(event) => {
                 changeName.reset()
@@ -57,7 +62,7 @@ export const ChangeNameSection = () => {
               {m.profile_last_name()}
             </span>
             <input
-              autoComplete="family-name"
+              autoComplete="off"
               value={lastName}
               onChange={(event) => {
                 changeName.reset()
@@ -70,7 +75,9 @@ export const ChangeNameSection = () => {
         <div className="flex items-center justify-end">
           <button
             type="submit"
-            disabled={changeName.isPending || !firstName.trim() || !lastName.trim()}
+            disabled={
+              changeName.isPending || !firstName.trim() || !lastName.trim()
+            }
             className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
           >
             {changeName.isPending ? m.act_saving() : m.act_save()}
