@@ -228,7 +228,7 @@ export const SettingsPage = () => {
             ))}
           </div>
 
-          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
+          <div className="hidden">
             {visibleSections.map((section) => (
               <button
                 key={section.id}
