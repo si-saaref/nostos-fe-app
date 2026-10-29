@@ -34,7 +34,7 @@ export const HouseholdDeletionModal = ({ deadline, onDismiss }: Props) => {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[8px]" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[3px]" />
         <Dialog.Content
           role="alertdialog"
           className="bg-card lift-shadow fixed top-1/2 left-1/2 z-50 w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl p-5 text-center"

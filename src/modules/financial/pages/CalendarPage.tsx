@@ -206,7 +206,7 @@ export const CalendarPage = () => {
                 onOpenChange={setSheetOpen}
               >
                 <Dialog.Portal>
-                  <Dialog.Overlay className="fixed inset-0 z-40 bg-black/35" />
+                  <Dialog.Overlay className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[3px]" />
                   <Dialog.Content
                     aria-describedby={undefined}
                     onCloseAutoFocus={(event) => {
