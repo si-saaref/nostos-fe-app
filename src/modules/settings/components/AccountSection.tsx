@@ -270,12 +270,16 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             >
               {canManage ? (
                 <div className="flex flex-col gap-3">
-                  {fields(editDraft, setEditDraft, isArchived, false)}
-                  {account.isProtected && (
-                    <InfoPopover label={m.acc_default_badge()}>
-                      {m.acc_protected_note()}
-                    </InfoPopover>
-                  )}
+                  <div className="flex items-end gap-1">
+                    <div className="min-w-0 flex-1">
+                      {fields(editDraft, setEditDraft, isArchived, false)}
+                    </div>
+                    {account.isProtected && (
+                      <InfoPopover label={m.acc_default_badge()}>
+                        {m.acc_protected_note()}
+                      </InfoPopover>
+                    )}
+                  </div>
                   <CalculationStart
                     key={account.id}
                     account={account}

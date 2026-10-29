@@ -66,7 +66,12 @@ export const BalanceAdjustmentPanel = ({
   return (
     <section className="border-hair mt-3 border-t pt-3">
       <div className="flex items-center justify-between gap-3">
-        <h4 className="text-sm font-semibold">{m.acc_adjust_history()}</h4>
+        <div className="flex items-center gap-1">
+          <h4 className="text-sm font-semibold">{m.acc_adjust_history()}</h4>
+          <InfoPopover label={m.acc_adjust_help_title()}>
+            {m.acc_adjust_note()}
+          </InfoPopover>
+        </div>
         {canManage && !isAdding && (
           <button
             type="button"
@@ -81,9 +86,6 @@ export const BalanceAdjustmentPanel = ({
           </button>
         )}
       </div>
-      <InfoPopover label={m.acc_adjust_help_title()}>
-        {m.acc_adjust_note()}
-      </InfoPopover>
 
       {isAdding && (
         <form onSubmit={submit} className="mt-3 flex flex-wrap items-end gap-2">
@@ -100,6 +102,7 @@ export const BalanceAdjustmentPanel = ({
             className="min-w-[210px] flex-1"
           >
             <input
+              autoComplete="off"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               maxLength={500}

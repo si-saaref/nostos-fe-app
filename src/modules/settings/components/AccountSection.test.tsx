@@ -73,7 +73,7 @@ describe('AccountSection', () => {
       within(protectedRow).getByRole('button', { name: /^bawaan$/i }),
     )
     expect(screen.getByRole('dialog')).toHaveTextContent(/akun bawaan/i)
-    await userEvent.click(screen.getByRole('button', { name: /tutup/i }))
+    await userEvent.keyboard('{Escape}')
     expect(
       within(protectedRow).queryByRole('button', { name: /arsipkan/i }),
     ).toBeNull()

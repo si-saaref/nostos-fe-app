@@ -1,6 +1,6 @@
 import { Popover } from 'radix-ui'
 import type { ReactNode } from 'react'
-import { useMessages } from '@/i18n/useMessages'
+import { useEffect, useRef, useState } from 'react'
 
 export const InfoPopover = ({
   label,
@@ -9,13 +9,39 @@ export const InfoPopover = ({
   label: string
   children: ReactNode
 }) => {
-  const m = useMessages()
+  const [open, setOpen] = useState(false)
+  const pointerOpen = useRef<boolean | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const keepOpen = () => {
+    clearTimeout(timer.current)
+    setOpen(true)
+  }
+  const closeSoon = () => {
+    timer.current = setTimeout(() => setOpen(false), 150)
+  }
   return (
-    <Popover.Root modal>
+    <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
         aria-label={label}
-        title={label}
-        className="text-accent min-h-11 min-w-11 rounded-full text-sm font-bold"
+        onPointerEnter={(event) => {
+          if (event.pointerType === 'mouse') keepOpen()
+        }}
+        onPointerLeave={closeSoon}
+        onPointerDown={(event) => {
+          pointerOpen.current = event.pointerType === 'touch' ? open : null
+        }}
+        onFocus={() => {
+          if (pointerOpen.current === null) keepOpen()
+        }}
+        onBlur={closeSoon}
+        onClick={(event) => {
+          event.preventDefault()
+          clearTimeout(timer.current)
+          setOpen(pointerOpen.current === null ? true : !pointerOpen.current)
+          pointerOpen.current = null
+        }}
+        className="text-muted hover:text-ink inline-grid h-11 w-11 shrink-0 place-items-center rounded-full"
       >
         <svg
           width="16"
@@ -33,17 +59,19 @@ export const InfoPopover = ({
       <Popover.Portal>
         <Popover.Content
           aria-label={label}
+          side="top"
           sideOffset={6}
+          collisionPadding={12}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onPointerEnter={keepOpen}
+          onPointerLeave={closeSoon}
           onEscapeKeyDown={(event) => event.stopPropagation()}
-          className="bg-card text-ink lift-shadow z-50 max-w-[min(90vw,360px)] rounded-xl p-4 text-xs leading-relaxed"
+          className="bg-ink text-card z-[70] max-w-[min(85vw,280px)] rounded-xl px-3 py-2.5 text-xs leading-relaxed shadow-lg"
         >
-          {children}
-          <Popover.Close
-            aria-label={m.action_close()}
-            className="text-accent mt-2 block min-h-11 px-3 font-semibold"
-          >
-            {m.action_close()}
-          </Popover.Close>
+          <p className="mb-1 font-semibold">{label}</p>
+          <div className="opacity-85">{children}</div>
+          <Popover.Arrow className="fill-ink" width={12} height={6} />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
