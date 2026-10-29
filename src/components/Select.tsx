@@ -135,8 +135,7 @@ export const Select = ({
                     the values: it widens the view, it does not pick one. */}
                 {placeholder && (
                   <>
-                    <Item value={UNSET} label={placeholder} muted />
-                    <RadixSelect.Separator className="bg-hair mx-1.5 my-1 h-px" />
+                    <Item value={UNSET} label={placeholder} />
                   </>
                 )}
                 {options.map((option) => (
@@ -180,19 +179,15 @@ const Item = ({
   label,
   hint,
   rim,
-  muted = false,
 }: {
   value: string
   label: string
   hint?: string
   rim?: RimIndex
-  muted?: boolean
 }) => (
   <RadixSelect.Item
     value={value}
-    className={`data-[highlighted]:bg-chip data-[state=checked]:text-accent flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-[7px] text-[11.5px] outline-none select-none data-[state=checked]:font-semibold ${
-      muted ? 'text-muted' : 'text-ink'
-    }`}
+    className="text-ink data-[highlighted]:bg-chip data-[state=checked]:text-accent flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-[11.5px] outline-none select-none data-[state=checked]:font-semibold"
   >
     {rim ? (
       <span
