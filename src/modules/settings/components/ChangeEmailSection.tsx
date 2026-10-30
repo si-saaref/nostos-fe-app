@@ -61,7 +61,7 @@ export const ChangeEmailSection = () => {
                 setNewEmail(event.target.value)
                 setSent(false)
               }}
-              className="bg-chip border-hair text-ink min-h-11 min-w-0 flex-1 rounded-lg border px-3 py-2 text-[12px]"
+              className="bg-chip border-hair text-ink h-9 min-w-0 flex-1 rounded-lg border px-3 text-[12px]"
             />
             <button
               type="submit"
@@ -70,7 +70,7 @@ export const ChangeEmailSection = () => {
                 !newEmail.trim() ||
                 newEmail.trim().toLowerCase() === me?.email.toLowerCase()
               }
-              className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+              className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold disabled:opacity-50"
             >
               {isSending ? m.profile_sending() : m.profile_send()}
             </button>

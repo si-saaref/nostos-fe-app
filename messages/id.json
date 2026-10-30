@@ -450,5 +450,7 @@
   "comparison_unavailable": "Tidak ada total sebelumnya untuk dibandingkan",
   "cash_withdrawal": "Tarik tunai: {amount}",
   "cash_withdrawal_unavailable": "Subtotal tarik tunai belum tersedia",
-  "rail_unavailable": "Total belum tersedia"
+  "rail_unavailable": "Total belum tersedia",
+  "settings_section_help": "Tentang {title}",
+  "acc_opening_short": "Saldo awal"
 }

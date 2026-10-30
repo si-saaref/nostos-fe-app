@@ -450,5 +450,7 @@
   "comparison_unavailable": "No previous total to compare",
   "cash_withdrawal": "Cash withdrawals: {amount}",
   "cash_withdrawal_unavailable": "Cash withdrawals unavailable",
-  "rail_unavailable": "Total unavailable"
+  "rail_unavailable": "Total unavailable",
+  "settings_section_help": "About {title}",
+  "acc_opening_short": "Opening"
 }

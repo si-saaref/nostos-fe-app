@@ -130,14 +130,14 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
               <button
                 type="button"
                 onClick={() => setIsAdding(false)}
-                className="border-hair text-muted min-h-11 rounded-lg border px-4 py-2 text-[12px] font-semibold"
+                className="border-hair text-muted h-9 rounded-lg border px-4 text-[12px] font-semibold"
               >
                 {m.act_cancel()}
               </button>
               <button
                 type="submit"
                 disabled={isCreating}
-                className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+                className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold disabled:opacity-50"
               >
                 {isCreating ? m.act_saving() : m.act_add()}
               </button>

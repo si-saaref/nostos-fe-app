@@ -104,17 +104,17 @@ export const StripShell = ({ label, children, figures }: Props) => {
                   figures.length - 1,
                   Math.round(
                     el.scrollLeft /
-                      el.children[0].getBoundingClientRect().width,
+                      (el.children[0].getBoundingClientRect().width + 12),
                   ),
                 ),
               )
           }}
-          className="flex snap-x snap-mandatory [scrollbar-width:none] gap-px overflow-x-auto rounded-xl bg-white/15 lg:grid lg:grid-cols-4 lg:overflow-visible [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory [scrollbar-width:none] gap-3 overflow-x-auto rounded-xl lg:grid lg:grid-cols-4 lg:gap-px lg:overflow-visible lg:bg-white/15 [&::-webkit-scrollbar]:hidden"
         >
           {figures.map((figure) => (
             <div
               key={figure.id}
-              className="bg-strip-cell min-w-0 shrink-0 basis-full snap-start px-11 py-3 lg:p-3.5"
+              className="bg-strip-cell min-w-0 shrink-0 basis-[88%] snap-start rounded-xl px-4 py-3 sm:basis-[70%] lg:basis-auto lg:rounded-none lg:p-3.5"
             >
               <dt className="text-on-strip-muted text-[9px] font-bold tracking-[0.11em] uppercase">
                 {figure.key}

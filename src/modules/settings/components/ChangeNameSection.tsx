@@ -54,7 +54,7 @@ export const ChangeNameSection = () => {
                 changeName.reset()
                 setFirstName(event.target.value)
               }}
-              className="well-shadow bg-chip min-h-11 rounded-lg px-3 py-2 text-[12.5px] outline-none"
+              className="well-shadow bg-chip h-9 rounded-lg px-3 py-2 text-[12.5px] outline-none"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -68,7 +68,7 @@ export const ChangeNameSection = () => {
                 changeName.reset()
                 setLastName(event.target.value)
               }}
-              className="well-shadow bg-chip min-h-11 rounded-lg px-3 py-2 text-[12.5px] outline-none"
+              className="well-shadow bg-chip h-9 rounded-lg px-3 py-2 text-[12.5px] outline-none"
             />
           </label>
         </div>
@@ -78,7 +78,7 @@ export const ChangeNameSection = () => {
             disabled={
               changeName.isPending || !firstName.trim() || !lastName.trim()
             }
-            className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+            className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold disabled:opacity-50"
           >
             {changeName.isPending ? m.act_saving() : m.act_save()}
           </button>

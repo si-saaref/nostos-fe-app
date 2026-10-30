@@ -92,7 +92,6 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
       id={SETTINGS_ANCHORS.accounts}
       title={m.acc_title()}
       description={m.acc_desc()}
-
       canManage={canManage}
       isLoading={isLoading}
       isError={isError}
@@ -109,7 +108,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
               setAddingKind(null)
               setNewDraft(emptyDraft())
             }}
-            className="bg-accent text-accent-ink min-h-11 shrink-0 rounded-lg px-4 py-2 text-[12px] font-semibold"
+            className="bg-accent text-accent-ink h-9 shrink-0 rounded-lg px-4 text-[12px] font-semibold"
           >
             + {m.acc_add()}
           </button>
@@ -131,7 +130,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                   {KINDS.map((option) => (
                     <label
                       key={option.value}
-                      className={`focus-within:outline-accent flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 text-xs font-semibold focus-within:outline-2 focus-within:outline-offset-2 ${addingKind === option.value ? 'border-accent bg-accent text-accent-ink' : 'border-hair text-ink'}`}
+                      className={`focus-within:outline-accent flex h-9 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 text-xs font-semibold focus-within:outline-2 focus-within:outline-offset-2 ${addingKind === option.value ? 'border-accent bg-accent text-accent-ink' : 'border-hair text-ink'}`}
                     >
                       <input
                         type="radio"
@@ -151,7 +150,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
-                  className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
+                  className="border-hair text-muted h-9 rounded-lg border px-4 text-[12px] font-semibold"
                 >
                   {m.act_cancel()}
                 </button>
@@ -177,7 +176,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                     )
                   }}
                   disabled={isCreating || !addingKind || !newDraft.name.trim()}
-                  className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+                  className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold disabled:opacity-50"
                 >
                   {isCreating ? m.act_saving() : m.act_add()}
                 </button>
@@ -196,66 +195,60 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
             <SettingPlate
               key={account.id}
               title={account.name}
-              primaryValue={
-                <span className="block text-right">
-                  <span className="text-muted block text-[10px] font-medium">
-                    {m.acc_current_balance()} ·{' '}
-                    {positions.data?.summary?.asOf ?? '—'}
+              titleBadge={
+                isArchived ? (
+                  <span className="text-muted text-[10px]">
+                    {m.cat_archived()}
                   </span>
-                  <span>
-                    {positions.isSuccess && position
-                      ? formatCurrency(
-                          position.balanceText ?? position.balance,
-                          currency,
-                          locale,
-                        )
-                      : '—'}
-                  </span>
-                </span>
+                ) : account.isProtected ? (
+                  <InfoPopover
+                    label={m.acc_default_badge()}
+                    triggerContent={m.acc_default_badge()}
+                    className="bg-chip px-2 py-0.5 text-[10px] font-medium"
+                  >
+                    {m.acc_protected_note()}
+                  </InfoPopover>
+                ) : undefined
               }
-              meta={
-                account.baselineStatus === 'UNVERIFIED' ? (
-                  <span>
-                    {kindLabel(account.kind)} · {m.acc_baseline_pending()}
-                  </span>
-                ) : (
-                  <span className="flex flex-wrap items-baseline gap-x-1.5">
-                    {isArchived ? (
-                      <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
-                        {m.cat_archived()}
-                      </span>
-                    ) : account.isProtected ? (
-                      <span className="bg-chip text-muted flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold tracking-[0.06em] uppercase">
-                        {m.acc_default_badge()}
-                        {account.isProtected && (
-                          <InfoPopover
-                            label={m.acc_default_badge()}
-                            className="h-fit w-fit"
-                          >
-                            {m.acc_protected_note()}
-                          </InfoPopover>
-                        )}
-                      </span>
-                    ) : undefined}
-                    <span>{kindLabel(account.kind)}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="text-ink tnum font-medium">
-                      {m.acc_opening()}:{' '}
-                      {formatCurrency(account.openingBalance, currency, locale)}
-                    </span>
-                    <span className="hidden" aria-hidden="true">
-                      ·
-                    </span>
-                    <span className="hidden">
-                      {m.acc_as_of()}{' '}
-                      {new Intl.DateTimeFormat(locale, {
+              primaryValue={
+                positions.isSuccess && position
+                  ? formatCurrency(
+                      position.balanceText ?? position.balance,
+                      currency,
+                      locale,
+                    )
+                  : '—'
+              }
+              secondaryValue={
+                <span>
+                  {m.acc_current_balance()} ·{' '}
+                  {positions.data?.summary?.asOf
+                    ? new Intl.DateTimeFormat(locale, {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
-                      }).format(fromIsoDay(account.asOf))}
-                    </span>
-                  </span>
-                )
+                      }).format(fromIsoDay(positions.data.summary.asOf))
+                    : '—'}
+                </span>
+              }
+              meta={
+                <span>
+                  {kindLabel(account.kind)} ·{' '}
+                  {account.baselineStatus === 'UNVERIFIED' ? (
+                    m.acc_baseline_pending()
+                  ) : (
+                    <>
+                      {m.acc_opening_short()}:{' '}
+                      <span className="tnum">
+                        {formatCurrency(
+                          account.openingBalance,
+                          currency,
+                          locale,
+                        )}
+                      </span>
+                    </>
+                  )}
+                </span>
               }
               rim={rimFor(account.order)}
               muted={isArchived}

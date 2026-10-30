@@ -68,10 +68,7 @@ export const BalanceAdjustmentPanel = ({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1">
           <h4 className="text-sm font-semibold">{m.acc_adjust_history()}</h4>
-          <InfoPopover
-            label={m.acc_adjust_help_title()}
-            className="h-fit w-fit"
-          >
+          <InfoPopover label={m.acc_adjust_help_title()} className="h-8! w-fit">
             {m.acc_adjust_note()}
           </InfoPopover>
         </div>
@@ -83,7 +80,7 @@ export const BalanceAdjustmentPanel = ({
               setValidationError(false)
               setIsAdding(true)
             }}
-            className="border-hair rounded-lg border px-3 py-2 text-xs font-semibold"
+            className="border-hair h-9 rounded-lg border px-3 text-xs font-semibold"
           >
             {m.acc_adjust()}
           </button>
@@ -98,11 +95,11 @@ export const BalanceAdjustmentPanel = ({
             onChange={setTargetBalance}
             allowNegative
             allowZero
-            className="w-[160px]"
+            className="w-40"
           />
           <FormField
             label={m.acc_adjust_reason()}
-            className="min-w-[210px] flex-1"
+            className="min-w-52.5 flex-1"
           >
             <input
               autoComplete="off"
@@ -116,14 +113,14 @@ export const BalanceAdjustmentPanel = ({
           <button
             type="submit"
             disabled={reconcile.isPending}
-            className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50"
+            className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-xs font-semibold disabled:opacity-50"
           >
             {reconcile.isPending ? m.act_saving() : m.act_save()}
           </button>
           <button
             type="button"
             onClick={() => setIsAdding(false)}
-            className="border-hair rounded-lg border px-3 py-2 text-xs"
+            className="border-hair h-9 rounded-lg border px-3 text-xs"
           >
             {m.act_cancel()}
           </button>

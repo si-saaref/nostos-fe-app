@@ -6,10 +6,13 @@ export const InfoPopover = ({
   label,
   children,
   className,
+  triggerContent,
 }: {
   label: string
   children: ReactNode
   className?: string
+  /** Custom content for the help button; defaults to the info icon. */
+  triggerContent?: ReactNode
 }) => {
   const [open, setOpen] = useState(false)
   const pointerOpen = useRef<boolean | null>(null)
@@ -43,20 +46,22 @@ export const InfoPopover = ({
           setOpen(pointerOpen.current === null ? true : !pointerOpen.current)
           pointerOpen.current = null
         }}
-        className={`text-muted hover:text-ink inline-grid h-11 w-11 shrink-0 place-items-center rounded-full ${className || ''}`}
+        className={`text-muted hover:text-ink inline-grid shrink-0 place-items-center rounded-full ${triggerContent == null ? 'h-11 w-11' : ''} ${className || ''}`}
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 11v6m0-10v1" />
-        </svg>
+        {triggerContent ?? (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 11v6m0-10v1" />
+          </svg>
+        )}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content

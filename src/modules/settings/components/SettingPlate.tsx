@@ -6,6 +6,8 @@ import type { RimIndex } from '@/theme/rims'
 
 interface Props {
   title: string
+  titleBadge?: ReactNode
+  secondaryValue?: ReactNode
   primaryValue?: ReactNode
   /** Secondary line: kind, balance, email — whatever identifies the row. */
   meta?: ReactNode
@@ -25,6 +27,8 @@ interface Props {
  */
 export const SettingPlate = ({
   title,
+  titleBadge,
+  secondaryValue,
   primaryValue,
   meta,
   trailing,
@@ -35,6 +39,9 @@ export const SettingPlate = ({
   children,
 }: Props) => {
   const panelId = useId()
+  const titleId = useId()
+  const metaId = useId()
+  const valueId = useId()
   // Opening a row to look at it is not a commitment: clicking away or pressing
   // Escape puts it back, and the draft it held is discarded with it.
   const ref = useRef<HTMLElement>(null)
@@ -55,30 +62,70 @@ export const SettingPlate = ({
           />
         )}
 
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={isOpen}
-          aria-controls={panelId}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block truncate pl-1 text-[12.5px] font-medium">
-              {title}
+        <div className="relative">
+          {/* Keep the disclosure and help triggers as siblings. The content
+              lets pointer events through except for its independent controls. */}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={isOpen}
+            aria-controls={panelId}
+            aria-labelledby={titleId}
+            aria-describedby={
+              [meta && metaId, primaryValue && valueId]
+                .filter(Boolean)
+                .join(' ') || undefined
+            }
+            className="absolute inset-0 w-full rounded-lg"
+          />
+          <div
+            className={`pointer-events-none relative ${
+              secondaryValue
+                ? 'grid grid-cols-2 items-start gap-3 px-4 py-3 text-left'
+                : 'flex items-center gap-3 px-3 py-2.5 text-left'
+            }`}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-1">
+                <span
+                  id={titleId}
+                  title={title}
+                  className="min-w-0 text-[12.5px] font-semibold break-words"
+                >
+                  {title}
+                </span>
+                {titleBadge && (
+                  <span className="pointer-events-auto relative">
+                    {titleBadge}
+                  </span>
+                )}
+              </span>
+              {meta && (
+                <span
+                  id={metaId}
+                  className="text-muted mt-1 block pl-1 text-[10.5px]"
+                >
+                  {meta}
+                </span>
+              )}
             </span>
-            {meta && (
-              <span className="text-muted block truncate pl-1 text-[10.5px]">
-                {meta}
+            {primaryValue && (
+              <span id={valueId} className="min-w-0 text-right">
+                <span className="tnum block text-sm font-semibold break-words">
+                  {primaryValue}
+                </span>
+                {secondaryValue && (
+                  <span className="text-muted mt-1 block text-[10.5px] font-normal">
+                    {secondaryValue}
+                  </span>
+                )}
               </span>
             )}
-          </span>
-          {primaryValue && (
-            <span className="font-display tnum shrink-0 text-sm font-bold">
-              {primaryValue}
-            </span>
-          )}
-          {trailing}
-        </button>
+            {trailing && (
+              <span className="pointer-events-auto relative">{trailing}</span>
+            )}
+          </div>
+        </div>
 
         {isOpen && (
           <div id={panelId} className="border-hair border-t px-3 py-3">

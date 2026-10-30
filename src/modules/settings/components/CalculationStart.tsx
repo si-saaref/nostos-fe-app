@@ -44,7 +44,7 @@ export const CalculationStart = ({
         <p className="text-sm font-semibold">
           {eligible ? m.acc_baseline_pending() : m.acc_baseline_ready()}
         </p>
-        <InfoPopover label={m.acc_start_help_title()} className="h-fit w-fit">
+        <InfoPopover label={m.acc_start_help_title()} className="h-8! w-fit">
           {m.acc_start_help()}
         </InfoPopover>
       </div>
@@ -71,7 +71,7 @@ export const CalculationStart = ({
               type="button"
               disabled={update.isPending || !valid || !prefs.isSuccess}
               onClick={() => setConfirm(true)}
-              className="bg-accent text-accent-ink min-h-11 rounded-lg px-3 text-xs font-semibold disabled:opacity-50"
+              className="bg-accent text-accent-ink h-9 rounded-lg px-3 text-xs font-semibold disabled:opacity-50"
             >
               {m.acc_start_assign()}
             </button>

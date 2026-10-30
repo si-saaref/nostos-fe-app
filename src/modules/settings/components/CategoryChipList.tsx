@@ -63,7 +63,7 @@ export const CategoryChipList = ({
                 setOpenId(isOpen ? null : item.id)
                 setDraftName(item.name)
               }}
-              className={`border-hair bg-card plate-shadow flex min-h-11 max-w-full items-center gap-2 rounded-full border px-3 py-2 text-left text-[12px] font-semibold ${
+              className={`border-hair bg-card plate-shadow flex h-9 max-w-full items-center gap-2 rounded-full border px-3 py-2 text-left text-[12px] font-semibold ${
                 isArchived
                   ? 'text-muted opacity-65'
                   : 'hover:bg-chip disabled:hover:bg-card'
@@ -127,7 +127,7 @@ export const CategoryChipList = ({
                         onRestore(item)
                         close()
                       }}
-                      className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold"
+                      className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold"
                     >
                       {restoreLabel}
                     </button>
@@ -139,14 +139,14 @@ export const CategoryChipList = ({
                           onArchive(item)
                           close()
                         }}
-                        className="border-danger-line bg-danger-bg text-danger min-h-11 rounded-lg border px-3 py-2 text-[12px] font-semibold"
+                        className="border-danger-line bg-danger-bg text-danger h-9 rounded-lg border px-3 text-[12px] font-semibold"
                       >
                         {archiveLabel}
                       </button>
                       <button
                         type="submit"
                         disabled={isSaving}
-                        className="bg-accent text-accent-ink min-h-11 rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+                        className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold disabled:opacity-50"
                       >
                         {saveLabel}
                       </button>

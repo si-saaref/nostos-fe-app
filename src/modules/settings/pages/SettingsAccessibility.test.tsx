@@ -24,7 +24,7 @@ class TestIntersectionObserver implements IntersectionObserver {
 vi.stubGlobal('IntersectionObserver', TestIntersectionObserver)
 
 describe('Settings accessibility contract', () => {
-  it('keeps direct account actions first in keyboard focus order', async () => {
+  it('keeps section help and the account action adjacent in keyboard focus order', async () => {
     renderWithProviders(
       <AccountSection householdId="household-001" canManage />,
     )
@@ -32,10 +32,12 @@ describe('Settings accessibility contract', () => {
       name: /^\+? tambah akun$/i,
     })
     await userEvent.tab()
+    expect(screen.getByRole('button', { name: 'Tentang Akun' })).toHaveFocus()
+    await userEvent.tab()
     expect(add).toHaveFocus()
   })
 
-  it('gives every mobile settings navigation target a 44px minimum hit area', () => {
+  it('gives every mobile settings navigation target a compact 36px height', () => {
     renderWithProviders(<SettingsPage />)
 
     for (const button of [
@@ -43,7 +45,7 @@ describe('Settings accessibility contract', () => {
       ...screen.getAllByRole('button', { name: 'Akun Saya' }),
       ...screen.getAllByRole('button', { name: 'Akun' }),
     ]) {
-      expect(button).toHaveClass('min-h-11')
+      expect(button).toHaveClass('h-9')
     }
   })
 

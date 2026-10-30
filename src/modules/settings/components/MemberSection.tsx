@@ -161,7 +161,7 @@ export const MemberSection = ({
             <button
               type="submit"
               disabled={isInviting}
-              className="bg-accent text-accent-ink mt-[18px] rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
+              className="bg-accent text-accent-ink mt-[18px] h-9 rounded-lg px-4 text-[12px] font-semibold disabled:opacity-50"
             >
               {isInviting ? m.act_saving() : m.mem_invite_send()}
             </button>

@@ -175,7 +175,7 @@ export const SettingsPage = () => {
                   type="button"
                   onClick={() => goTo(group.sections[0].id)}
                   aria-current={isCurrentGroup ? 'true' : undefined}
-                  className={`min-h-11 w-full rounded-lg px-2.5 py-1.5 text-left text-[9px] font-bold tracking-[0.13em] uppercase ${
+                  className={`h-9 w-full rounded-lg px-2.5 py-1.5 text-left text-[9px] font-bold tracking-[0.13em] uppercase ${
                     isCurrentGroup ? 'text-ink' : 'text-muted hover:text-ink'
                   }`}
                 >
@@ -191,7 +191,7 @@ export const SettingsPage = () => {
                           aria-current={
                             activeSectionId === section.id ? 'true' : undefined
                           }
-                          className={`min-h-11 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] font-medium ${
+                          className={`h-9 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] font-medium ${
                             activeSectionId === section.id
                               ? 'bg-card plate-shadow text-ink font-semibold'
                               : 'text-muted hover:text-ink'
@@ -217,7 +217,7 @@ export const SettingsPage = () => {
                 type="button"
                 onClick={() => goTo(group.sections[0].id)}
                 aria-current={group.id === activeGroup.id ? 'true' : undefined}
-                className={`min-h-11 shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-[0.1em] uppercase ${
+                className={`h-9 shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-[0.1em] uppercase ${
                   group.id === activeGroup.id
                     ? 'bg-ink text-card'
                     : 'bg-chip text-muted well-shadow'
@@ -237,7 +237,7 @@ export const SettingsPage = () => {
                 aria-current={
                   activeSectionId === section.id ? 'true' : undefined
                 }
-                className={`min-h-11 shrink-0 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold ${
+                className={`h-9 shrink-0 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold ${
                   activeSectionId === section.id
                     ? 'bg-accent text-accent-ink'
                     : 'bg-chip text-muted well-shadow'
