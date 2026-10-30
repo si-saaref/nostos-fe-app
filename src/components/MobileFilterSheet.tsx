@@ -35,7 +35,7 @@ export const MobileFilterSheet = ({
     >
       <Dialog.Trigger
         aria-label={`${m.filters_title()}${count ? ` (${count})` : ''}`}
-        className="bg-card text-ink border-hair relative grid h-11 w-11 shrink-0 place-items-center rounded-lg border lg:hidden"
+        className="bg-card text-ink border-hair relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border lg:hidden"
       >
         <svg
           aria-hidden="true"

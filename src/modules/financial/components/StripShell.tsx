@@ -71,7 +71,7 @@ export const StripShell = ({ label, children, figures }: Props) => {
       </div>
 
       <div className="relative">
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 items-center justify-between lg:hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-between">
           <button
             type="button"
             aria-label={m.metric_previous()}

@@ -220,14 +220,33 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
                   </span>
                 ) : (
                   <span className="flex flex-wrap items-baseline gap-x-1.5">
+                    {isArchived ? (
+                      <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
+                        {m.cat_archived()}
+                      </span>
+                    ) : account.isProtected ? (
+                      <span className="bg-chip text-muted flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold tracking-[0.06em] uppercase">
+                        {m.acc_default_badge()}
+                        {account.isProtected && (
+                          <InfoPopover
+                            label={m.acc_default_badge()}
+                            className="h-fit w-fit"
+                          >
+                            {m.acc_protected_note()}
+                          </InfoPopover>
+                        )}
+                      </span>
+                    ) : undefined}
                     <span>{kindLabel(account.kind)}</span>
                     <span aria-hidden="true">·</span>
-                    <span className="text-ink tnum text-[12.5px] font-medium">
+                    <span className="text-ink tnum font-medium">
                       {m.acc_opening()}:{' '}
                       {formatCurrency(account.openingBalance, currency, locale)}
                     </span>
-                    <span aria-hidden="true">·</span>
-                    <span>
+                    <span className="hidden" aria-hidden="true">
+                      ·
+                    </span>
+                    <span className="hidden">
                       {m.acc_as_of()}{' '}
                       {new Intl.DateTimeFormat(locale, {
                         day: 'numeric',
@@ -240,17 +259,7 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
               }
               rim={rimFor(account.order)}
               muted={isArchived}
-              trailing={
-                isArchived ? (
-                  <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
-                    {m.cat_archived()}
-                  </span>
-                ) : account.isProtected ? (
-                  <span className="bg-chip text-muted rounded-full px-2 py-1 text-[9px] font-bold tracking-[0.06em] uppercase">
-                    {m.acc_default_badge()}
-                  </span>
-                ) : undefined
-              }
+              trailing={undefined}
               isOpen={isOpen}
               onToggle={() => {
                 setOpenId(isOpen ? null : account.id)
@@ -265,40 +274,35 @@ export const AccountSection = ({ householdId, canManage }: Props) => {
               {canManage ? (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-end gap-1">
-                    <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-1 items-end gap-1">
                       {fields(editDraft, setEditDraft, isArchived)}
+                      <RowActions
+                        onSave={() => {
+                          update(
+                            {
+                              id: account.id,
+                              name: editDraft.name.trim(),
+                            },
+                            { onSuccess: () => setOpenId(null) },
+                          )
+                        }}
+                        onArchive={
+                          isArchived || account.isProtected
+                            ? undefined
+                            : () => setAccountToArchive(account)
+                        }
+                        onRestore={
+                          isArchived
+                            ? () => update({ id: account.id, archivedAt: null })
+                            : undefined
+                        }
+                      />
                     </div>
-                    {account.isProtected && (
-                      <InfoPopover label={m.acc_default_badge()}>
-                        {m.acc_protected_note()}
-                      </InfoPopover>
-                    )}
                   </div>
                   <CalculationStart
                     key={account.id}
                     account={account}
                     householdId={householdId}
-                  />
-                  <RowActions
-                    onSave={() => {
-                      update(
-                        {
-                          id: account.id,
-                          name: editDraft.name.trim(),
-                        },
-                        { onSuccess: () => setOpenId(null) },
-                      )
-                    }}
-                    onArchive={
-                      isArchived || account.isProtected
-                        ? undefined
-                        : () => setAccountToArchive(account)
-                    }
-                    onRestore={
-                      isArchived
-                        ? () => update({ id: account.id, archivedAt: null })
-                        : undefined
-                    }
                   />
                 </div>
               ) : (

@@ -228,7 +228,7 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
       // Named, because the ledger page can hold this form and a filter row
       // with pickers of the same name: without it, "the type picker" is
       // ambiguous to a screen reader exactly as it was to the test.
-      aria-label={m.action_record_long()}
+      aria-label={m.action_record_expense()}
       className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3"
     >
       {(categoriesQuery.isError || accountsQuery.isError) && (

@@ -5,9 +5,11 @@ import { useEffect, useRef, useState } from 'react'
 export const InfoPopover = ({
   label,
   children,
+  className,
 }: {
   label: string
   children: ReactNode
+  className?: string
 }) => {
   const [open, setOpen] = useState(false)
   const pointerOpen = useRef<boolean | null>(null)
@@ -41,7 +43,7 @@ export const InfoPopover = ({
           setOpen(pointerOpen.current === null ? true : !pointerOpen.current)
           pointerOpen.current = null
         }}
-        className="text-muted hover:text-ink inline-grid h-11 w-11 shrink-0 place-items-center rounded-full"
+        className={`text-muted hover:text-ink inline-grid h-11 w-11 shrink-0 place-items-center rounded-full ${className || ''}`}
       >
         <svg
           width="16"

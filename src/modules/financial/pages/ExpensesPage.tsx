@@ -418,7 +418,7 @@ export const ExpensesPage = () => {
             disabled={isRecording}
             className="bg-accent text-accent-ink hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
           >
-            + {m.action_record_long()}
+            + {m.action_record_expense()}
           </button>
         </div>
 
@@ -428,7 +428,7 @@ export const ExpensesPage = () => {
           title={
             expenseToEdit
               ? m.expense_edit_title({ name: expenseToEdit.name })
-              : m.action_record_long()
+              : m.action_record_expense()
           }
           onClose={() => {
             setShowForm(false)

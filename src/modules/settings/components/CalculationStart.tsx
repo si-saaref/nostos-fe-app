@@ -44,7 +44,7 @@ export const CalculationStart = ({
         <p className="text-sm font-semibold">
           {eligible ? m.acc_baseline_pending() : m.acc_baseline_ready()}
         </p>
-        <InfoPopover label={m.acc_start_help_title()}>
+        <InfoPopover label={m.acc_start_help_title()} className="h-fit w-fit">
           {m.acc_start_help()}
         </InfoPopover>
       </div>

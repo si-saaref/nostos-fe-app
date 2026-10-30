@@ -68,7 +68,10 @@ export const BalanceAdjustmentPanel = ({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1">
           <h4 className="text-sm font-semibold">{m.acc_adjust_history()}</h4>
-          <InfoPopover label={m.acc_adjust_help_title()}>
+          <InfoPopover
+            label={m.acc_adjust_help_title()}
+            className="h-fit w-fit"
+          >
             {m.acc_adjust_note()}
           </InfoPopover>
         </div>
