@@ -281,3 +281,27 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Shared transient feedback. Swipe follows the finger; reduced motion stays still. */
+.notification-toast[data-swipe='move'] {
+  transform: translateX(var(--radix-toast-swipe-move-x));
+}
+.notification-toast[data-swipe='cancel'] {
+  transform: translateX(0);
+  transition: transform 160ms ease-out;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .notification-toast[data-state='open'] {
+    animation: notification-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes notification-enter {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

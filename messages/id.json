@@ -452,5 +452,11 @@
   "cash_withdrawal_unavailable": "Subtotal tarik tunai belum tersedia",
   "rail_unavailable": "Total belum tersedia",
   "settings_section_help": "Tentang {title}",
-  "acc_opening_short": "Saldo awal"
+  "acc_opening_short": "Saldo awal",
+  "notification_label": "Notifikasi",
+  "notification_viewport": "Notifikasi (F8)",
+  "notification_dismiss": "Tutup notifikasi",
+  "notification_save_error": "Perubahan belum tersimpan",
+  "profile_email_sent_title": "Konfirmasi terkirim",
+  "profile_email_error": "Konfirmasi belum terkirim"
 }

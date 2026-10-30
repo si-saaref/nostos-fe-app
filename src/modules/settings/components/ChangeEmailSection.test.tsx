@@ -8,7 +8,12 @@ import { renderWithProviders } from '@/test/test-utils'
 
 const LocationProbe = () => {
   const location = useLocation()
-  return <output data-testid="location">{location.pathname}{location.hash}</output>
+  return (
+    <output data-testid="location">
+      {location.pathname}
+      {location.hash}
+    </output>
+  )
 }
 
 describe('ChangeEmailSection', () => {
@@ -30,13 +35,17 @@ describe('ChangeEmailSection', () => {
       { initialEntries: ['/settings#profil'] },
     )
 
-    await userEvent.type(screen.getByLabelText(/email baru/i), 'BARU@example.com')
+    await userEvent.type(
+      screen.getByLabelText(/email baru/i),
+      'BARU@example.com',
+    )
     await userEvent.click(screen.getByRole('button', { name: /kirim/i }))
 
-    expect(await screen.findByText(/cek email lama/i)).toHaveAttribute(
-      'role',
-      'status',
-    )
+    const notification = await screen.findByRole('status', {
+      name: /konfirmasi terkirim/i,
+    })
+    expect(notification).toHaveTextContent(/cek email lama/i)
+    expect(notification.closest('section')).toBeNull()
     expect(screen.getByTestId('location')).toHaveTextContent('/settings#profil')
   })
 })

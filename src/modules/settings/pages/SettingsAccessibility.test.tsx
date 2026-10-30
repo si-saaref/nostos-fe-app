@@ -97,7 +97,7 @@ describe('Settings accessibility contract', () => {
       within(section).getByRole('button', { name: /kirim/i }),
     )
 
-    expect(await within(section).findByRole('alert')).toHaveTextContent(
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       'Email already used',
     )
     expect(input).toHaveValue('used@example.com')

@@ -53,7 +53,7 @@
   "act_save": "Save",
   "act_saving": "Saving…",
   "act_signout": "Sign out",
-  "action_record": "Record",
+  "action_record": "Expense",
   "action_record_income": "Record income",
   "action_record_expense": "Record expense",
   "archive_body": "History does not change — expenses already recorded against {name} keep pointing at it and are marked archived. You can restore it at any time.",
@@ -452,5 +452,11 @@
   "cash_withdrawal_unavailable": "Cash withdrawals unavailable",
   "rail_unavailable": "Total unavailable",
   "settings_section_help": "About {title}",
-  "acc_opening_short": "Opening"
+  "acc_opening_short": "Opening",
+  "notification_label": "Notification",
+  "notification_viewport": "Notifications (F8)",
+  "notification_dismiss": "Dismiss notification",
+  "notification_save_error": "Could not save changes",
+  "profile_email_sent_title": "Confirmation sent",
+  "profile_email_error": "Could not send confirmation"
 }

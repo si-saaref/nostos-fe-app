@@ -17,20 +17,25 @@ export const PersonalPreferencesSection = () => {
       description={m.settings_personal_preferences_desc()}
       canManage
     >
-      <div className="bg-card plate-shadow rounded-xl p-4">
-        <p className="text-muted text-[10.5px]">{m.pref_personal_note()}</p>
-        <div className="mt-3 flex flex-wrap gap-3">
+      <div className="bg-card plate-shadow rounded-xl p-4 sm:p-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <Select
             label={m.theme_label()}
             value={theme}
             onChange={(value) => isThemeId(value) && setTheme(value)}
-            options={THEMES.map((option) => ({ value: option.id, label: option.label }))}
+            options={THEMES.map((option) => ({
+              value: option.id,
+              label: option.label,
+            }))}
           />
           <Select
             label={m.lang_label()}
             value={lang}
             onChange={(value) => isLang(value) && setLang(value)}
-            options={LANGS.map((option) => ({ value: option.id, label: option.label }))}
+            options={LANGS.map((option) => ({
+              value: option.id,
+              label: option.label,
+            }))}
           />
         </div>
       </div>

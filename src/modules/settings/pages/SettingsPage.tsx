@@ -280,11 +280,11 @@ export const SettingsPage = () => {
             )}
 
             {activeGroup.id === 'account' && (
-              <>
+              <div className="w-full max-w-3xl">
                 <ChangeNameSection />
                 <ChangeEmailSection />
                 <PersonalPreferencesSection />
-              </>
+              </div>
             )}
           </div>
         </div>

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { HouseholdContext } from '@/contexts/HouseholdContext'
 import type { HouseholdContextValue } from '@/contexts/HouseholdContext'
+import { NotificationProvider } from '@/contexts/NotificationProvider'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { MOCK_ME } from '@/mocks/fixtures/household'
 
@@ -19,7 +20,9 @@ export const createWrapper = () => {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
       <SettingsProvider>
-        <MemoryRouter>{children}</MemoryRouter>
+        <NotificationProvider>
+          <MemoryRouter>{children}</MemoryRouter>
+        </NotificationProvider>
       </SettingsProvider>
     </QueryClientProvider>
   )
@@ -53,11 +56,13 @@ export const renderWithProviders = (
   return render(
     <QueryClientProvider client={client}>
       <SettingsProvider>
-        <MemoryRouter initialEntries={options.initialEntries ?? ['/']}>
-          <HouseholdContext.Provider value={householdValue}>
-            {ui}
-          </HouseholdContext.Provider>
-        </MemoryRouter>
+        <NotificationProvider>
+          <MemoryRouter initialEntries={options.initialEntries ?? ['/']}>
+            <HouseholdContext.Provider value={householdValue}>
+              {ui}
+            </HouseholdContext.Provider>
+          </MemoryRouter>
+        </NotificationProvider>
       </SettingsProvider>
     </QueryClientProvider>,
   )
