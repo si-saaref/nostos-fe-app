@@ -1,3 +1,4 @@
+import type { CategorySystemKey } from '@/modules/settings/lib/categoryIcon'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
 import { useCurrency } from '@/hooks/useCurrency'
@@ -13,6 +14,7 @@ interface Props {
   groups: DayIncomeGroup[]
   rimOf: (sourceId: string) => RimIndex
   nameOfSource: (sourceId: string) => string
+  categoryKeyOf?: (id: string) => CategorySystemKey | null
   nameOfType: (typeId: string) => string
   nameOfUser: (userId: string) => string
   openId: string | null
@@ -39,6 +41,7 @@ export const IncomeStatement = ({
   rimOf,
   nameOfSource,
   nameOfType,
+  categoryKeyOf,
   nameOfUser,
   openId,
   onToggle,
@@ -54,7 +57,8 @@ export const IncomeStatement = ({
   const countLabel = (n: number) =>
     n === 1 ? m.tape_entries_one() : m.tape_entries_short({ n })
 
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
 
   /**
    * What the day did, in the terms the strip already established.
@@ -67,13 +71,19 @@ export const IncomeStatement = ({
   const dayFigures = (group: DayIncomeGroup): string[] => {
     const parts: string[] = []
     if (group.inflow > 0 && group.moved > 0) {
-      parts.push(m.inc_day_in({ amount: `+${money(group.inflow)}` }))
-      parts.push(m.inc_day_moved({ amount: money(group.moved) }))
+      parts.push(
+        m.inc_day_in({ amount: `+${money(group.inflowText ?? group.inflow)}` }),
+      )
+      parts.push(
+        m.inc_day_moved({ amount: money(group.movedText ?? group.moved) }),
+      )
     } else if (group.inflow > 0) {
       // The `+` already says which it is, so the word would be noise.
-      parts.push(`+${money(group.inflow)}`)
+      parts.push(`+${money(group.inflowText ?? group.inflow)}`)
     } else if (group.moved > 0) {
-      parts.push(m.inc_day_moved({ amount: money(group.moved) }))
+      parts.push(
+        m.inc_day_moved({ amount: money(group.movedText ?? group.moved) }),
+      )
     }
     return parts
   }
@@ -96,8 +106,8 @@ export const IncomeStatement = ({
             {/* A day is a group and the spacing says so: 24px above the header
                 against 6px between its rows. Sticky, because a day with a
                 dozen entries otherwise loses its own date off the top. */}
-            <header className="bg-ground sticky top-0 z-10 flex items-center gap-3 pb-2">
-              <h3 className="font-display text-[11px] font-bold tracking-[0.12em] uppercase">
+            <header className="bg-ground sticky top-0 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 pb-2">
+              <h3 className="font-display shrink-0 text-[11px] font-bold tracking-[0.12em] whitespace-nowrap uppercase">
                 {new Intl.DateTimeFormat(locale, {
                   weekday: 'short',
                   day: 'numeric',
@@ -105,7 +115,7 @@ export const IncomeStatement = ({
                 }).format(date)}
               </h3>
               <span aria-hidden="true" className="bg-hair h-px flex-1" />
-              <span className="tnum text-[12px] whitespace-nowrap">
+              <span className="tnum min-w-0 text-[12px] lg:whitespace-nowrap">
                 {figures.map((figure, index) => (
                   <span key={figure}>
                     {index > 0 && (
@@ -143,7 +153,8 @@ export const IncomeStatement = ({
                       : nameOfSource(income.fromSourceId)
                   }
                   toName={nameOfSource(income.toSourceId)}
-                  typeName={nameOfType(income.typeId)}
+                  categoryKey={categoryKeyOf?.(income.typeId ?? '')}
+                  typeName={income.typeId ? nameOfType(income.typeId) : ''}
                   recorderName={nameOfUser(income.createdByUserId ?? '')}
                   isOpen={openId === income.id}
                   onToggle={onToggle}

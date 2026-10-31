@@ -115,7 +115,7 @@ describe('unwrapPage — meta.summary', () => {
     const page = unwrapPage(
       respond({
         pagination: PAGINATION,
-        totals: { sum: 100, count: 1, average: 100 },
+        totals: { sum: '100.00', count: 1, average: '100.00' },
       }),
       (row) => row,
     )
@@ -129,12 +129,13 @@ describe('unwrapPage — meta.summary', () => {
     const page = unwrapPage(
       respond({
         pagination: PAGINATION,
-        totals: { sum: 100, count: 1, average: 100 },
-        summary: { current: { sum: 250, count: 2, average: 125 } },
+        totals: { sum: '100.00', count: 1, average: '100.00' },
+        summary: { current: { sum: '250.00', count: 2, average: '125.00' } },
       }),
       (row) => row,
     )
     expect(page.totals?.sum).toBe(250)
+    expect(page.totals?.sumText).toBe('250.00')
   })
 
   it('renames the nested wire keys and nothing else', () => {
@@ -142,11 +143,11 @@ describe('unwrapPage — meta.summary', () => {
       respond({
         pagination: PAGINATION,
         summary: {
-          current: { sum: 250, count: 2, average: 125 },
-          previous: { sum: 90, count: 1, average: 90 },
+          current: { sum: '250.00', count: 2, average: '125.00' },
+          previous: { sum: '90.00', count: 1, average: '90.00' },
           breakdown: {
-            by_type: [{ id: 'type-a', sum: 250, count: 2 }],
-            by_member: [{ id: 'user-a', sum: 250, count: 2 }],
+            by_type: [{ id: 'type-a', sum: '250.00', count: 2 }],
+            by_member: [{ id: 'user-a', sum: '250.00', count: 2 }],
           },
         },
       }),
@@ -162,5 +163,55 @@ describe('unwrapPage — meta.summary', () => {
     const page = unwrapPage(respond({ pagination: PAGINATION }), (row) => row)
     expect(page.totals).toBeUndefined()
     expect(page.summary).toBeUndefined()
+  })
+})
+
+it('preserves exact BE cumulative, withdrawal and comparison values across partial pages', () => {
+  const response = {
+    data: {
+      success: true,
+      data: [],
+      meta: {
+        pagination: { page: 1, limit: 1, total: 100, total_pages: 100 },
+        summary: {
+          current: {
+            sum: '61215500.00',
+            count: 100,
+            average: '612155.00',
+            cash_withdrawn: '100.30',
+            cash_withdrawal_count: 2,
+          },
+          daily: [
+            {
+              date: '2026-10-01',
+              sum: '30000.00',
+              count: 1,
+              cumulative: '30000.00',
+            },
+            {
+              date: '2026-10-24',
+              sum: '61185500.00',
+              count: 99,
+              cumulative: '61215500.00',
+            },
+          ],
+          comparison: { percentage: '0.0', direction: 'flat' },
+        },
+      },
+    },
+  } as unknown as AxiosResponse<ApiEnvelope<unknown[]>>
+  const page = unwrapPage(response, (row) => row)
+  expect(page.summary?.daily?.[1]).toMatchObject({
+    date: '2026-10-24',
+    cumulativeText: '61215500.00',
+  })
+  expect(page.totals).toMatchObject({
+    cash_withdrawn: 100.3,
+    cashWithdrawnText: '100.30',
+    cash_withdrawal_count: 2,
+  })
+  expect(page.summary?.comparison).toEqual({
+    percentage: '0.0',
+    direction: 'flat',
   })
 })

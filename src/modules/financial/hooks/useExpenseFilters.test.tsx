@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react'
-import { MemoryRouter, useLocation } from 'react-router-dom'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createTestQueryClient } from '@/test/test-utils'
@@ -75,4 +75,29 @@ describe('useExpenseFilters', () => {
     expect(result.current.filters.sortBy).toBe('value')
     expect(result.current.filters.limit).toBe(50)
   })
+})
+
+it('keeps meaningful history through month, filter, debounced search, back and forward', () => {
+  const { result } = renderHook(
+    () => ({
+      ...useExpenseFilters('household-001'),
+      location: useLocation(),
+      navigate: useNavigate(),
+    }),
+    { wrapper },
+  )
+  act(() => result.current.setMonth(new Date(2026, 8, 1)))
+  expect(result.current.location.search).toBe('?month=2026-09')
+  act(() => result.current.updateFilters({ typeId: 'food' }))
+  act(() => result.current.updateFilters({ search: 'rice', page: 1 }))
+  expect(result.current.location.search).toBe('?month=2026-09&type=food&q=rice')
+  act(() => result.current.updateFilters({ search: undefined, page: 1 }))
+  act(() => result.current.navigate(-1))
+  expect(result.current.location.search).toBe('?month=2026-09')
+  expect(result.current.filters.dateFrom).toBe('2026-09-01')
+  act(() => result.current.navigate(1))
+  expect(result.current.filters.typeId).toBe('food')
+  act(() => result.current.updateFilters({ typeId: undefined }))
+  act(() => result.current.setMonth(new Date()))
+  expect(result.current.location.search).toBe('')
 })

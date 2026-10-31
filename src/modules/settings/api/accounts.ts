@@ -1,7 +1,9 @@
+import { positionKeys } from '@/modules/financial/api/positions'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
 import { entityKey } from '@/api/keys'
 import { useInvalidatingMutation } from '@/api/useInvalidatingMutation'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
 import type { ApiEnvelope } from '@/types/api'
 import type {
   Account,
@@ -42,25 +44,36 @@ const toDomainKind = (kind: string): AccountKind =>
   KIND_FROM_WIRE[kind] ?? (kind as AccountKind)
 
 export const toAccount = (row: WireAccount): Account => ({
+  ...(row.baseline_status && {
+    baselineStatus: row.baseline_status,
+    baselineCanSet: row.baseline_can_set === true,
+    baselineConfirmedAt: row.baseline_confirmed_at ?? null,
+  }),
+  calculationStartCanSet: row.calculation_start_can_set === true,
+  calculationStartSetAt: row.calculation_start_set_at ?? null,
   id: row.id,
   name: row.name,
   kind: toDomainKind(row.kind),
-  openingBalance: row.opening_balance,
+  openingBalance: fromWireMoney(row.opening_balance),
   asOf: row.as_of,
   order: row.order,
   archivedAt: row.archived_at,
   householdId: row.household_id,
+  systemKey: row.system_key ?? null,
+  isProtected: row.system_key != null,
 })
 
 /** Only what the caller passed — see `toCategoryBody` for why. */
-const toAccountBody = (patch: Partial<Account>) => {
+type UpdateAccountInput = Partial<
+  Pick<Account, 'name' | 'order' | 'archivedAt' | 'asOf' | 'openingBalance'>
+>
+
+const toAccountBody = (patch: UpdateAccountInput) => {
   const body: Record<string, unknown> = {}
-  if (patch.name !== undefined) body.name = patch.name
-  if (patch.kind !== undefined) body.kind = KIND_TO_WIRE[patch.kind]
-  if (patch.openingBalance !== undefined) {
-    body.opening_balance = patch.openingBalance
-  }
   if (patch.asOf !== undefined) body.as_of = patch.asOf
+  if (patch.openingBalance !== undefined)
+    body.opening_balance = toWireMoney(patch.openingBalance)
+  if (patch.name !== undefined) body.name = patch.name
   if (patch.order !== undefined) body.order = patch.order
   if (patch.archivedAt !== undefined) body.archived_at = patch.archivedAt
   return body
@@ -76,6 +89,7 @@ export const useAccounts = (householdId: string) =>
     queryKey: accountKeys.all(householdId),
     queryFn: fetchAccounts,
     enabled: Boolean(householdId),
+    staleTime: 60_000,
   })
 
 /** What a picker should offer: archived accounts are history, not choices. */
@@ -84,21 +98,24 @@ export const useActiveAccounts = (householdId: string) =>
     queryKey: accountKeys.all(householdId),
     queryFn: fetchAccounts,
     enabled: Boolean(householdId),
+    staleTime: 60_000,
     select: (accounts: Account[]) =>
       accounts.filter((account) => !account.archivedAt),
   })
 
 export const useCreateAccount = (householdId: string) =>
   useInvalidatingMutation(
-    [accountKeys.all(householdId)],
+    [accountKeys.all(householdId), positionKeys.all(householdId)],
     async (input: AccountInput) =>
       toAccount(
         unwrap(
           await apiClient.post<ApiEnvelope<WireAccount>>('/payment-sources', {
             name: input.name,
             kind: KIND_TO_WIRE[input.kind],
-            opening_balance: input.openingBalance,
-            as_of: input.asOf,
+            ...(input.openingBalance !== undefined && {
+              opening_balance: toWireMoney(input.openingBalance),
+            }),
+            ...(input.asOf !== undefined && { as_of: input.asOf }),
           }),
         ),
       ),
@@ -106,8 +123,8 @@ export const useCreateAccount = (householdId: string) =>
 
 export const useUpdateAccount = (householdId: string) =>
   useInvalidatingMutation(
-    [accountKeys.all(householdId)],
-    async ({ id, ...patch }: { id: string } & Partial<Account>) =>
+    [accountKeys.all(householdId), positionKeys.all(householdId)],
+    async ({ id, ...patch }: { id: string } & UpdateAccountInput) =>
       toAccount(
         unwrap(
           await apiClient.patch<ApiEnvelope<WireAccount>>(

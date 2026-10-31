@@ -7,6 +7,7 @@ const row = (id: string, amount: number, from: string | null): Income => ({
   id,
   name: id,
   amount,
+  kind: from === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
   typeId: 'itype-0',
   fromSourceId: from,
   toSourceId: 'source-bni',
@@ -65,6 +66,16 @@ describe('incomeMonthFigures', () => {
 
     expect(figures.isComplete).toBe(false)
     expect(figures.moved).toBeNull()
+  })
+
+  it('retains exact fallback transfer text above safe integer cents', () => {
+    const figures = incomeMonthFigures(
+      page([
+        row('large', 999999999999.99, 'source-bni'),
+        row('cent', 0.01, 'source-bni'),
+      ]),
+    )
+    expect(figures.movedText).toBe('1000000000000.00')
   })
 
   it('does not round two-decimal amounts into disagreement', () => {

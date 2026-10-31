@@ -83,7 +83,8 @@ export const MonthGrid = ({
     cells[from + step]?.focus()
   }, [])
 
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
 
   return (
     <div>
@@ -138,15 +139,15 @@ export const MonthGrid = ({
 
       <div className="border-hair text-muted mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 border-t pt-2.5 text-[10.5px]">
         <span className="flex items-center gap-1.5 font-medium">
-          <i className="bg-flow-out block h-3 w-2 rounded-[2px]" />
+          <i className="bg-flow-out block h-3 w-2 rounded-[2px]" />−{' '}
           {m.cal_legend_out()}
         </span>
         <span className="flex items-center gap-1.5 font-medium">
-          <i className="bg-flow-in block h-3 w-2 rounded-[2px]" />
+          <i className="bg-flow-in block h-3 w-2 rounded-[2px]" />+{' '}
           {m.cal_legend_in()}
         </span>
         <span className="flex items-center gap-1.5 font-medium">
-          <i className="bg-flow-moved block h-1.5 w-2 rounded-[2px]" />
+          <i className="bg-flow-moved block h-1.5 w-2 rounded-[2px]" />↔{' '}
           {m.cal_legend_moved()}
         </span>
         <span className="ml-auto hidden font-medium opacity-85 sm:block">
@@ -190,7 +191,7 @@ const DayCell = ({
       aria-label={label}
       tabIndex={isTabStop ? 0 : -1}
       onClick={() => onSelect(day.date)}
-      className={`relative flex min-h-[44px] flex-col rounded-lg px-1.5 py-1.5 text-left transition-[background-color,box-shadow] duration-150 ease-out sm:min-h-[92px] sm:rounded-xl sm:px-2 sm:py-1.5 ${
+      className={`relative flex min-h-[68px] flex-col rounded-lg px-1.5 py-1.5 text-left transition-[background-color,box-shadow] duration-150 ease-out sm:min-h-[92px] sm:rounded-xl sm:px-2 sm:py-1.5 ${
         isFuture
           ? 'shadow-[inset_0_0_0_1px_var(--hair)]'
           : isSelected
@@ -213,28 +214,37 @@ const DayCell = ({
       {!isFuture && day.count > 0 && (
         <span
           aria-hidden="true"
-          className="mt-auto flex h-5 items-end gap-[3px] sm:h-11 sm:gap-1"
+          className="mt-auto flex h-9 items-end gap-[3px] sm:h-11 sm:gap-1"
         >
-          <Mark
-            value={day.spent}
-            max={calendar.maxSpent}
-            className="bg-flow-out w-[7px] sm:w-[9px]"
-          />
-          <Mark
-            value={day.inflow}
-            max={calendar.maxInflow}
-            className="bg-flow-in w-[7px] sm:w-[9px]"
-          />
-          {day.moved > 0 && (
+          <span className="flex flex-col items-center">
+            <span className="text-[9px] font-bold">−</span>
             <Mark
-              value={day.moved}
-              max={calendar.maxMoved}
-              // Short and muted, and capped well below the other two: a
-              // transfer is real movement but it changed nothing, and a bar
-              // as tall as a salary's would say otherwise.
-              cap={0.45}
-              className="bg-flow-moved w-[5px] sm:w-[6px]"
+              value={day.spent}
+              max={calendar.maxSpent}
+              className="bg-flow-out w-[7px] sm:w-[9px]"
             />
+          </span>
+          <span className="flex flex-col items-center">
+            <span className="text-[9px] font-bold">+</span>
+            <Mark
+              value={day.inflow}
+              max={calendar.maxInflow}
+              className="bg-flow-in w-[7px] sm:w-[9px]"
+            />
+          </span>
+          {day.moved > 0 && (
+            <span className="flex flex-col items-center">
+              <span className="text-[9px] font-bold">↔</span>
+              <Mark
+                value={day.moved}
+                max={calendar.maxMoved}
+                // Short and muted, and capped well below the other two: a
+                // transfer is real movement but it changed nothing, and a bar
+                // as tall as a salary's would say otherwise.
+                cap={0.45}
+                className="bg-flow-moved w-[5px] sm:w-[6px]"
+              />
+            </span>
           )}
         </span>
       )}
@@ -321,7 +331,7 @@ const accessibleName = (
   }: {
     date: string
     isFuture: boolean
-    money: (value: number) => string
+    money: (value: number | string) => string
     m: ReturnType<typeof useMessages>
   },
 ): string => {
@@ -329,9 +339,13 @@ const accessibleName = (
   if (day.count === 0) return m.cal_day_quiet({ date })
 
   const facts: string[] = []
-  if (day.spent > 0) facts.push(m.cal_a11y_spent({ amount: money(day.spent) }))
+  if (day.spent > 0)
+    facts.push(m.cal_a11y_spent({ amount: money(day.spentText ?? day.spent) }))
   if (day.inflow > 0)
-    facts.push(m.cal_a11y_received({ amount: money(day.inflow) }))
-  if (day.moved > 0) facts.push(m.cal_a11y_moved({ amount: money(day.moved) }))
+    facts.push(
+      m.cal_a11y_received({ amount: money(day.inflowText ?? day.inflow) }),
+    )
+  if (day.moved > 0)
+    facts.push(m.cal_a11y_moved({ amount: money(day.movedText ?? day.moved) }))
   return m.cal_day_reads({ date, facts: facts.join(', ') })
 }

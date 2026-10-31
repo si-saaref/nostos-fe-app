@@ -1,7 +1,9 @@
+import { invalidateFinancial } from './invalidateFinancial'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import { averageMoney, roundMoney } from '@/utils/money'
+import { averageMoneyText, sumMoneyText } from '@/utils/money'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
 import type { ApiEnvelope, Paginated } from '@/types/api'
 import type {
   CreateExpenseInput,
@@ -82,9 +84,10 @@ export const toExpense = (row: WireExpense): Expense => ({
   id: row.id,
   name: row.name,
   description: row.description,
-  value: row.value,
+  value: fromWireMoney(row.value),
   typeId: row.type_id,
   sourceId: row.source_id,
+  ...(row.transfer_income_id && { transferIncomeId: row.transfer_income_id }),
   datePaid: row.date_paid,
   paidByUserId: row.paid_by_user_id,
   householdId: row.household_id,
@@ -100,7 +103,7 @@ const toExpenseBody = (input: CreateExpenseInput) => ({
   // Blank is absent. The server coerces `''` to `null` anyway, but sending
   // the empty string would make "" and null both reachable from here.
   description: input.description?.trim() || null,
-  value: input.value,
+  value: toWireMoney(input.value),
   type_id: input.typeId,
   source_id: input.sourceId,
   date_paid: input.datePaid,
@@ -126,7 +129,7 @@ const toExpensePatch = (patch: UpdateExpenseInput) => {
   if (patch.description !== undefined) {
     body.description = patch.description?.trim() || null
   }
-  if (patch.value !== undefined) body.value = patch.value
+  if (patch.value !== undefined) body.value = toWireMoney(patch.value)
   if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.sourceId !== undefined) body.source_id = patch.sourceId
   if (patch.datePaid !== undefined) body.date_paid = patch.datePaid
@@ -163,14 +166,26 @@ const withRow = (
   page: Paginated<Expense>,
   expense: Expense,
 ): Paginated<Expense> => {
+  if (page.items.some((row) => row.id === expense.id)) return page
   const count = (page.totals?.count ?? page.items.length) + 1
-  const sum = roundMoney((page.totals?.sum ?? 0) + expense.value)
+  const sumText = sumMoneyText([
+    page.totals?.sumText ?? page.totals?.sum ?? 0,
+    expense.value,
+  ])
+  const sum = Number(sumText)
   return {
     ...page,
+    summary: undefined,
     items: [expense, ...page.items],
     pagination: { ...page.pagination, total: page.pagination.total + 1 },
     totals: page.totals
-      ? { sum, count, average: averageMoney(sum, count) }
+      ? {
+          sum,
+          sumText,
+          count,
+          average: Number(averageMoneyText(sumText, count)),
+          averageText: averageMoneyText(sumText, count),
+        }
       : undefined,
   }
 }
@@ -182,16 +197,27 @@ const withoutRow = (
   const removed = page.items.find((item) => item.id === id)
   if (!removed) return page
   const count = Math.max(0, (page.totals?.count ?? page.items.length) - 1)
-  const sum = Math.max(0, roundMoney((page.totals?.sum ?? 0) - removed.value))
+  const sumText = sumMoneyText([
+    page.totals?.sumText ?? page.totals?.sum ?? 0,
+    -removed.value,
+  ])
+  const sum = Math.max(0, Number(sumText))
   return {
     ...page,
+    summary: undefined,
     items: page.items.filter((item) => item.id !== id),
     pagination: {
       ...page.pagination,
       total: Math.max(0, page.pagination.total - 1),
     },
     totals: page.totals
-      ? { sum, count, average: averageMoney(sum, count) }
+      ? {
+          sum,
+          sumText,
+          count,
+          average: Number(averageMoneyText(sumText, count)),
+          averageText: averageMoneyText(sumText, count),
+        }
       : undefined,
   }
 }
@@ -228,47 +254,38 @@ export const useExpenses = (
 export const useCreateExpense = (householdId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: CreateExpenseInput) =>
-      toExpense(
-        unwrap(
-          await apiClient.post<ApiEnvelope<WireExpense>>(
-            '/expenses',
-            toExpenseBody(input),
-          ),
-        ),
-      ),
-    onMutate: async (input) => {
+    mutationFn: async (input: CreateExpenseInput) => {
+      const created = unwrap(
+        await apiClient.post<ApiEnvelope<WireExpense[]>>('/expenses', [
+          toExpenseBody(input),
+        ]),
+      )
+      return toExpense(created[0])
+    },
+    onSuccess: async (created) => {
       await queryClient.cancelQueries({
         queryKey: expenseKeys.lists(householdId),
       })
       const previous = queryClient.getQueriesData<Paginated<Expense>>({
         queryKey: expenseKeys.lists(householdId),
       })
-      const optimistic: Expense = {
-        id: `${OPTIMISTIC_PREFIX}${crypto.randomUUID()}`,
-        householdId,
-        ...input,
-      }
+      const confirmed: Expense = created
       // Only into caches the row actually belongs to. A list scoped to last
       // month, or to another category, must not sprout today's entry.
       previous.forEach(([key, data]) => {
         if (!data) return
         const filters = key[FILTERS_IN_KEY] as ExpenseFilters | undefined
-        if (filters && !matchesFilters(optimistic, filters)) return
+        if (filters && !matchesFilters(confirmed, filters)) return
         queryClient.setQueryData<Paginated<Expense>>(
           key,
-          withRow(data, optimistic),
+          withRow(data, confirmed),
         )
       })
       return { previous }
     },
-    onError: (_error, _input, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all(householdId) })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'expenses')
     },
   })
 }
@@ -303,8 +320,9 @@ export const useUpdateExpense = (householdId: string) => {
         updated,
       )
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all(householdId) })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'expenses')
     },
   })
 }
@@ -315,7 +333,7 @@ export const useDeleteExpense = (householdId: string) => {
     mutationFn: async (id: string) => {
       await apiClient.delete(`/expenses/${id}`)
     },
-    onMutate: async (id) => {
+    onSuccess: async (_result, id) => {
       await queryClient.cancelQueries({
         queryKey: expenseKeys.lists(householdId),
       })
@@ -328,13 +346,9 @@ export const useDeleteExpense = (householdId: string) => {
       })
       return { previous }
     },
-    onError: (_error, _id, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all(householdId) })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'expenses')
     },
   })
 }

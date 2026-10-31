@@ -30,6 +30,7 @@ const income = (
   id: `i-${date}-${amount}`,
   name: 'Gaji',
   amount,
+  kind: fromSourceId === null ? 'EXTERNAL_INCOME' : 'TRANSFER',
   typeId: 'itype-0',
   fromSourceId,
   toSourceId: 'source-bsi',
@@ -145,13 +146,34 @@ describe('MonthGrid', () => {
 
   it('names each stream in words, so colour never carries the meaning alone', () => {
     renderGrid()
-    expect(screen.getByText('Keluar')).toBeInTheDocument()
-    expect(screen.getByText('Masuk')).toBeInTheDocument()
-    expect(screen.getByText('Pindah antar sumber')).toBeInTheDocument()
+    expect(screen.getByText(/Keluar/)).toBeInTheDocument()
+    expect(screen.getByText(/Masuk/)).toBeInTheDocument()
+    expect(screen.getByText(/Pindah antar sumber/)).toBeInTheDocument()
   })
 
   it('states the scale it draws against', () => {
     renderGrid()
     expect(screen.getByText(/hari tersibuknya sendiri/i)).toBeInTheDocument()
   })
+})
+
+it('shows redundant signs for all three streams without relying on color', () => {
+  renderGrid(
+    calendarOf(
+      [expense('2026-09-03', 100)],
+      [income('2026-09-03', 200), income('2026-09-03', 50, 'cash')],
+    ),
+  )
+  expect(screen.getAllByText('−').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('+').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('↔').length).toBeGreaterThan(0)
+})
+
+it('reserves a full glyph line above the maximum phone bar height', () => {
+  renderGrid(calendarOf([expense('2026-09-03', 100)]))
+  const glyph = screen
+    .getAllByText('−')
+    .find((node) => node.closest('[aria-hidden="true"]'))!
+  expect(glyph.parentElement?.parentElement).toHaveClass('h-9')
+  expect(glyph.closest('button')).toHaveClass('min-h-[68px]')
 })

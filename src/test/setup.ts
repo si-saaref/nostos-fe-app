@@ -24,3 +24,10 @@ window.HTMLElement.prototype.hasPointerCapture = () => false
 window.HTMLElement.prototype.setPointerCapture = () => {}
 window.HTMLElement.prototype.releasePointerCapture = () => {}
 window.HTMLElement.prototype.scrollIntoView = () => {}
+
+// Popper's arrow measures its size; jsdom has no layout observer.
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}

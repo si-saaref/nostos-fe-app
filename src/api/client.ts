@@ -1,12 +1,16 @@
 import axios from 'axios'
 import type { AxiosResponse } from 'axios'
 import { queryClient } from '@/api/queryClient'
+import { fromWireMoney } from '@/utils/money'
 import type {
+  ApiMeta,
   ApiEnvelope,
   Paginated,
   Pagination,
   Summary,
+  Totals,
   WireSummary,
+  WireTotals,
 } from '@/types/api'
 
 let currentHouseholdId = ''
@@ -40,7 +44,9 @@ apiClient.interceptors.request.use((config) => {
  * neither the endpoint nor the shape — so a contract change would surface as a
  * mystery rather than as itself.
  */
-export const unwrap = <T>(res: AxiosResponse<ApiEnvelope<T>>): T => {
+export const unwrap = <T, M = ApiMeta>(
+  res: AxiosResponse<ApiEnvelope<T, M>>,
+): T => {
   const body = res.data
   if (body == null || typeof body !== 'object' || !('data' in body)) {
     throw new Error(
@@ -95,7 +101,7 @@ export const unwrapPage = <W, T>(
     // than two that can disagree. Left undefined rather than zeroed when
     // neither arrives: a total of 0 is a claim about the household's money,
     // and "not sent" is not that claim.
-    totals: summary?.current ?? (meta?.totals && { ...meta.totals }),
+    totals: summary?.current ?? (meta?.totals && toTotals(meta.totals)),
     summary,
   }
 }
@@ -106,12 +112,48 @@ export const unwrapPage = <W, T>(
  * spreading them keeps `WireTotals` and `Totals` honest about being the same
  * shape.
  */
+const toTotals = (wire: WireTotals): Totals => ({
+  ...wire,
+  sum: fromWireMoney(wire.sum),
+  sumText: wire.sum,
+  average: fromWireMoney(wire.average),
+  averageText: wire.average,
+  moved: wire.moved === undefined ? undefined : fromWireMoney(wire.moved),
+  movedText: wire.moved,
+  cash_withdrawn:
+    wire.cash_withdrawn === undefined
+      ? undefined
+      : fromWireMoney(wire.cash_withdrawn),
+  cashWithdrawnText: wire.cash_withdrawn,
+  transfer_fees:
+    wire.transfer_fees === undefined
+      ? undefined
+      : fromWireMoney(wire.transfer_fees),
+  transferFeesText: wire.transfer_fees,
+})
+
 const toSummary = (wire: WireSummary): Summary => ({
-  current: { ...wire.current },
-  previous: wire.previous && { ...wire.previous },
+  comparison: wire.comparison,
+  daily: wire.daily?.map((day) => ({
+    ...day,
+    sum: fromWireMoney(day.sum),
+    sumText: day.sum,
+    cumulative: fromWireMoney(day.cumulative),
+    cumulativeText: day.cumulative,
+  })),
+  current: toTotals(wire.current),
+  previous: wire.previous && toTotals(wire.previous),
   breakdown: wire.breakdown && {
-    byType: wire.breakdown.by_type?.map((slice) => ({ ...slice })),
-    byMember: wire.breakdown.by_member?.map((slice) => ({ ...slice })),
+    byType: wire.breakdown.by_type?.map((slice) => ({
+      ...slice,
+      sum: fromWireMoney(slice.sum),
+      sumText: slice.sum,
+    })),
+    byMember: wire.breakdown.by_member?.map((slice) => ({
+      ...slice,
+      sum: fromWireMoney(slice.sum),
+      sumText: slice.sum,
+    })),
   },
 })
 

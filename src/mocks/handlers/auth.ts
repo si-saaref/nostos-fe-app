@@ -64,6 +64,18 @@ export const authHandlers = [
     return HttpResponse.json({ success: true, data: MOCK_ME })
   }),
 
+  http.patch('*/api/v1/auth/me/name', async ({ request }) => {
+    await pause(WRITE_LATENCY_MS)
+    const body = (await request.json()) as {
+      first_name: string
+      last_name: string
+    }
+    MOCK_ME.first_name = body.first_name.trim()
+    MOCK_ME.last_name = body.last_name.trim()
+    MOCK_ME.name = `${MOCK_ME.first_name} ${MOCK_ME.last_name}`
+    return HttpResponse.json({ success: true, data: MOCK_ME })
+  }),
+
   http.post('*/api/v1/auth/logout', async () => {
     await pause(WRITE_LATENCY_MS)
     authState.authenticated = false

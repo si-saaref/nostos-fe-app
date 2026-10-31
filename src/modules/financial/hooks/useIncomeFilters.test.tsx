@@ -97,3 +97,11 @@ describe('useIncomeFilters', () => {
     expect(result.current.filters.limit).toBe(400)
   })
 })
+
+it('keeps current position date independent of the selected historical month', () => {
+  const { result } = renderHook(() => useIncomeFilters('household-001'), {
+    wrapper: wrapperAt('/income'),
+  })
+  act(() => result.current.setMonth(new Date(2025, 0, 1)))
+  expect(result.current.asOf).not.toBe('2025-01-31')
+})

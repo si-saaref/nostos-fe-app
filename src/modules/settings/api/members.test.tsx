@@ -89,27 +89,31 @@ describe('useMembers', () => {
 })
 
 describe('useInviteMember', () => {
-  it('reaches both the members list and the payer picker from one write', async () => {
+  it('keeps a new pending invite off the payer picker', async () => {
     const { result } = setup()
     await waitFor(() => expect(result.current.payers.isSuccess).toBe(true))
 
     await act(async () => {
       await result.current.invite.mutateAsync({
-        name: 'Nadia',
+        firstName: 'Nadia',
+        lastName: 'Putri',
         email: 'nadia@example.com',
       })
     })
 
-    // One key, so a single invalidation cannot leave the picker a session
-    // behind the list — the failure mode two endpoints had.
+    // The roster updates from one cache key, but pending members cannot
+    // be named as payers until they accept the invitation.
     await waitFor(() =>
       expect(
-        result.current.members.data?.some((row) => row.name === 'Nadia'),
+        result.current.members.data?.some((row) => row.name === 'Nadia Putri'),
       ).toBe(true),
     )
     expect(
-      result.current.payers.data?.some((row) => row.name === 'Nadia'),
-    ).toBe(true)
+      result.current.roster.data?.find((row) => row.name === 'Nadia Putri'),
+    ).toMatchObject({ firstName: 'Nadia', lastName: 'Putri' })
+    expect(
+      result.current.payers.data?.some((row) => row.name === 'Nadia Putri'),
+    ).toBe(false)
   })
 
   it('returns the invite with its pending status and expiry', async () => {
@@ -121,7 +125,8 @@ describe('useInviteMember', () => {
     > | null = null
     await act(async () => {
       created = await result.current.invite.mutateAsync({
-        name: 'Nadia',
+        firstName: 'Nadia',
+        lastName: 'Putri',
         email: 'nadia@example.com',
       })
     })
@@ -136,7 +141,11 @@ describe('useInviteMember', () => {
 
     await act(async () => {
       await result.current.invite
-        .mutateAsync({ name: 'Sari lagi', email: 'sari@example.com' })
+        .mutateAsync({
+          firstName: 'Sari',
+          lastName: 'lagi',
+          email: 'sari@example.com',
+        })
         .catch(() => undefined)
     })
 
@@ -229,4 +238,73 @@ describe('useRemoveMember', () => {
       result.current.members.data?.find((row) => row.id === budi.id)?.deletedAt,
     ).toBeNull()
   })
+})
+
+it('sends the structured BE contract and preserves both names on the roster', async () => {
+  const { http, HttpResponse } = await import('msw')
+  const { server } = await import('@/mocks/server')
+  const { toMember } = await import('./members')
+  let body: unknown
+  server.use(
+    http.post('*/households/:id/members', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true,
+        data: {
+          id: 'new',
+          name: 'Nadia Putri',
+          first_name: 'Nadia',
+          last_name: 'Putri',
+          email: 'nadia@example.com',
+          role: 'MEMBER',
+          household_id: HOUSEHOLD_ID,
+          status: 'pending',
+          resend_count: 0,
+          invite_sent_at: null,
+          invite_expires_at: null,
+          deleted_at: null,
+          deletion_reason: null,
+        },
+      })
+    }),
+  )
+  const { result } = setup()
+  let created: unknown
+  await act(async () => {
+    created = await result.current.invite.mutateAsync({
+      firstName: 'Nadia',
+      lastName: 'Putri',
+      email: 'nadia@example.com',
+    })
+  })
+  expect(body).toEqual({
+    first_name: 'Nadia',
+    last_name: 'Putri',
+    email: 'nadia@example.com',
+  })
+  expect(created).toMatchObject({ firstName: 'Nadia', lastName: 'Putri' })
+  const legacy = toMember({
+    id: 'old',
+    name: 'Legacy',
+    email: 'old@example.com',
+    role: 'MEMBER',
+    household_id: HOUSEHOLD_ID,
+    status: 'joined',
+    resend_count: 0,
+    invite_sent_at: null,
+    invite_expires_at: null,
+    deleted_at: null,
+    deletion_reason: null,
+  })
+  expect(legacy.name).toBe('Legacy')
+})
+
+it('rejects obsolete name-only invites at the mock boundary', async () => {
+  const { apiClient } = await import('@/api/client')
+  await expect(
+    apiClient.post(`/households/${HOUSEHOLD_ID}/members`, {
+      name: 'Old contract',
+      email: 'old@example.com',
+    }),
+  ).rejects.toMatchObject({ response: { status: 400 } })
 })

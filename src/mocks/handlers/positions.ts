@@ -1,7 +1,7 @@
-import { http } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { db } from '@/mocks/db'
-import { READ_LATENCY_MS, errorBody, ok, pause } from '@/mocks/handlers/shared'
-import { roundMoney, sumMoney } from '@/utils/money'
+import { READ_LATENCY_MS, errorBody, pause } from '@/mocks/handlers/shared'
+import { sumMoneyText } from '@/utils/money'
 import { fromIsoDay, isoDay, shiftDays } from '@/utils/dates'
 import type { WirePosition } from '@/types/income'
 
@@ -14,15 +14,15 @@ import type { WirePosition } from '@/types/income'
  * that. A frontend that summed what it happened to have fetched would be
  * exactly right for a new household and quietly wrong for an old one.
  */
-const balanceAt = (sourceId: string, upTo: string): number => {
+const balanceAt = (sourceId: string, upTo: string): string => {
   const account = db.accounts.find((row) => row.id === sourceId)
-  if (!account) return 0
+  if (!account) return '0.00'
   // Rows before `as_of` are already inside the opening balance; counting them
   // again would double every rupiah recorded before the household started
   // using the app.
   const inWindow = (date: string) => date >= account.asOf && date <= upTo
 
-  const into = sumMoney(
+  const into = sumMoneyText(
     db.income
       .filter(
         (row) =>
@@ -32,7 +32,7 @@ const balanceAt = (sourceId: string, upTo: string): number => {
       )
       .map((row) => row.amount),
   )
-  const outOf = sumMoney(
+  const outOf = sumMoneyText(
     db.income
       .filter(
         (row) =>
@@ -42,7 +42,7 @@ const balanceAt = (sourceId: string, upTo: string): number => {
       )
       .map((row) => row.amount),
   )
-  const spent = sumMoney(
+  const spent = sumMoneyText(
     db.expenses
       .filter(
         (row) =>
@@ -52,11 +52,22 @@ const balanceAt = (sourceId: string, upTo: string): number => {
       )
       .map((row) => row.value),
   )
+  const corrections = sumMoneyText(
+    db.adjustments
+      .filter((row) => row.sourceId === sourceId && inWindow(row.date))
+      .map((row) => row.delta),
+  )
 
   // No clamp at zero. A source can genuinely go negative — the household
   // overspent an e-wallet, or is carrying a debt — and a floor would report a
   // comfortable Rp 0 for a source that is actually short (PRD §Risks).
-  return roundMoney(account.openingBalance + into - outOf - spent)
+  return sumMoneyText([
+    account.openingBalance,
+    into,
+    `-${outOf}`,
+    `-${spent}`,
+    corrections,
+  ])
 }
 
 export const positionHandlers = [
@@ -101,8 +112,8 @@ export const positionHandlers = [
         const account = db.accounts.find((a) => a.id === row.source_id)
         return (
           account?.archivedAt === null ||
-          row.balance !== 0 ||
-          row.opening_balance !== 0
+          row.balance !== '0.00' ||
+          row.opening_balance !== '0.00'
         )
       })
 
@@ -110,6 +121,16 @@ export const positionHandlers = [
     // shaped like `/payment-sources` rather than like a ledger list. That is
     // also why the totals are summed on the client — the client provably
     // holds every row, which is not true of any paginated aggregate.
-    return ok(rows)
+    return HttpResponse.json({
+      success: true,
+      data: rows,
+      meta: {
+        summary: {
+          total_balance: sumMoneyText(rows.map((row) => row.balance)),
+          currency: db.prefs.currency,
+          as_of: asOf,
+        },
+      },
+    })
   }),
 ]

@@ -1,3 +1,4 @@
+import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Loading } from '@/components/Loading'
 import { useMessages } from '@/i18n/useMessages'
@@ -6,6 +7,7 @@ import { useCurrency } from '@/hooks/useCurrency'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { RIM_CLASS } from '@/theme/rims'
 import { formatCurrency } from '@/utils/formatters'
+import { compareMoneyText } from '@/utils/money'
 import { fromIsoDay } from '@/utils/dates'
 import type {
   PositionGroup,
@@ -29,6 +31,7 @@ interface Props {
   groups: PositionGroup[]
   /** Household total. Passed rather than re-summed, so it cannot disagree. */
   total: number
+  totalText?: string
   /** The day every figure here is true as of. */
   asOf: string
   isLoading: boolean
@@ -52,14 +55,18 @@ interface Props {
 export const PositionCard = ({
   groups,
   total,
+  totalText,
   asOf,
   isLoading,
   isUnavailable,
 }: Props) => {
+  const [expanded, setExpanded] = useState(false)
+  const detailsId = useId()
   const m = useMessages()
   const { locale } = useSettings()
   const currency = useCurrency()
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
 
   const kindLabel: Record<AccountKind, string> = {
     bank: m.acc_kind_bank(),
@@ -128,7 +135,16 @@ export const PositionCard = ({
       aria-label={m.pos_title()}
       className="bg-card plate-shadow overflow-hidden rounded-xl"
     >
-      <header className="border-hair flex flex-wrap items-baseline gap-x-2.5 gap-y-1 border-b px-4 py-2.5">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={detailsId}
+        onClick={() => setExpanded(!expanded)}
+        className="text-ink min-h-11 w-full px-4 text-left text-[12px] font-semibold lg:hidden"
+      >
+        {m.pos_title()} <span aria-hidden="true">{expanded ? '−' : '+'}</span>
+      </button>
+      <header className="border-hair hidden flex-wrap items-baseline gap-x-2.5 gap-y-1 border-b px-4 py-2.5 lg:flex">
         <h2 className="font-display text-[10px] font-bold tracking-[0.13em] uppercase">
           {m.pos_title()}
         </h2>
@@ -138,7 +154,7 @@ export const PositionCard = ({
         <p className="text-muted ml-auto text-[11px] font-semibold whitespace-nowrap">
           {m.pos_holds()}
           <span className="font-display tnum text-ink ml-1.5 text-base font-bold">
-            {money(total)}
+            {money(totalText ?? total)}
           </span>
         </p>
       </header>
@@ -150,7 +166,8 @@ export const PositionCard = ({
           plates answers "how much is in BNI" and never answers "how much is in
           banks at all" — which is the question the subtotal exists for. */}
       <div
-        className={`bg-hair grid gap-px ${TRACKS[groups.length] ?? TRACKS[3]}`}
+        id={detailsId}
+        className={`bg-hair ${expanded ? 'grid' : 'hidden'} gap-px lg:grid ${TRACKS[groups.length] ?? TRACKS[3]}`}
       >
         {groups.map((group) => (
           <div key={group.kind} className="bg-card min-w-0 px-3.5 py-2.5">
@@ -169,18 +186,32 @@ export const PositionCard = ({
                   total the header already states: the same figure twice, one
                   line apart, reads as a rendering fault. A shortfall still
                   speaks, because that word is not a duplicate of anything. */}
-              {(groups.length > 1 || group.balance < 0) && (
+              {(groups.length > 1 ||
+                compareMoneyText(
+                  group.balanceText ?? group.balance.toFixed(2),
+                  '0.00',
+                ) < 0) && (
                 <p
                   className={`ml-auto flex items-baseline gap-1 text-[11px] font-bold ${
-                    group.balance < 0 ? 'text-danger' : ''
+                    compareMoneyText(
+                      group.balanceText ?? group.balance.toFixed(2),
+                      '0.00',
+                    ) < 0
+                      ? 'text-danger'
+                      : ''
                   }`}
                 >
-                  {group.balance < 0 && (
+                  {compareMoneyText(
+                    group.balanceText ?? group.balance.toFixed(2),
+                    '0.00',
+                  ) < 0 && (
                     <span className="text-[8.5px] font-bold tracking-[0.09em] uppercase">
                       {m.pos_short()}
                     </span>
                   )}
-                  <span className="tnum">{money(group.balance)}</span>
+                  <span className="tnum">
+                    {money(group.balanceText ?? group.balance)}
+                  </span>
                 </p>
               )}
             </div>
@@ -215,17 +246,33 @@ const SourceRow = ({
   money,
 }: {
   source: PositionSource
-  money: (value: number) => string
+  money: (value: number | string) => string
 }) => {
   const m = useMessages()
-  const isShort = source.balance < 0
-  const isEmpty = source.balance === 0
+  const balanceSign = compareMoneyText(
+    source.balanceText ?? source.balance.toFixed(2),
+    '0.00',
+  )
+  const movementSign = compareMoneyText(
+    source.movementText ?? source.movement.toFixed(2),
+    '0.00',
+  )
+  const isShort = balanceSign < 0
+  const isEmpty = balanceSign === 0
 
   const movement =
-    source.movement > 0
-      ? m.pos_movement_up({ amount: money(source.movement) })
-      : source.movement < 0
-        ? m.pos_movement_down({ amount: money(Math.abs(source.movement)) })
+    movementSign > 0
+      ? m.pos_movement_up({
+          amount: money(source.movementText ?? source.movement),
+        })
+      : movementSign < 0
+        ? m.pos_movement_down({
+            amount: money(
+              source.movementText
+                ? source.movementText.slice(1)
+                : Math.abs(source.movement),
+            ),
+          })
         : m.pos_movement_flat()
 
   const state = isShort ? m.pos_negative() : isEmpty ? m.pos_zero() : null
@@ -244,7 +291,7 @@ const SourceRow = ({
           isShort ? 'text-danger' : isEmpty ? 'text-muted' : ''
         }`}
       >
-        {money(source.balance)}
+        {money(source.balanceText ?? source.balance)}
       </span>
       <span
         className={`col-start-2 col-end-4 -mt-0.5 text-[9px] font-bold ${

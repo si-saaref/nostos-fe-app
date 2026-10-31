@@ -1,10 +1,20 @@
+import { comparisonFor } from '@/mocks/summary'
 import { http } from 'msw'
+import {
+  averageMoneyText,
+  compareMoneyText,
+  fromWireMoney,
+  isCanonicalWireInputMoney,
+  sumMoneyText,
+  toWireMoney,
+} from '@/utils/money'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
   errorBody,
+  isCreateBatch,
   notFound,
   ok,
   okPage,
@@ -12,7 +22,6 @@ import {
   previousPeriod,
 } from '@/mocks/handlers/shared'
 import type { WireMeta } from '@/mocks/handlers/shared'
-import { averageMoney, isValidMoney, sumMoney } from '@/utils/money'
 import type { StoredExpense, WireExpense } from '@/types/expense'
 
 /**
@@ -24,9 +33,10 @@ const toWire = (expense: StoredExpense): WireExpense => ({
   id: expense.id,
   name: expense.name,
   description: expense.description ?? null,
-  value: expense.value,
+  value: toWireMoney(expense.value),
   type_id: expense.typeId,
   source_id: expense.sourceId,
+  transfer_income_id: expense.transferIncomeId ?? null,
   date_paid: expense.datePaid,
   paid_by_user_id: expense.paidByUserId,
   household_id: expense.householdId,
@@ -45,8 +55,12 @@ const live = (): StoredExpense[] =>
   db.expenses.filter((expense) => expense.deletedAt === null)
 
 const totalsFor = (items: StoredExpense[]) => {
-  const sum = sumMoney(items.map((expense) => expense.value))
-  return { sum, count: items.length, average: averageMoney(sum, items.length) }
+  const sum = sumMoneyText(items.map((expense) => expense.value))
+  return {
+    sum,
+    count: items.length,
+    average: averageMoneyText(sum, items.length),
+  }
 }
 
 /** Ranked `sum DESC, count DESC, id ASC`, capped at 5, as the API ranks it. */
@@ -54,20 +68,24 @@ const rank = (
   items: StoredExpense[],
   keyOf: (row: StoredExpense) => string,
 ) => {
-  const byKey = new Map<string, { sum: number; count: number }>()
+  const byKey = new Map<string, number[]>()
   items.forEach((row) => {
     const key = keyOf(row)
-    const bucket = byKey.get(key) ?? { sum: 0, count: 0 }
-    byKey.set(key, { sum: bucket.sum + row.value, count: bucket.count + 1 })
+    const bucket = byKey.get(key) ?? []
+    bucket.push(row.value)
+    byKey.set(key, bucket)
   })
   return [...byKey.entries()]
     .map(([id, bucket]) => ({
       id,
-      sum: sumMoney([bucket.sum]),
-      count: bucket.count,
+      sum: sumMoneyText(bucket),
+      count: bucket.length,
     }))
     .sort(
-      (a, b) => b.sum - a.sum || b.count - a.count || a.id.localeCompare(b.id),
+      (a, b) =>
+        compareMoneyText(b.sum, a.sum) ||
+        b.count - a.count ||
+        a.id.localeCompare(b.id),
     )
     .slice(0, 5)
 }
@@ -93,6 +111,14 @@ const metaFor = (
   previous: StoredExpense[] | null,
 ): WireMeta => {
   const current = totalsFor(items)
+  let cumulative = '0.00'
+  const dates = [...new Set(items.map((row) => row.datePaid))].sort()
+  const daily = dates.map((date) => {
+    const rows = items.filter((row) => row.datePaid === date)
+    const sum = sumMoneyText(rows.map((row) => row.value))
+    cumulative = sumMoneyText([cumulative, sum])
+    return { date, sum, count: rows.length, cumulative }
+  })
   return {
     pagination: {
       page,
@@ -103,6 +129,11 @@ const metaFor = (
     totals: current,
     summary: {
       current,
+      daily,
+      comparison: comparisonFor(
+        current.sum,
+        previous ? totalsFor(previous).sum : undefined,
+      ),
       ...(previous ? { previous: totalsFor(previous) } : {}),
       // Always present, `[]` included: "nothing matched" is an answer.
       breakdown: {
@@ -192,7 +223,7 @@ const badBody = (body: Partial<WireExpense> & Record<string, unknown>) => {
       },
     ])
   }
-  if (body.value !== undefined && !isValidMoney(body.value)) {
+  if (body.value !== undefined && !isCanonicalWireInputMoney(body.value)) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
       {
         field: 'value',
@@ -291,31 +322,42 @@ export const expenseHandlers = [
 
   http.post('*/api/v1/expenses', async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
-    const body = (await request.json()) as Partial<WireExpense> &
-      Record<string, unknown>
-    // Deviation #1: a bad ref is a 422 with a code, not a 400 with a field list.
-    const rejected = badBody(body) ?? badRef(body)
-    if (rejected) return rejected
-    const created: StoredExpense = {
-      id: nextId('exp'),
-      name: body.name ?? '',
-      // Blank is coerced to null on write, so `''` never reaches the store
-      // and a reader never has to treat the two as the same thing.
-      description: body.description?.trim() || null,
-      value: body.value ?? 0,
-      typeId: body.type_id ?? '',
-      sourceId: body.source_id ?? '',
-      datePaid: body.date_paid ?? '',
-      paidByUserId: body.paid_by_user_id ?? '',
-      householdId: MOCK_HOUSEHOLD.id,
-      createdByUserId: MOCK_USER.id,
-      createdAt: new Date().toISOString(),
-      updatedByAdminId: null,
-      updatedAt: null,
-      deletedAt: null,
+    const payload: unknown = await request.json().catch(() => null)
+    if (!isCreateBatch(payload)) {
+      return errorBody(
+        400,
+        'VALIDATION_ERROR',
+        'Expected a non-empty array of objects',
+      )
     }
-    db.expenses.unshift(created)
-    return ok(toWire(created), { status: 201 })
+    const created: StoredExpense[] = []
+    for (const body of payload as (Partial<WireExpense> &
+      Record<string, unknown>)[]) {
+      // Deviation #1: a bad ref is a 422 with a code, not a 400 with a field list.
+      const rejected = badBody(body) ?? badRef(body)
+      if (rejected) return rejected
+      created.push({
+        id: nextId('exp'),
+        name: body.name ?? '',
+        // Blank is coerced to null on write, so `''` never reaches the store
+        // and a reader never has to treat the two as the same thing.
+        description: body.description?.trim() || null,
+        value: body.value === undefined ? 0 : fromWireMoney(body.value),
+        typeId: body.type_id ?? '',
+        sourceId: body.source_id ?? '',
+        datePaid: body.date_paid ?? '',
+        paidByUserId: body.paid_by_user_id ?? '',
+        householdId: MOCK_HOUSEHOLD.id,
+        createdByUserId: MOCK_USER.id,
+        createdAt: new Date().toISOString(),
+        updatedByAdminId: null,
+        updatedAt: null,
+        deletedAt: null,
+      })
+    }
+    // Validate the whole batch before changing the store.
+    db.expenses.unshift(...created)
+    return ok(created.map(toWire), { status: 201 })
   }),
 
   http.patch('*/api/v1/expenses/:id', async ({ params, request }) => {
@@ -344,13 +386,19 @@ export const expenseHandlers = [
     )
     if (index === -1) return notFound('Expense')
     const current = db.expenses[index]
+    if (current.transferIncomeId)
+      return errorBody(
+        409,
+        'INVALID_STATE',
+        'Edit the linked transfer to change this fee',
+      )
     db.expenses[index] = {
       ...current,
       ...(body.name !== undefined && { name: body.name }),
       ...(body.description !== undefined && {
         description: body.description?.trim() || null,
       }),
-      ...(body.value !== undefined && { value: body.value }),
+      ...(body.value !== undefined && { value: fromWireMoney(body.value) }),
       ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.source_id !== undefined && { sourceId: body.source_id }),
       ...(body.date_paid !== undefined && { datePaid: body.date_paid }),
@@ -371,6 +419,12 @@ export const expenseHandlers = [
       (row) => row.id === params.id && row.deletedAt === null,
     )
     if (!expense) return notFound('Expense')
+    if (expense.transferIncomeId)
+      return errorBody(
+        409,
+        'INVALID_STATE',
+        'Delete the linked transfer to remove this fee',
+      )
     // Soft delete: the row is tombstoned, not dropped. It leaves every
     // response immediately and stays in the store for the recovery window.
     expense.deletedAt = new Date().toISOString()

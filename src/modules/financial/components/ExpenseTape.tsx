@@ -1,3 +1,4 @@
+import type { CategorySystemKey } from '@/modules/settings/lib/categoryIcon'
 import { useMemo } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
@@ -18,6 +19,7 @@ import type { Expense } from '@/types/expense'
 interface Props {
   groups: DayGroup[]
   rimOf: (typeId: string) => RimIndex
+  categoryKeyOf?: (id: string) => CategorySystemKey | null
   nameOfType: (typeId: string) => string
   nameOfSource: (sourceId: string) => string
   nameOfUser: (userId: string) => string
@@ -44,6 +46,7 @@ export const ExpenseTape = ({
   groups,
   rimOf,
   nameOfType,
+  categoryKeyOf,
   nameOfSource,
   nameOfUser,
   judge,
@@ -104,7 +107,11 @@ export const ExpenseTape = ({
                 set smaller than the amounts it adds up. */}
             <span className="tnum text-[12px] whitespace-nowrap">
               <span className="font-semibold">
-                {formatCurrency(group.total, currency, locale)}
+                {formatCurrency(
+                  group.totalText ?? group.total,
+                  currency,
+                  locale,
+                )}
               </span>
               <span className="text-muted font-medium">
                 {' · '}
@@ -119,6 +126,7 @@ export const ExpenseTape = ({
                 key={expense.id}
                 expense={expense}
                 rim={rimOf(expense.typeId)}
+                categoryKey={categoryKeyOf?.(expense.typeId)}
                 typeName={nameOfType(expense.typeId)}
                 sourceName={nameOfSource(expense.sourceId)}
                 payerName={nameOfUser(expense.paidByUserId)}

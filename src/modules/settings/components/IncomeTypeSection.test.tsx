@@ -1,8 +1,10 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/test-utils'
 import { db, resetMockState } from '@/mocks/db'
+import { server } from '@/mocks/server'
 import { MOCK_ME } from '@/mocks/fixtures/household'
 import { IncomeTypeSection } from '@/modules/settings/components/IncomeTypeSection'
 
@@ -74,9 +76,12 @@ describe('IncomeTypeSection', () => {
     render()
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /tambah jenis|add type/i }),
+      await screen.findByRole('button', { name: /tambah kategori pemasukan|add income category/i }),
     )
-    await userEvent.type(screen.getByLabelText(/nama jenis|type name/i), 'Gaji')
+    await userEvent.type(
+      screen.getByLabelText(/nama kategori pemasukan|income category name/i),
+      'Gaji',
+    )
     await userEvent.click(
       screen.getByRole('button', { name: /^(tambah|add)$/i }),
     )
@@ -86,23 +91,54 @@ describe('IncomeTypeSection', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/sudah ada/i)
   })
 
+  it('keeps a rejected rename and its draft open', async () => {
+    server.use(
+      http.patch('*/api/v1/income-categories/:id', () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'CONFLICT',
+              message: '"gaji" sudah ada',
+              status_code: 409,
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    render()
+    await screen.findByText('bonus')
+
+    await userEvent.click(screen.getByRole('button', { name: 'bonus' }))
+    const input = screen.getByLabelText(/nama kategori pemasukan/i)
+    await userEvent.clear(input)
+    await userEvent.type(input, 'gaji')
+    await userEvent.click(screen.getByRole('button', { name: /simpan/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/sudah ada/i)
+    expect(screen.getByLabelText(/nama kategori pemasukan/i)).toHaveValue(
+      'gaji',
+    )
+  })
+
   it('shows a member the list without any way to change it', async () => {
     render(false)
 
     expect(await screen.findByText('gaji')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /tambah jenis|add type/i }),
+      screen.queryByRole('button', { name: /tambah kategori pemasukan|add income category/i }),
     ).toBeNull()
     expect(screen.getByText(/hanya admin|only admins/i)).toBeInTheDocument()
   })
 
-  it('states how many entries a type carries before archiving it', async () => {
+  it('does not show a count derived from only the first ledger page', async () => {
     render()
 
-    // The seeded ledger uses "tarik tunai" on every withdrawal.
+    await screen.findByText('tarik tunai')
     expect(
-      (await screen.findAllByText(/dipakai \d+ pemasukan|used by \d+ income/i))
-        .length,
-    ).toBeGreaterThan(0)
+      screen.queryByText(/dipakai \d+ pemasukan|used by \d+ income/i),
+    ).toBeNull()
   })
 })

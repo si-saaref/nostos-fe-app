@@ -1,9 +1,13 @@
 import {
   MONEY_MIN,
+  MONEY_MAX,
   averageMoney,
   isValidMoney,
   roundMoney,
   sumMoney,
+  sumMoneyText,
+  averageMoneyText,
+  isCanonicalWireInputMoney,
 } from '@/utils/money'
 import { formatCurrency } from '@/utils/formatters'
 
@@ -26,10 +30,28 @@ describe('sumMoney', () => {
     // far enough to print a total that disagrees with its own entries.
     expect(sumMoney([0.1, 0.2])).toBe(0.3)
     expect(sumMoney(Array(10).fill(0.1))).toBe(1)
+    expect(sumMoney([999999999999.99, -999999999999.98])).toBe(0.01)
   })
 
   it('is 0 for an empty set', () => {
     expect(sumMoney([])).toBe(0)
+  })
+})
+
+describe('exact wire arithmetic', () => {
+  it('retains cents beyond the safe integer-cent range', () => {
+    expect(sumMoneyText([999999999999.98, 999999999999.99])).toBe(
+      '1999999999999.97',
+    )
+    expect(averageMoneyText('1999999999999.97', 2)).toBe('999999999999.99')
+  })
+
+  it('rejects noncanonical and out-of-range input amounts', () => {
+    expect(isCanonicalWireInputMoney('999999999999.99')).toBe(true)
+    expect(isCanonicalWireInputMoney('0.00', true)).toBe(true)
+    expect(isCanonicalWireInputMoney('0.00')).toBe(false)
+    expect(isCanonicalWireInputMoney('01.00')).toBe(false)
+    expect(isCanonicalWireInputMoney('1000000000000.00')).toBe(false)
   })
 })
 
@@ -61,9 +83,9 @@ describe('decimal support (restored 2026-09-06)', () => {
     expect(isValidMoney(Number.NaN)).toBe(false)
   })
 
-  it('has no ceiling — BE caps at twelve digits, not the client', () => {
-    // Deviation #6 widened the column and said the client ceiling can go.
-    expect(isValidMoney(999_999_999_999.99)).toBe(true)
+  it('uses the same DECIMAL(14,2) bound as the server', () => {
+    expect(isValidMoney(MONEY_MAX)).toBe(true)
+    expect(isValidMoney(1_000_000_000_000)).toBe(false)
   })
 
   it('averages at two places rather than truncating to whole units', () => {

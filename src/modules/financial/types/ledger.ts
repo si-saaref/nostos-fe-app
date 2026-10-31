@@ -9,6 +9,7 @@ import type { Income } from '@/types/income'
 export interface DayGroup {
   date: string
   total: number
+  totalText?: string
   expenses: Expense[]
 }
 
@@ -25,8 +26,10 @@ export interface DayIncomeGroup {
   date: string
   /** Arrived from outside the household. Raises what it holds. */
   inflow: number
+  inflowText?: string
   /** Moved between its own sources. Changes nothing. */
   moved: number
+  movedText?: string
   income: Income[]
 }
 
@@ -34,6 +37,7 @@ export interface DayIncomeGroup {
 export interface DayTotal {
   date: string
   total: number
+  totalText?: string
   count: number
 }
 
@@ -66,6 +70,7 @@ export interface TopSlice {
   kind: 'category' | 'member'
   name: string
   amount: number
+  amountText?: string
   pct: number
   runnerUp?: { name: string; pct: number }
 }

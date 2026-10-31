@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useMessages } from '@/i18n/useMessages'
 import {
   useCreateIncome,
@@ -8,10 +8,11 @@ import {
 } from '@/modules/financial/api/income'
 import { incomeFieldErrors } from '@/modules/financial/lib/incomeErrors'
 import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useIncomeTypes } from '@/modules/settings/api/incomeTypes'
+import { useIncomeTypes } from '@/modules/settings/api/incomeCategories'
 import { useHousehold } from '@/contexts/useHousehold'
 import { SETTINGS_ANCHORS, settingsHref } from '@/modules/settings/anchors'
 import { BLOCKERS_ID, FormBlockers } from '@/components/FormBlockers'
+import { TransferFeeFields } from './TransferFeeFields'
 import { AmountInput } from '@/components/AmountInput'
 import { DateField } from '@/components/DateField'
 import { FormField } from '@/components/FormField'
@@ -22,7 +23,11 @@ import { isoDay } from '@/utils/dates'
 import { rimFor } from '@/theme/rims'
 import type { Blocker } from '@/components/FormBlockers'
 import type { IncomeField } from '@/modules/financial/lib/incomeErrors'
-import type { CreateIncomeInput, Income } from '@/types/income'
+import type {
+  CreateIncomeInput,
+  IncomeFormValues,
+  Income,
+} from '@/types/income'
 
 interface Props {
   /** The row being corrected. Absent means this is a new entry. */
@@ -54,8 +59,10 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
   const create = useCreateIncome(householdId)
   const update = useUpdateIncome(householdId)
   const { isPending, error } = isEdit ? update : create
-  const { data: accounts } = useActiveAccounts(householdId)
-  const { data: types } = useIncomeTypes(householdId)
+  const accountsQuery = useActiveAccounts(householdId)
+  const { data: accounts } = accountsQuery
+  const typesQuery = useIncomeTypes(householdId)
+  const { data: types } = typesQuery
 
   const today = isoDay(new Date())
 
@@ -86,19 +93,49 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     reset,
     setError,
     clearErrors,
+    getValues,
+    setValue,
     formState: { errors },
-  } = useForm<CreateIncomeInput>({
+  } = useForm<IncomeFormValues>({
     defaultValues: {
+      kind: income?.kind ?? 'EXTERNAL_INCOME',
       name: income?.name ?? '',
       description: income?.description ?? '',
       // No zero seed: an empty field asks for the amount, a `0` states one.
       amount: income?.amount,
-      typeId: income?.typeId ?? '',
+      feeAmount:
+        income?.feeAmount && income.feeAmount > 0 ? income.feeAmount : 2500,
+      typeId: income?.kind === 'TRANSFER' ? null : (income?.typeId ?? ''),
       fromSourceId: income?.fromSourceId ?? null,
       toSourceId: income?.toSourceId ?? '',
       date: income?.date ?? today,
     },
   })
+  const kind = useWatch({ control, name: 'kind' })
+  const [hasFee, setHasFee] = useState((income?.feeAmount ?? 0) > 0)
+  const [amount, fromSourceId, toSourceId] = useWatch({
+    control,
+    name: ['amount', 'fromSourceId', 'toSourceId'],
+  })
+  useEffect(() => {
+    if (isEdit) return
+    if (
+      getValues('kind') === 'EXTERNAL_INCOME' &&
+      !getValues('typeId') &&
+      typeOptions.length
+    )
+      setValue('typeId', typeOptions[0].value)
+    if (
+      getValues('kind') === 'EXTERNAL_INCOME' &&
+      !getValues('toSourceId') &&
+      accounts?.length
+    )
+      setValue(
+        'toSourceId',
+        (accounts.find((a) => a.systemKey === 'DEFAULT_BANK') ?? accounts[0])
+          .id,
+      )
+  }, [isEdit, types, accounts, typeOptions, getValues, setValue, kind])
 
   const [handledOnField, setHandledOnField] = useState(false)
 
@@ -110,16 +147,29 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
     setHandledOnField(fieldErrors.length > 0)
   }
 
-  const onSubmit = (data: CreateIncomeInput) => {
-    const input = {
-      ...data,
-      amount: Number(data.amount),
-      // The Select trades in strings, so "no source chosen" arrives as `''`.
-      // It has to reach the wire as an explicit null: on this field null is a
-      // value — money from outside the household — and an empty string would
-      // be a source id that does not exist.
-      fromSourceId: data.fromSourceId ? data.fromSourceId : null,
-    }
+  const onSubmit = (data: IncomeFormValues) => {
+    const input: CreateIncomeInput =
+      data.kind === 'TRANSFER'
+        ? {
+            ...data,
+            kind: 'TRANSFER',
+            feeAmount: hasFee ? Number(data.feeAmount) : 0,
+            amount: Number(data.amount),
+            typeId: null,
+            fromSourceId: data.fromSourceId!,
+          }
+        : {
+            ...data,
+            amount: Number(data.amount),
+            kind: 'EXTERNAL_INCOME',
+            feeAmount: 0,
+            typeId: data.typeId!,
+            // The Select trades in strings, so "no source chosen" arrives as `''`.
+            // It has to reach the wire as an explicit null: on this field null is a
+            // value — money from outside the household — and an empty string would
+            // be a source id that does not exist.
+            fromSourceId: null,
+          }
     if (isEdit) {
       update.mutate(
         { id: income.id, ...input },
@@ -172,7 +222,8 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
    * income types, and the banner would otherwise flash on every open.
    */
   const candidates: (Blocker | false)[] = [
-    types !== undefined &&
+    kind === 'EXTERNAL_INCOME' &&
+      types !== undefined &&
       typeOptions.length === 0 && {
         id: 'types',
         text: m.inc_blocked_types(),
@@ -214,10 +265,52 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
       aria-label={m.action_record_income()}
       className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3"
     >
+      {(typesQuery.isError || accountsQuery.isError) && (
+        <p role="alert" className="text-danger sm:col-span-2 lg:col-span-3">
+          {m.state_error()}{' '}
+          <button
+            type="button"
+            onClick={() => {
+              void typesQuery.refetch()
+              void accountsQuery.refetch()
+            }}
+          >
+            {m.state_retry()}
+          </button>
+        </p>
+      )}
       <FormBlockers blockers={blockers} />
+
+      <Controller
+        control={control}
+        name="kind"
+        render={({ field }) => (
+          <Select
+            label={m.inc_form_kind()}
+            value={field.value ?? ''}
+            onChange={(value) => {
+              field.onChange(value)
+              clearErrors('fromSourceId')
+              if (value === 'TRANSFER') {
+                setValue('fromSourceId', null)
+                setValue('toSourceId', '')
+                setValue('typeId', null)
+                clearErrors('typeId')
+              } else {
+                setValue('fromSourceId', null)
+              }
+            }}
+            options={[
+              { value: 'EXTERNAL_INCOME', label: m.inc_form_kind_external() },
+              { value: 'TRANSFER', label: m.inc_form_kind_transfer() },
+            ]}
+          />
+        )}
+      />
 
       <FormField label={m.inc_form_name()} error={errors.name?.message}>
         <input
+          autoComplete="off"
           maxLength={NAME_MAX}
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('name', { required: m.inc_err_name() })}
@@ -266,42 +359,43 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
         )}
       />
 
-      <Controller
-        control={control}
-        name="typeId"
-        rules={{ required: m.inc_err_type() }}
-        render={({ field, fieldState }) => (
-          <Select
-            label={m.inc_form_type()}
-            placeholder={m.form_choose()}
-            value={field.value}
-            onChange={changeAndClear('typeId', field.onChange)}
-            error={fieldState.error?.message}
-            disabled={typeOptions.length === 0}
-            options={typeOptions}
-          />
-        )}
-      />
+      {kind === 'EXTERNAL_INCOME' && (
+        <Controller
+          control={control}
+          name="typeId"
+          rules={{ required: m.inc_err_type() }}
+          render={({ field, fieldState }) => (
+            <Select
+              label={m.inc_form_type()}
+              placeholder={m.form_choose()}
+              value={field.value ?? ''}
+              onChange={changeAndClear('typeId', field.onChange)}
+              error={fieldState.error?.message}
+              disabled={typeOptions.length === 0}
+              options={typeOptions}
+            />
+          )}
+        />
+      )}
 
-      {/* Optional, and the placeholder is the meaning rather than an absence:
-          "From outside the household" is a choice a member makes, not a field
-          they failed to fill in. */}
-      <Controller
-        control={control}
-        name="fromSourceId"
-        render={({ field, fieldState }) => (
-          <Select
-            label={m.inc_form_from()}
-            placeholder={m.inc_form_from_external()}
-            value={field.value ?? ''}
-            onChange={changeAndClear('fromSourceId', field.onChange)}
-            error={fieldState.error?.message}
-            hint={m.inc_form_from_hint()}
-            disabled={sourceOptions.length === 0}
-            options={sourceOptions}
-          />
-        )}
-      />
+      {kind === 'TRANSFER' && (
+        <Controller
+          control={control}
+          name="fromSourceId"
+          rules={{ required: m.inc_err_from_transfer() }}
+          render={({ field, fieldState }) => (
+            <Select
+              label={m.inc_form_from()}
+              placeholder={m.form_choose()}
+              value={field.value ?? ''}
+              onChange={changeAndClear('fromSourceId', field.onChange)}
+              error={fieldState.error?.message}
+              disabled={sourceOptions.length === 0}
+              options={sourceOptions}
+            />
+          )}
+        />
+      )}
 
       <Controller
         control={control}
@@ -337,11 +431,39 @@ export const IncomeForm = ({ income, onSuccess, onCancel }: Props) => {
           into three ragged rows with half of each one empty; at the end it
           closes the form under a filled grid. */}
       <div className="sm:col-span-2 lg:col-span-3">
+        {kind === 'TRANSFER' && (
+          <Controller
+            control={control}
+            name="feeAmount"
+            rules={{
+              validate: (value) =>
+                !hasFee ||
+                (value !== undefined && isValidMoney(value)) ||
+                m.transfer_fee_invalid(),
+            }}
+            render={({ field, fieldState }) => (
+              <TransferFeeFields
+                enabled={hasFee}
+                onToggle={() => setHasFee((value) => !value)}
+                fee={field.value}
+                onFeeChange={field.onChange}
+                error={fieldState.error?.message}
+                amount={amount}
+                fromName={
+                  accounts?.find((row) => row.id === fromSourceId)?.name
+                }
+                toName={accounts?.find((row) => row.id === toSourceId)?.name}
+              />
+            )}
+          />
+        )}
+
         <FormField label={m.form_description()}>
           {/* One line to start, growing with what is typed into it. Two
                 fixed rows reserved a band of empty well on every entry that
                 never needed the field. */}
           <textarea
+            autoComplete="off"
             rows={1}
             maxLength={DESCRIPTION_MAX}
             placeholder={m.form_description_hint()}

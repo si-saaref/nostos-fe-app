@@ -5,17 +5,6 @@ import { useInvalidatingMutation } from '@/api/useInvalidatingMutation'
 import type { ApiEnvelope } from '@/types/api'
 import type { IncomeType, WireIncomeType } from '@/types/income'
 
-/**
- * `/income-types` — one key, one type, one hook. See `categories.ts`.
- *
- * Settings writes these and the income form reads them, so both come through
- * here: two hooks over one URL is what makes a rename in Settings invisible on
- * the ledger.
- *
- * Simpler than a category — no colour, no order (PRD §5). An income type is
- * only ever a word the household chose, and its identity on screen travels on
- * the payment source's rim instead.
- */
 export const incomeTypeKeys = {
   all: (householdId: string) => entityKey(householdId, 'incomeTypes'),
 }
@@ -25,9 +14,10 @@ export const toIncomeType = (row: WireIncomeType): IncomeType => ({
   name: row.name,
   archivedAt: row.archived_at,
   householdId: row.household_id,
+  order: row.order ?? 0,
+  systemKey: row.system_key ?? null,
 })
 
-/** Only what the caller passed — see `toCategoryBody` for why. */
 const toIncomeTypeBody = (patch: Partial<IncomeType>) => {
   const body: Record<string, unknown> = {}
   if (patch.name !== undefined) body.name = patch.name
@@ -37,7 +27,7 @@ const toIncomeTypeBody = (patch: Partial<IncomeType>) => {
 
 const fetchIncomeTypes = async (): Promise<IncomeType[]> =>
   unwrap(
-    await apiClient.get<ApiEnvelope<WireIncomeType[]>>('/income-types'),
+    await apiClient.get<ApiEnvelope<WireIncomeType[]>>('/income-categories'),
   ).map(toIncomeType)
 
 export const useIncomeTypes = (householdId: string) =>
@@ -45,6 +35,7 @@ export const useIncomeTypes = (householdId: string) =>
     queryKey: incomeTypeKeys.all(householdId),
     queryFn: fetchIncomeTypes,
     enabled: Boolean(householdId),
+    staleTime: 60_000,
   })
 
 export const useCreateIncomeType = (householdId: string) =>
@@ -53,9 +44,10 @@ export const useCreateIncomeType = (householdId: string) =>
     async (input: { name: string }) =>
       toIncomeType(
         unwrap(
-          await apiClient.post<ApiEnvelope<WireIncomeType>>('/income-types', {
-            name: input.name,
-          }),
+          await apiClient.post<ApiEnvelope<WireIncomeType>>(
+            '/income-categories',
+            { name: input.name },
+          ),
         ),
       ),
   )
@@ -67,7 +59,7 @@ export const useUpdateIncomeType = (householdId: string) =>
       toIncomeType(
         unwrap(
           await apiClient.patch<ApiEnvelope<WireIncomeType>>(
-            `/income-types/${id}`,
+            `/income-categories/${id}`,
             toIncomeTypeBody(patch),
           ),
         ),

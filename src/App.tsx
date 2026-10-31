@@ -3,6 +3,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { RouterProvider } from 'react-router-dom'
 import { queryClient } from '@/api/queryClient'
 import { SettingsProvider } from '@/contexts/SettingsContext'
+import { NotificationProvider } from '@/contexts/NotificationProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { router } from '@/routes'
 
@@ -20,7 +21,9 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SettingsProvider>
-          <RouterProvider router={router} />
+          <NotificationProvider>
+            <RouterProvider router={router} />
+          </NotificationProvider>
         </SettingsProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>

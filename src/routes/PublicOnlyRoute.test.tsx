@@ -18,7 +18,7 @@ const renderAt = (value: HouseholdContextValue) =>
               </PublicOnlyRoute>
             }
           />
-          <Route path="/dashboard" element={<div>dashboard</div>} />
+          <Route path="/expenses" element={<div>dashboard</div>} />
         </Routes>
       </MemoryRouter>
     </HouseholdContext.Provider>,

@@ -1,3 +1,4 @@
+import { InfoPopover } from '@/components/InfoPopover'
 import { useMessages } from '@/i18n/useMessages'
 import { getErrorMessage } from '@/utils/errors'
 import type { ReactNode } from 'react'
@@ -15,6 +16,7 @@ interface Props {
   emptyText?: string
   addLabel?: string
   onAdd?: () => void
+  actions?: ReactNode
   /**
    * A write that failed. Separate from `isError`, which is about the read: the
    * list is fine, the change was not, and the section still has to say so.
@@ -40,28 +42,38 @@ export const SectionShell = ({
   emptyText,
   addLabel,
   onAdd,
+  actions,
   actionError,
   children,
 }: Props) => {
   const m = useMessages()
   return (
     <section id={id} className="scroll-mt-4 pt-2 pb-8">
-      <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="font-display text-[17px] font-bold">{title}</h2>
-          <p className="text-muted mt-1 max-w-prose text-[11.5px] leading-relaxed">
+      <header className="mb-3 flex items-center justify-between gap-2 sm:items-end">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <h2 className="font-display text-[17px] font-bold">{title}</h2>
+            <InfoPopover
+              label={m.settings_section_help({ title })}
+              className="h-8! w-fit sm:hidden!"
+            >
+              {description}
+            </InfoPopover>
+          </div>
+          <p className="text-muted mt-1 hidden max-w-prose text-[11.5px] leading-relaxed sm:block">
             {description}
           </p>
         </div>
-        {onAdd && addLabel && (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="bg-accent text-accent-ink shrink-0 rounded-lg px-4 py-2 text-[12px] font-semibold"
-          >
-            + {addLabel}
-          </button>
-        )}
+        {actions ??
+          (onAdd && addLabel && (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="bg-accent text-accent-ink h-9 shrink-0 rounded-lg px-3 text-[12px] font-semibold"
+            >
+              + {addLabel}
+            </button>
+          ))}
       </header>
 
       {!canManage && (

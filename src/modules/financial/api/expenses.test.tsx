@@ -14,7 +14,8 @@ import {
   useUpdateExpense,
 } from '@/modules/financial/api/expenses'
 import { db } from '@/mocks/db'
-import { getErrorCode, getFieldErrors } from '@/utils/errors'
+import { apiClient } from '@/api/client'
+import { getErrorCode } from '@/utils/errors'
 import type { Paginated } from '@/types/api'
 import type { Expense, ExpenseFilters } from '@/types/expense'
 
@@ -62,6 +63,14 @@ const NEW_EXPENSE = {
 }
 
 describe('useExpenses', () => {
+  it('mock API preserves cents when summary exceeds one entry limit', async () => {
+    db.expenses = db.expenses.slice(0, 2)
+    db.expenses[0].value = 999999999999.98
+    db.expenses[1].value = 999999999999.99
+    const response = await apiClient.get('/expenses')
+    expect(response.data.meta.summary.current.sum).toBe('1999999999999.97')
+  })
+
   it('fetches the seeded expenses for a household', async () => {
     const { result } = renderHook(() => useExpenses(HOUSEHOLD_ID, BASE), {
       wrapper: createWrapper(),
@@ -156,6 +165,46 @@ describe('useExpenses', () => {
 })
 
 describe('useCreateExpense', () => {
+  it('sends one expense in an array and returns the created entry to the form', async () => {
+    const bodies: unknown[] = []
+    const record = async ({ request }: { request: Request }) => {
+      if (request.method === 'POST') {
+        bodies.push(await request.clone().json())
+      }
+    }
+    server.events.on('request:start', record)
+
+    const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
+      wrapper: createWrapper(),
+    })
+    try {
+      await act(async () => {
+        await result.current.mutateAsync(NEW_EXPENSE)
+      })
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+      expect(bodies).toEqual([
+        [
+          {
+            name: 'Kopi',
+            description: null,
+            value: '25000.00',
+            type_id: 'type-makan',
+            source_id: 'source-tunai',
+            date_paid: '2026-08-15',
+            paid_by_user_id: 'user-001',
+          },
+        ],
+      ])
+      expect(result.current.data).toMatchObject({
+        ...NEW_EXPENSE,
+        householdId: HOUSEHOLD_ID,
+      })
+      expect(result.current.data?.id).toBeTruthy()
+    } finally {
+      server.events.removeListener('request:start', record)
+    }
+  })
+
   it('does not corrupt a cached detail entry sharing the list prefix', async () => {
     const client = createTestQueryClient()
     const cachedDetail: Expense = {
@@ -228,7 +277,13 @@ describe('useCreateExpense', () => {
     const august = client.getQueryData<Paginated<Expense>>(
       expenseKeys.list(HOUSEHOLD_ID, AUGUST),
     )
-    expect(august?.totals).toEqual({ sum: 25000, count: 1, average: 25000 })
+    expect(august?.totals).toMatchObject({
+      sum: 25000,
+      sumText: '25000.00',
+      count: 1,
+      average: 25000,
+      averageText: '25000.00',
+    })
     expect(august?.pagination.total).toBe(1)
   })
 
@@ -360,7 +415,7 @@ describe('useUpdateExpense', () => {
 
     // Under PATCH an absent key means "leave it alone", so a fixed body shape
     // would blank the five fields the admin never opened.
-    expect(body).toEqual({ value: 12345 })
+    expect(body).toEqual({ value: '12345.00' })
     expect(body).not.toHaveProperty('name')
   })
 
@@ -553,7 +608,7 @@ describe('the body the server refuses', () => {
     expect(getErrorCode(result.current.error)).toBe('FUTURE_DATE')
   })
 
-  it('rejects a third decimal place with a field error on value', async () => {
+  it('rejects a third decimal place before sending to the API', async () => {
     const { result } = renderHook(() => useCreateExpense(HOUSEHOLD_ID), {
       wrapper: createWrapper(),
     })
@@ -570,9 +625,6 @@ describe('the body the server refuses', () => {
     ).rejects.toBeDefined()
 
     await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(getErrorCode(result.current.error)).toBe('VALIDATION_ERROR')
-    expect(getFieldErrors(result.current.error)).toEqual([
-      expect.objectContaining({ field: 'value' }),
-    ])
+    expect(result.current.error).toBeInstanceOf(RangeError)
   })
 })

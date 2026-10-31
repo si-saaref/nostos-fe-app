@@ -28,6 +28,8 @@ export interface Me {
   household_name: string
   email: string
   name: string
+  first_name: string | null
+  last_name: string | null
   role: Role
   household_status: HouseholdStatus
   scheduled_deletion_date: string | null
@@ -39,4 +41,6 @@ export interface User {
   email: string
   role: Role
   householdId: string
+  firstName?: string | null
+  lastName?: string | null
 }

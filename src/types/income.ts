@@ -2,7 +2,8 @@
  * Income: every rupiah that entered a payment source, whether it came from
  * outside the household or from another source of its own.
  *
- * One table, two meanings, decided by `fromSourceId` (income PRD §5):
+ * One table, two meanings, carried explicitly by `kind` on the wire. Source
+ * references must agree with that kind (enforced by the database):
  *
  *   from: null,  to: BNI   → external inflow. The household holds more.
  *   from: BNI,   to: Cash  → transfer. The household holds exactly as much.
@@ -12,17 +13,20 @@
  * is why a transfer must never be rendered with a `+` in front of it.
  */
 export interface Income {
+  feeAmount?: number
+  feeExpenseId?: string | null
   id: string
   name: string
   /** The detail behind the name. See `Expense.description`. */
   description?: string | null
   amount: number
+  kind: 'EXTERNAL_INCOME' | 'TRANSFER'
   /**
    * Foreign key into the household's `income_types`. The row stores the key,
    * not the word — so an archived type keeps naming the entries that used it,
    * and a renamed one renames its history with it.
    */
-  typeId: string
+  typeId: string | null
   /** `null` means the money came from outside the household. */
   fromSourceId: string | null
   toSourceId: string
@@ -37,15 +41,35 @@ export interface Income {
   updatedAt?: string | null
 }
 
-export interface CreateIncomeInput {
+export interface IncomeFormValues {
+  feeAmount?: number
+  kind: 'EXTERNAL_INCOME' | 'TRANSFER'
   name: string
   description?: string | null
   amount: number
-  typeId: string
+  typeId: string | null
   fromSourceId: string | null
   toSourceId: string
   date: string
 }
+
+export type ExternalIncomeInput = Omit<
+  IncomeFormValues,
+  'kind' | 'typeId' | 'fromSourceId'
+> & {
+  kind: 'EXTERNAL_INCOME'
+  typeId: string
+  fromSourceId: null
+}
+export type TransferInput = Omit<
+  IncomeFormValues,
+  'kind' | 'typeId' | 'fromSourceId'
+> & {
+  kind: 'TRANSFER'
+  typeId: null
+  fromSourceId: string
+}
+export type CreateIncomeInput = ExternalIncomeInput | TransferInput
 
 /**
  * What an admin may change (AC3.3 — all six fields).
@@ -78,11 +102,14 @@ export interface IncomeFilters {
  * diffable line-by-line against the API document.
  */
 export interface WireIncome {
+  fee_amount?: string
+  fee_expense_id?: string | null
   id: string
   name: string
   description?: string | null
-  amount: number
-  type_id: string
+  amount: string
+  kind: 'EXTERNAL_INCOME' | 'TRANSFER'
+  type_id: string | null
   from_source_id: string | null
   to_source_id: string
   date: string
@@ -106,13 +133,26 @@ export interface IncomeType {
   name: string
   archivedAt: string | null
   householdId: string
+  order: number
+  systemKey: IncomeCategorySystemKey | null
 }
+
+export type IncomeCategorySystemKey =
+  | 'SALARY'
+  | 'BONUS'
+  | 'BUSINESS'
+  | 'FREELANCE'
+  | 'GIFT'
+  | 'REIMBURSEMENT'
+  | 'OTHER'
 
 export interface WireIncomeType {
   id: string
   name: string
   archived_at: string | null
   household_id: string
+  order?: number
+  system_key?: IncomeCategorySystemKey | null
 }
 
 /**
@@ -128,22 +168,40 @@ export interface Position {
   sourceId: string
   /** What the source held at the end of the day before the period started. */
   openingBalance: number
+  openingBalanceText?: string
   /** What it holds at `as_of`. */
   balance: number
+  balanceText?: string
 }
 
 export interface WirePosition {
   source_id: string
-  opening_balance: number
-  balance: number
+  opening_balance: string
+  balance: string
 }
 
 export interface PositionTotals {
   opening: number
+  openingText?: string
   balance: number
+  balanceText?: string
 }
 
 export interface Positions {
   items: Position[]
   totals: PositionTotals
+  summary?: PositionSummary
+}
+
+export interface PositionSummary {
+  totalBalance: number
+  totalBalanceText?: string
+  currency: string
+  asOf: string
+}
+
+export interface WirePositionSummary {
+  total_balance: string
+  currency: string
+  as_of: string
 }

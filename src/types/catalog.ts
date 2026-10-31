@@ -16,7 +16,25 @@ export interface Category {
   order: number
   archivedAt: string | null
   householdId: string
+  systemKey: ExpenseCategorySystemKey | null
 }
+
+export type ExpenseCategorySystemKey =
+  | 'FOOD_DRINK'
+  | 'GROCERIES'
+  | 'TRANSPORTATION'
+  | 'BILLS'
+  | 'HOUSING'
+  | 'SHOPPING'
+  | 'HEALTH'
+  | 'ENTERTAINMENT'
+  | 'EDUCATION'
+  | 'GIFTS_DONATIONS'
+  | 'SUBSCRIPTIONS'
+  | 'TRANSFER_FEE'
+  | 'OTHER'
+
+export type AccountSystemKey = 'DEFAULT_CASH' | 'DEFAULT_BANK'
 
 /**
  * What the API sends. Uppercase, matching `role` and `household_status` —
@@ -38,6 +56,11 @@ export type AccountKind = 'cash' | 'bank' | 'ewallet'
  * a real balance derivable: opening + income − expense, per account.
  */
 export interface Account {
+  baselineStatus?: 'UNVERIFIED' | 'VERIFIED'
+  baselineCanSet?: boolean
+  baselineConfirmedAt?: string | null
+  calculationStartCanSet?: boolean
+  calculationStartSetAt?: string | null
   id: string
   name: string
   kind: AccountKind
@@ -47,6 +70,30 @@ export interface Account {
   order: number
   archivedAt: string | null
   householdId: string
+  systemKey: AccountSystemKey | null
+  isProtected: boolean
+}
+
+export interface BalanceAdjustment {
+  id: string
+  householdId: string
+  sourceId: string
+  createdByUserId: string
+  delta: number
+  date: string
+  reason: string
+  createdAt: string
+}
+
+export interface WireBalanceAdjustment {
+  id: string
+  household_id: string
+  source_id: string
+  created_by_user_id: string
+  delta: string
+  date: string
+  reason: string
+  created_at: string
 }
 
 /**
@@ -60,15 +107,24 @@ export interface WireCategory {
   order: number
   archived_at: string | null
   household_id: string
+  /** Absent only on a legacy deployment during the additive cutover. */
+  system_key?: ExpenseCategorySystemKey | null
 }
 
 export interface WireAccount {
+  baseline_status?: 'UNVERIFIED' | 'VERIFIED'
+  baseline_can_set?: boolean
+  baseline_confirmed_at?: string | null
+  calculation_start_can_set?: boolean
+  calculation_start_set_at?: string | null
   id: string
   name: string
   kind: WireAccountKind
-  opening_balance: number
+  opening_balance: string
   as_of: string
   order: number
   archived_at: string | null
   household_id: string
+  /** Absent only on a legacy deployment during the additive cutover. */
+  system_key?: AccountSystemKey | null
 }

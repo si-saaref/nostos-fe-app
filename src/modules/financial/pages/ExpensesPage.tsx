@@ -1,5 +1,8 @@
+import { usePhone } from '@/hooks/usePhone'
+import { railCumulative, pageForDay } from '@/modules/financial/lib/railFigures'
+import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { DismissablePanel } from '@/components/DismissablePanel'
+import { LedgerEditor } from '@/modules/financial/components/LedgerEditor'
 import { useHousehold } from '@/contexts/useHousehold'
 import { useSettings } from '@/contexts/useSettings'
 import { useMessages } from '@/i18n/useMessages'
@@ -17,17 +20,23 @@ import type {
   ScopeChip,
   TopSlice,
 } from '@/modules/financial/types/ledger'
-import { useActiveAccounts } from '@/modules/settings/api/accounts'
-import { useActiveCategories } from '@/modules/settings/api/categories'
+import { useAccounts, useActiveAccounts } from '@/modules/settings/api/accounts'
+import {
+  useCategories,
+  useActiveCategories,
+} from '@/modules/settings/api/categories'
 import { useRoster } from '@/modules/settings/api/members'
 import { rimFor } from '@/theme/rims'
 import type { Expense } from '@/types/expense'
 import { getErrorMessage } from '@/utils/errors'
-import { sumMoney } from '@/utils/money'
+import { sumMoney, sumMoneyText } from '@/utils/money'
 import { canManageExpenses } from '@/utils/permissions'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export const ExpensesPage = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
   const m = useMessages()
   const { householdId, role } = useHousehold()
   const { locale } = useSettings()
@@ -47,13 +56,28 @@ export const ExpensesPage = () => {
 
   const { data: categories } = useActiveCategories(householdId)
   const { data: accounts } = useActiveAccounts(householdId)
+  const { data: allCategories } = useCategories(householdId)
+  const { data: allAccounts } = useAccounts(householdId)
   const { data: users } = useRoster(householdId)
   const { judge, baselineFor, recentFor } = useItemBaselines(householdId)
   const { mutate: deleteExpense, error: deleteError } =
     useDeleteExpense(householdId)
 
+  const editorReturnFocus = useRef<HTMLElement | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(() =>
+    Boolean(
+      (location.state as { recordExpense?: boolean } | null)?.recordExpense,
+    ),
+  )
+  useEffect(() => {
+    if (!(location.state as { recordExpense?: boolean } | null)?.recordExpense)
+      return
+    navigate(location.pathname + location.search, {
+      replace: true,
+      state: null,
+    })
+  }, [location, navigate])
   const [scrolledDate, setScrolledDate] = useState<string | undefined>()
   const [atEnd, setAtEnd] = useState(true)
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null)
@@ -62,6 +86,9 @@ export const ExpensesPage = () => {
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null)
   const dayNodes = useRef(new Map<string, HTMLElement>())
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pageRef = useRef<HTMLElement>(null)
+  const pendingJump = useRef<string | null>(null)
+  const phone = usePhone()
 
   const expenses = useMemo(() => data?.items ?? [], [data])
 
@@ -79,18 +106,27 @@ export const ExpensesPage = () => {
         date,
         expenses: rows,
         total: sumMoney(rows.map((row) => row.value)),
+        totalText: sumMoneyText(rows.map((row) => row.value)),
       }))
   }, [expenses])
 
-  const days = useMemo<DayTotal[]>(
-    () =>
-      groups.map((group) => ({
-        date: group.date,
-        total: group.total,
-        count: group.expenses.length,
-      })),
-    [groups],
-  )
+  const days = useMemo<DayTotal[]>(() => {
+    if (data?.summary?.daily)
+      return [...data.summary.daily].reverse().map((day) => ({
+        date: day.date,
+        total: day.sum,
+        totalText: day.sumText,
+        count: day.count,
+      }))
+    if (expenses.length < (data?.pagination.total ?? 0)) return []
+    return groups.map((group) => ({
+      date: group.date,
+      total: group.total,
+      totalText: group.totalText,
+      count: group.expenses.length,
+    }))
+  }, [data, expenses.length, groups])
+  const visibleDays = groups.map((group) => group.date)
 
   // Derived, never stored: before any scroll the newest day is the one in view.
   //
@@ -105,21 +141,14 @@ export const ExpensesPage = () => {
   // drop the day you had scrolled to, and a cumulative total counted up to a
   // day that is no longer shown is the whole filtered sum wearing a date.
   const activeDate = atEnd
-    ? days[days.length - 1]?.date
-    : days.some((day) => day.date === scrolledDate)
+    ? visibleDays[visibleDays.length - 1]
+    : visibleDays.includes(scrolledDate ?? '')
       ? scrolledDate
-      : days[0]?.date
+      : visibleDays[0]
 
-  /** Spend from the newest day down to the day currently in view. */
-  const cumulative = useMemo(() => {
-    if (!activeDate) return data?.totals?.sum ?? 0
-    const upToActive: number[] = []
-    for (const group of groups) {
-      upToActive.push(group.total)
-      if (group.date === activeDate) break
-    }
-    return sumMoney(upToActive)
-  }, [groups, activeDate, data])
+  const cumulativeText = railCumulative(data?.summary?.daily, activeDate)
+  const cumulative =
+    cumulativeText === undefined ? undefined : Number(cumulativeText)
 
   const registerDay = useCallback(
     (date: string, element: HTMLElement | null) => {
@@ -132,7 +161,7 @@ export const ExpensesPage = () => {
   // The rail reports where you are, so it has to follow the scroll rather than
   // only respond to clicks.
   useEffect(() => {
-    const root = scrollRef.current
+    const root = phone ? pageRef.current : scrollRef.current
     const nodes = [...dayNodes.current.entries()]
 
     const readEnd = () => {
@@ -166,44 +195,67 @@ export const ExpensesPage = () => {
       root?.removeEventListener('scroll', readEnd)
       window.removeEventListener('resize', readEnd)
     }
-  }, [groups])
+  }, [groups, phone])
 
-  const jumpTo = useCallback((date: string) => {
-    setScrolledDate(date)
-    dayNodes.current
-      .get(date)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [])
+  const jumpTo = (date: string) => {
+    const node = dayNodes.current.get(date)
+    if (node) {
+      setScrolledDate(date)
+      setAtEnd(false)
+      node.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else if (data?.summary?.daily) {
+      pendingJump.current = date
+      updateFilters({
+        page: pageForDay(data.summary.daily, date, filters.limit),
+        sortBy: 'datePaid',
+        sortOrder: 'desc',
+      })
+    }
+  }
+  useEffect(() => {
+    const date = pendingJump.current
+    const node = date && dayNodes.current.get(date)
+    if (node) {
+      pendingJump.current = null
+      setScrolledDate(date!)
+      setAtEnd(false)
+      node.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [groups])
 
   // Stable identities: the tape memoises each plate, and a lookup rebuilt every
   // render would re-render all 200 of them on every disclosure toggle.
   const rimOf = useCallback(
     (typeId: string) =>
       rimFor(
-        categories?.find((category) => category.id === typeId)?.order ?? 0,
+        allCategories?.find((category) => category.id === typeId)?.order ?? 0,
       ),
-    [categories],
+    [allCategories],
   )
   const nameOfType = useCallback(
     (typeId: string) =>
-      categories?.find((category) => category.id === typeId)?.name ?? '—',
-    [categories],
+      allCategories?.find((category) => category.id === typeId)?.name ?? '—',
+    [allCategories],
   )
   const nameOfSource = useCallback(
     (sourceId: string) =>
-      accounts?.find((account) => account.id === sourceId)?.name ?? '—',
-    [accounts],
+      allAccounts?.find((account) => account.id === sourceId)?.name ?? '—',
+    [allAccounts],
   )
+  const memberLabels = useMemo(() => compactMemberLabels(users ?? []), [users])
   const nameOfUser = useCallback(
-    (userId: string) =>
-      users?.find((member) => member.id === userId)?.name ?? '—',
-    [users],
+    (userId: string) => memberLabels.get(userId) ?? '—',
+    [memberLabels],
   )
   const toggleOpen = useCallback(
     (id: string) => setOpenId((current) => (current === id ? null : id)),
     [],
   )
   const requestEdit = useCallback((expense: Expense) => {
+    editorReturnFocus.current =
+      document.activeElement
+        ?.closest('article')
+        ?.querySelector<HTMLElement>('button[aria-expanded]') ?? null
     setExpenseToEdit(expense)
     // One form on the page at a time. A blank "record" panel stacked above a
     // populated "edit" panel offers two submits for two different acts and
@@ -214,6 +266,7 @@ export const ExpensesPage = () => {
     setOpenId(null)
   }, [])
   const requestRecord = useCallback(() => {
+    editorReturnFocus.current = document.activeElement as HTMLElement
     setExpenseToEdit(null)
     setShowForm(true)
   }, [])
@@ -287,21 +340,29 @@ export const ExpensesPage = () => {
       kind === 'member'
         ? data?.summary?.breakdown?.byMember
         : data?.summary?.breakdown?.byType
-    const ranked: Array<[string, number]> = served
-      ? served.map((entry) => [entry.id, entry.sum])
+    const ranked: Array<[string, number, string?]> = served
+      ? served.map((entry) => [entry.id, entry.sum, entry.sumText])
       : (() => {
           // Summed from the rows on hand, which is honest only while the page
           // holds all of them.
           if (expenses.length < (data?.pagination?.total ?? expenses.length)) {
             return []
           }
-          const byKey = new Map<string, number>()
+          const byKey = new Map<string, number[]>()
           expenses.forEach((expense) => {
             const key =
               kind === 'member' ? expense.paidByUserId : expense.typeId
-            byKey.set(key, (byKey.get(key) ?? 0) + expense.value)
+            const bucket = byKey.get(key) ?? []
+            bucket.push(expense.value)
+            byKey.set(key, bucket)
           })
-          return [...byKey.entries()].sort((a, b) => b[1] - a[1])
+          return [...byKey.entries()]
+            .map(([id, values]): [string, number, string] => [
+              id,
+              sumMoney(values),
+              sumMoneyText(values),
+            ])
+            .sort((a, b) => b[1] - a[1])
         })()
 
     const top = ranked[0]
@@ -312,6 +373,7 @@ export const ExpensesPage = () => {
       kind,
       name: nameOf(top[0]),
       amount: sumMoney([top[1]]),
+      amountText: top[2],
       pct: share(top[1]),
       runnerUp: second
         ? { name: nameOf(second[0]), pct: share(second[1]) }
@@ -320,7 +382,10 @@ export const ExpensesPage = () => {
   }, [expenses, data, filters.typeId, nameOfType, nameOfUser])
 
   return (
-    <section className="flex h-full flex-col">
+    <section
+      ref={pageRef}
+      className="flex h-full min-h-0 flex-col overflow-y-auto lg:overflow-hidden"
+    >
       {/* Pinned: the count and the filters never scroll away from the ledger
           they describe, because a total you cannot see cannot be trusted. */}
       <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3 lg:px-6">
@@ -347,47 +412,42 @@ export const ExpensesPage = () => {
               onChange={updateFilters}
             />
           </div>
-          {!isRecording && (
-            <button
-              type="button"
-              onClick={requestRecord}
-              className="bg-accent text-accent-ink hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
-            >
-              + {m.action_record_long()}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={requestRecord}
+            disabled={isRecording}
+            className="bg-accent text-accent-ink hidden rounded-lg px-4 py-2 text-[12px] font-semibold lg:block"
+          >
+            + {m.action_record_expense()}
+          </button>
         </div>
 
-        {showForm && (
-          <DismissablePanel
-            onDismiss={() => setShowForm(false)}
-            className="bg-card lift-shadow rounded-xl p-4"
-          >
-            <ExpenseForm
-              onSuccess={() => setShowForm(false)}
-              onCancel={() => setShowForm(false)}
-            />
-          </DismissablePanel>
-        )}
-
-        {expenseToEdit && (
-          <DismissablePanel
-            onDismiss={() => setExpenseToEdit(null)}
-            className="bg-card lift-shadow rounded-xl p-4"
-          >
-            <h2 className="font-display mb-3 text-[12.5px] font-bold">
-              {m.expense_edit_title({ name: expenseToEdit.name })}
-            </h2>
-            {/* Keyed on the row: hitting Edit on a second plate while one is
-                open must reset the fields, not keep the first row's values. */}
-            <ExpenseForm
-              key={expenseToEdit.id}
-              expense={expenseToEdit}
-              onSuccess={() => setExpenseToEdit(null)}
-              onCancel={() => setExpenseToEdit(null)}
-            />
-          </DismissablePanel>
-        )}
+        <LedgerEditor
+          returnFocusRef={editorReturnFocus}
+          open={isRecording}
+          title={
+            expenseToEdit
+              ? m.expense_edit_title({ name: expenseToEdit.name })
+              : m.action_record_expense()
+          }
+          onClose={() => {
+            setShowForm(false)
+            setExpenseToEdit(null)
+          }}
+        >
+          <ExpenseForm
+            key={expenseToEdit?.id ?? 'create'}
+            expense={expenseToEdit ?? undefined}
+            onSuccess={() => {
+              setShowForm(false)
+              setExpenseToEdit(null)
+            }}
+            onCancel={() => {
+              setShowForm(false)
+              setExpenseToEdit(null)
+            }}
+          />
+        </LedgerEditor>
 
         {deleteError && (
           <p
@@ -399,7 +459,7 @@ export const ExpensesPage = () => {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-4 px-4 pb-4 lg:px-6">
+      <div className="flex shrink-0 gap-4 px-4 pb-24 lg:min-h-0 lg:flex-1 lg:shrink lg:px-6 lg:pb-4">
         <MonthRail
           days={days}
           rangeFrom={filters.dateFrom}
@@ -407,12 +467,13 @@ export const ExpensesPage = () => {
           activeDate={activeDate}
           onJump={jumpTo}
           cumulative={cumulative}
+          cumulativeText={cumulativeText}
           monthTotal={data?.totals?.sum ?? 0}
         />
 
         <div
           ref={scrollRef}
-          className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-2"
+          className="min-w-0 flex-1 pr-1 lg:min-h-0 lg:overflow-y-auto lg:pb-2"
         >
           {/* {isLoading && <Loading full label={m.tape_loading()} />} */}
 
@@ -455,6 +516,9 @@ export const ExpensesPage = () => {
             <ExpenseTape
               groups={groups}
               rimOf={rimOf}
+              categoryKeyOf={(id) =>
+                allCategories?.find((type) => type.id === id)?.systemKey ?? null
+              }
               nameOfType={nameOfType}
               nameOfSource={nameOfSource}
               nameOfUser={nameOfUser}
@@ -479,23 +543,23 @@ export const ExpensesPage = () => {
             activeDate={activeDate}
             onJump={jumpTo}
             cumulative={cumulative}
+            cumulativeText={cumulativeText}
             monthTotal={data?.totals?.sum ?? 0}
           />
         </div>
       </div>
 
-      {!isRecording && (
-        <button
-          type="button"
-          onClick={requestRecord}
-          className="bg-accent text-accent-ink fixed right-4 bottom-20 z-30 flex h-12 items-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg lg:hidden"
-        >
-          <span aria-hidden="true" className="text-lg leading-none">
-            +
-          </span>
-          {m.action_record()}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={requestRecord}
+        disabled={isRecording}
+        className="bg-accent text-accent-ink fixed right-4 bottom-20 z-30 flex h-12 items-center gap-2 rounded-xl px-5 text-[13px] font-semibold shadow-lg lg:hidden"
+      >
+        <span aria-hidden="true" className="text-lg leading-none">
+          +
+        </span>
+        {m.action_record()}
+      </button>
 
       {/* Deleting a money record is irreversible, so it asks — the settings
           module already stops for the *less* destructive archive. */}

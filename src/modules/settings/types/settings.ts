@@ -24,6 +24,8 @@ export type MemberDeletionReason = 'HOUSEHOLD' | 'LEFT' | 'REMOVED' | null
  * screen and `pending` on another.
  */
 export interface WireMember {
+  first_name?: string | null
+  last_name?: string | null
   id: string
   name: string
   email: string
@@ -40,6 +42,8 @@ export interface WireMember {
 }
 
 export interface Member {
+  firstName?: string | null
+  lastName?: string | null
   id: string
   name: string
   email: string
@@ -57,6 +61,7 @@ export interface HouseholdPrefs {
   currency: string
   /** Day of month the household's period starts. 1 for most households. */
   monthStartDay: number
+  timezone: string
 }
 
 export interface CategoryInput {
@@ -66,12 +71,13 @@ export interface CategoryInput {
 export interface AccountInput {
   name: string
   kind: AccountKind
-  openingBalance: number
-  asOf: string
+  openingBalance?: number
+  asOf?: string
 }
 
 export interface InviteInput {
-  name: string
+  firstName: string
+  lastName: string
   email: string
 }
 
@@ -84,4 +90,5 @@ export interface InviteInput {
 export interface WireHouseholdPrefs {
   currency: string
   month_start_day: number
+  timezone: string
 }

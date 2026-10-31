@@ -27,8 +27,8 @@ const group = (kind: AccountKind, count: number): PositionGroup => ({
 /** The kind grid, found by the cell that always sits inside it. */
 const kindGrid = () =>
   screen
-    .getByRole('region', { name: /posisi|position/i })
-    .querySelector('.grid')
+    .getByRole('region', { name: /saldo akun|account balances/i })
+    .querySelector('[id]')
 
 const props = {
   total: 3000,
@@ -82,4 +82,15 @@ describe('PositionCard layout', () => {
       expect(list.className).not.toMatch(/grid-cols-2|grid-cols-3/)
     })
   })
+})
+
+it('starts with mobile account details collapsed and allows explicit disclosure', async () => {
+  const { default: userEvent } = await import('@testing-library/user-event')
+  renderWithProviders(<PositionCard {...props} groups={[group('cash', 2)]} />)
+  const toggle = screen.getByRole('button', {
+    name: /saldo akun|account balances/i,
+  })
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await userEvent.click(toggle)
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
 })

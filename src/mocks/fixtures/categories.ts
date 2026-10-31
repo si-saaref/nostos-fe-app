@@ -2,6 +2,7 @@ import { MOCK_HOUSEHOLD } from '@/mocks/fixtures/household'
 import type { Category } from '@/types/catalog'
 
 const NAMES = ['Belanja', 'Utilitas', 'Transport', 'Makan luar']
+const SYSTEM_KEYS = ['SHOPPING', 'BILLS', 'TRANSPORTATION', 'FOOD_DRINK'] as const
 
 export const CATEGORY_IDS = [
   'type-belanja',
@@ -17,4 +18,5 @@ export const seedCategories = (): Category[] =>
     order: index,
     archivedAt: null,
     householdId: MOCK_HOUSEHOLD.id,
+    systemKey: SYSTEM_KEYS[index],
   }))

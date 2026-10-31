@@ -29,6 +29,8 @@ export const memberKeys = {
 export const toMember = (row: WireMember): Member => ({
   id: row.id,
   name: row.name,
+  firstName: row.first_name,
+  lastName: row.last_name,
   email: row.email,
   role: row.role,
   householdId: row.household_id,
@@ -42,7 +44,8 @@ export const toMember = (row: WireMember): Member => ({
 
 /** Domain → wire, for the invite body. */
 const toInviteBody = (input: InviteInput) => ({
-  name: input.name,
+  first_name: input.firstName,
+  last_name: input.lastName,
   email: input.email,
 })
 
@@ -50,6 +53,8 @@ const toInviteBody = (input: InviteInput) => ({
 const toRosterUser = (member: Member): User => ({
   id: member.id,
   name: member.name,
+  firstName: member.firstName,
+  lastName: member.lastName,
   email: member.email,
   role: member.role,
   householdId: member.householdId,
@@ -69,6 +74,7 @@ export const useMembers = (householdId: string) =>
     queryKey: memberKeys.all(householdId),
     queryFn: () => fetchMembers(householdId),
     enabled: Boolean(householdId),
+    staleTime: 60_000,
   })
 
 /**
@@ -81,6 +87,7 @@ export const useRoster = (householdId: string) =>
     queryKey: memberKeys.all(householdId),
     queryFn: () => fetchMembers(householdId),
     enabled: Boolean(householdId),
+    staleTime: 60_000,
     select: (members: Member[]) => members.map(toRosterUser),
   })
 
@@ -94,8 +101,11 @@ export const useActivePayers = (householdId: string) =>
     queryKey: memberKeys.all(householdId),
     queryFn: () => fetchMembers(householdId),
     enabled: Boolean(householdId),
+    staleTime: 60_000,
     select: (members: Member[]) =>
-      members.filter((member) => !member.deletedAt).map(toRosterUser),
+      members
+        .filter((member) => member.status === 'joined' && !member.deletedAt)
+        .map(toRosterUser),
   })
 
 const invalidates = (householdId: string) => [memberKeys.all(householdId)]

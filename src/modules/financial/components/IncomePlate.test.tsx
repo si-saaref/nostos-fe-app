@@ -8,6 +8,7 @@ const income: Income = {
   id: 'inc-1',
   name: 'Gaji bulan ini',
   amount: 8600000,
+  kind: 'EXTERNAL_INCOME',
   typeId: 'itype-0',
   fromSourceId: null,
   toSourceId: 'source-bni',
@@ -45,4 +46,19 @@ describe('IncomePlate', () => {
     expect(screen.queryByText(/itype-0/)).not.toBeInTheDocument()
     expect(screen.getByText(/—/)).toBeInTheDocument()
   })
+})
+
+it('labels a legacy categorized transfer as a transfer with an unsigned route', () => {
+  renderWithProviders(
+    <IncomePlate
+      {...props}
+      income={{ ...income, kind: 'TRANSFER', fromSourceId: 'cash' }}
+      fromName="Cash"
+      typeName="Legacy salary"
+    />,
+  )
+  expect(screen.queryByText(/Legacy salary/)).not.toBeInTheDocument()
+  expect(screen.getByText(/Pindah antar akun/)).toBeInTheDocument()
+  expect(screen.getByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByText(/^\+/)).not.toBeInTheDocument()
 })

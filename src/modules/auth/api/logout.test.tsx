@@ -47,7 +47,7 @@ const renderApp = () => {
             ),
           },
           {
-            path: '/dashboard',
+            path: '/expenses',
             element: (
               <ProtectedRoute>
                 <SignOutButton />
@@ -57,7 +57,7 @@ const renderApp = () => {
         ],
       },
     ],
-    { initialEntries: ['/dashboard'] },
+    { initialEntries: ['/expenses'] },
   )
   render(
     <QueryClientProvider client={createTestQueryClient()}>

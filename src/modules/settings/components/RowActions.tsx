@@ -22,7 +22,7 @@ export const RowActions = ({ onSave, onArchive, onRestore }: Props) => {
         <button
           type="button"
           onClick={onRestore}
-          className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold"
+          className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold"
         >
           {m.act_restore()}
         </button>
@@ -32,7 +32,7 @@ export const RowActions = ({ onSave, onArchive, onRestore }: Props) => {
             <button
               type="button"
               onClick={onArchive}
-              className="border-danger-line bg-danger-bg text-danger rounded-lg border px-3 py-2 text-[12px] font-semibold"
+              className="border-danger-line bg-danger-bg text-danger h-9 rounded-lg border px-3 text-[12px] font-semibold"
             >
               {m.act_archive()}
             </button>
@@ -40,7 +40,7 @@ export const RowActions = ({ onSave, onArchive, onRestore }: Props) => {
           <button
             type="button"
             onClick={onSave}
-            className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold"
+            className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold"
           >
             {m.act_save()}
           </button>

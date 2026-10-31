@@ -1,6 +1,10 @@
 import { useMessages } from '@/i18n/useMessages'
 import { Select } from '@/components/Select'
-import { useIncomeTypes } from '@/modules/settings/api/incomeTypes'
+import {
+  MobileFilterSheet,
+  type FilterField,
+} from '@/components/MobileFilterSheet'
+import { useIncomeTypes } from '@/modules/settings/api/incomeCategories'
 import type { IncomeFilters } from '@/types/income'
 
 interface Props {
@@ -22,19 +26,43 @@ interface Props {
 export const IncomeFilter = ({ householdId, filters, onChange }: Props) => {
   const m = useMessages()
   const { data: types } = useIncomeTypes(householdId)
-
-  return (
-    <Select
-      hideLabel
-      label={m.filter_type()}
-      placeholder={m.count_scope_all({ what: m.count_types() })}
-      value={filters.typeId ?? ''}
-      onChange={(value) => onChange({ typeId: value || undefined, page: 1 })}
-      options={
+  const fields: FilterField[] = [
+    {
+      key: 'typeId',
+      label: m.filter_type(),
+      all: m.count_scope_all({ what: m.count_types() }),
+      value: filters.typeId ?? '',
+      options:
         types
           ?.filter((type) => !type.archivedAt || type.id === filters.typeId)
-          .map((type) => ({ value: type.id, label: type.name })) ?? []
-      }
-    />
+          .map((type) => ({ value: type.id, label: type.name })) ?? [],
+    },
+  ]
+
+  return (
+    <>
+      <MobileFilterSheet
+        fields={fields}
+        onApply={(values) =>
+          onChange({ typeId: values.typeId || undefined, page: 1 })
+        }
+      />
+      <div className="hidden lg:block">
+        <Select
+          hideLabel
+          label={m.filter_type()}
+          placeholder={m.count_scope_all({ what: m.count_types() })}
+          value={filters.typeId ?? ''}
+          onChange={(value) =>
+            onChange({ typeId: value || undefined, page: 1 })
+          }
+          options={
+            types
+              ?.filter((type) => !type.archivedAt || type.id === filters.typeId)
+              .map((type) => ({ value: type.id, label: type.name })) ?? []
+          }
+        />
+      </div>
+    </>
   )
 }

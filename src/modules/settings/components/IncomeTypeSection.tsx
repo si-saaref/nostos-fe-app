@@ -1,21 +1,19 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DismissablePanel } from '@/components/DismissablePanel'
 import { FormField } from '@/components/FormField'
-import { SettingPlate } from '@/modules/settings/components/SettingPlate'
+import { CategoryChipList } from '@/modules/settings/components/CategoryChipList'
 import { SectionShell } from '@/modules/settings/components/SectionShell'
-import { RowActions } from '@/modules/settings/components/RowActions'
 import {
   useCreateIncomeType,
   useIncomeTypes,
   useUpdateIncomeType,
-} from '@/modules/settings/api/incomeTypes'
-import { MAX_PAGE_SIZE, useIncome } from '@/modules/financial/api/income'
+} from '@/modules/settings/api/incomeCategories'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
 import { isoDay } from '@/utils/dates'
 import { capitalizeFirst } from '@/utils/text'
-import type { IncomeType } from '@/types/income'
+import type { CategoryChipItem } from '@/modules/settings/components/CategoryChipList'
 
 interface Props {
   householdId: string
@@ -47,33 +45,15 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
     isPending: isCreating,
     error: createError,
   } = useCreateIncomeType(householdId)
-  const { mutate: update, error: updateError } =
-    useUpdateIncomeType(householdId)
+  const {
+    mutate: update,
+    mutateAsync: updateAsync,
+    error: updateError,
+  } = useUpdateIncomeType(householdId)
 
-  // Usage count, so archiving states its consequence instead of implying one.
-  // Capped at the route's own ceiling: a rejected count would render as "used
-  // by nobody", which is the one wrong answer here.
-  const { data: income } = useIncome(householdId, {
-    page: 1,
-    limit: MAX_PAGE_SIZE,
-  })
-
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [draftName, setDraftName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
-  const [toArchive, setToArchive] = useState<IncomeType | null>(null)
-
-  // Counted once per fetch rather than filtered per row, and keyed by id
-  // rather than by name — a renamed type keeps the history it earned.
-  const usageById = useMemo(() => {
-    const counts = new Map<string, number>()
-    income?.items.forEach((row) => {
-      counts.set(row.typeId, (counts.get(row.typeId) ?? 0) + 1)
-    })
-    return counts
-  }, [income])
-  const usageOf = (type: IncomeType) => usageById.get(type.id) ?? 0
+  const [toArchive, setToArchive] = useState<CategoryChipItem | null>(null)
 
   const hasNone = (types?.length ?? 0) === 0
   const addType = (name: string, then?: () => void) => {
@@ -125,128 +105,68 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
         </div>
       )}
 
-      <ul className="flex flex-col gap-1.5">
-        {isAdding && (
-          <li>
-            <DismissablePanel onDismiss={() => setIsAdding(false)}>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  addType(newName, () => {
-                    setNewName('')
-                    setIsAdding(false)
-                  })
-                }}
-                className="bg-card lift-shadow flex flex-wrap items-end gap-2 rounded-lg p-3"
+      {isAdding && (
+        <DismissablePanel onDismiss={() => setIsAdding(false)}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              addType(newName, () => {
+                setNewName('')
+                setIsAdding(false)
+              })
+            }}
+            className="bg-card lift-shadow mb-3 flex flex-wrap items-end gap-2 rounded-lg p-3"
+          >
+            <FormField label={m.itype_name()} className="min-w-[200px] flex-1">
+              <input
+                autoComplete="off"
+                autoFocus
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+                className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
+              />
+            </FormField>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAdding(false)}
+                className="border-hair text-muted h-9 rounded-lg border px-4 text-[12px] font-semibold"
               >
-                <FormField
-                  label={m.itype_name()}
-                  className="min-w-[200px] flex-1"
-                >
-                  <input
-                    autoFocus
-                    value={newName}
-                    onChange={(event) => setNewName(event.target.value)}
-                    className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
-                  />
-                </FormField>
-                <div className="ml-auto flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAdding(false)}
-                    className="border-hair text-muted rounded-lg border px-4 py-2 text-[12px] font-semibold"
-                  >
-                    {m.act_cancel()}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreating}
-                    className="bg-accent text-accent-ink rounded-lg px-4 py-2 text-[12px] font-semibold disabled:opacity-50"
-                  >
-                    {isCreating ? m.act_saving() : m.act_add()}
-                  </button>
-                </div>
-              </form>
-            </DismissablePanel>
-          </li>
-        )}
+                {m.act_cancel()}
+              </button>
+              <button
+                type="submit"
+                disabled={isCreating}
+                className="bg-accent text-accent-ink h-9 rounded-lg px-4 text-[12px] font-semibold disabled:opacity-50"
+              >
+                {isCreating ? m.act_saving() : m.act_add()}
+              </button>
+            </div>
+          </form>
+        </DismissablePanel>
+      )}
 
-        {types?.map((type) => {
-          const isOpen = openId === type.id
-          const used = usageOf(type)
-          const isArchived = Boolean(type.archivedAt)
-          return (
-            <SettingPlate
-              key={type.id}
-              title={type.name}
-              meta={
-                used > 0
-                  ? used === 1
-                    ? m.itype_in_use_one()
-                    : m.itype_in_use({ n: used })
-                  : undefined
-              }
-              muted={isArchived}
-              trailing={
-                isArchived ? (
-                  <span className="text-muted text-[10px] font-bold tracking-[0.08em] uppercase">
-                    {m.itype_archived()}
-                  </span>
-                ) : undefined
-              }
-              isOpen={isOpen}
-              onToggle={() => {
-                setOpenId(isOpen ? null : type.id)
-                setDraftName(type.name)
-              }}
-            >
-              <div className="flex flex-wrap items-end gap-2">
-                <FormField
-                  label={m.itype_name()}
-                  className="min-w-[200px] flex-1"
-                >
-                  <input
-                    value={draftName}
-                    disabled={!canManage || isArchived}
-                    onChange={(event) => setDraftName(event.target.value)}
-                    className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none disabled:opacity-60"
-                  />
-                </FormField>
-                {canManage && (
-                  <RowActions
-                    onSave={() => {
-                      const name = capitalizeFirst(draftName.trim())
-                      if (name && name !== type.name) {
-                        update({ id: type.id, name })
-                      }
-                      setOpenId(null)
-                    }}
-                    onArchive={
-                      isArchived ? undefined : () => setToArchive(type)
-                    }
-                    onRestore={
-                      isArchived
-                        ? () => update({ id: type.id, archivedAt: null })
-                        : undefined
-                    }
-                  />
-                )}
-              </div>
-            </SettingPlate>
-          )
-        })}
-      </ul>
+      <CategoryChipList
+        items={types ?? []}
+        domain="income"
+        canManage={canManage}
+        nameLabel={m.itype_name()}
+        archivedLabel={m.itype_archived()}
+        saveLabel={m.act_save()}
+        archiveLabel={m.act_archive()}
+        restoreLabel={m.act_restore()}
+        onRename={(type, name) =>
+          updateAsync({ id: type.id, name: capitalizeFirst(name) })
+        }
+        onArchive={setToArchive}
+        onRestore={(type) => update({ id: type.id, archivedAt: null })}
+      />
 
       <ConfirmDialog
         open={Boolean(toArchive)}
         onOpenChange={(open) => !open && setToArchive(null)}
         title={m.archive_title({ name: toArchive?.name ?? '' })}
         body={m.archive_body({ name: toArchive?.name ?? '' })}
-        note={
-          toArchive && usageOf(toArchive) > 0
-            ? m.itype_in_use({ n: usageOf(toArchive) })
-            : undefined
-        }
         confirmLabel={m.archive_confirm()}
         destructive
         onConfirm={() => {
@@ -256,7 +176,6 @@ export const IncomeTypeSection = ({ householdId, canManage }: Props) => {
             update({ id: toArchive.id, archivedAt: isoDay(new Date()) })
           }
           setToArchive(null)
-          setOpenId(null)
         }}
       />
     </SectionShell>

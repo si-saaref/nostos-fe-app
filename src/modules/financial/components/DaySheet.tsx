@@ -62,7 +62,8 @@ export const DaySheet = ({ day, today, nameOf, rimOf }: Props) => {
     ].sort((a, b) => b.amount - a.amount || a.id.localeCompare(b.id))
   }, [day])
 
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const money = (value: number | string) =>
+    formatCurrency(value, currency, locale)
 
   if (!day) {
     return (
@@ -101,9 +102,24 @@ export const DaySheet = ({ day, today, nameOf, rimOf }: Props) => {
         aria-describedby={figuresId}
         className="border-hair my-3.5 grid grid-cols-3 gap-2.5 border-y py-3"
       >
-        <Figure label={m.cal_out()} value={day.spent} money={money} />
-        <Figure label={m.cal_in()} value={day.inflow} money={money} />
-        <Figure label={m.cal_moved()} value={day.moved} money={money} />
+        <Figure
+          label={m.cal_out()}
+          value={day.spent}
+          valueText={day.spentText}
+          money={money}
+        />
+        <Figure
+          label={m.cal_in()}
+          value={day.inflow}
+          valueText={day.inflowText}
+          money={money}
+        />
+        <Figure
+          label={m.cal_moved()}
+          value={day.moved}
+          valueText={day.movedText}
+          money={money}
+        />
       </dl>
 
       {day.count === 0 ? (
@@ -146,11 +162,13 @@ export const DaySheet = ({ day, today, nameOf, rimOf }: Props) => {
 const Figure = ({
   label,
   value,
+  valueText,
   money,
 }: {
   label: string
   value: number
-  money: (value: number) => string
+  valueText?: string
+  money: (value: number | string) => string
 }) => (
   <div>
     <dt className="text-muted text-[8.5px] font-bold tracking-[0.11em] uppercase">
@@ -161,7 +179,7 @@ const Figure = ({
         value === 0 ? 'text-muted' : ''
       }`}
     >
-      {value === 0 ? '—' : money(value)}
+      {value === 0 ? '—' : money(valueText ?? value)}
     </dd>
   </div>
 )
@@ -223,6 +241,9 @@ const Row = ({
           kind === 'in' ? 'text-flow-in' : 'text-muted'
         }`}
       >
+        <span aria-hidden="true">
+          {kind === 'out' ? '−' : kind === 'in' ? '+' : '↔'}{' '}
+        </span>
         {kindLabel}
       </span>
     </div>
@@ -283,7 +304,7 @@ const IncomeRow = ({
   money: (value: number) => string
 }) => {
   const m = useMessages()
-  const isTransfer = income.fromSourceId !== null
+  const isTransfer = income.kind === 'TRANSFER'
 
   return (
     <Row
@@ -317,8 +338,12 @@ const IncomeRow = ({
           <span className="bg-chip rounded px-1.5 py-px text-[10px] font-semibold">
             {nameOf(income.toSourceId)}
           </span>
-          <Dot />
-          {nameOf(income.typeId)}
+          {!isTransfer && income.typeId && (
+            <>
+              <Dot />
+              {nameOf(income.typeId)}
+            </>
+          )}
         </>
       }
     />

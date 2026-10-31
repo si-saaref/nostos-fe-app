@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { compactMemberLabels } from '@/modules/financial/lib/memberLabel'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { Controller, useForm } from 'react-hook-form'
@@ -65,8 +66,10 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
   const create = useCreateExpense(householdId)
   const update = useUpdateExpense(householdId)
   const { isPending, error } = isEdit ? update : create
-  const { data: categories } = useActiveCategories(householdId)
-  const { data: accounts } = useActiveAccounts(householdId)
+  const categoriesQuery = useActiveCategories(householdId)
+  const { data: categories } = categoriesQuery
+  const accountsQuery = useActiveAccounts(householdId)
+  const { data: accounts } = accountsQuery
   const { data: activePayers } = useActivePayers(householdId)
   const { data: roster } = useRoster(householdId)
 
@@ -95,6 +98,8 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
     reset,
     setError,
     clearErrors,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<CreateExpenseInput>({
     defaultValues: {
@@ -108,6 +113,18 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
       paidByUserId: expense?.paidByUserId ?? me?.user_id ?? '',
     },
   })
+
+  useEffect(() => {
+    if (isEdit) return
+    if (!getValues('typeId') && categories?.length)
+      setValue('typeId', categories[0].id)
+    if (!getValues('sourceId') && accounts?.length)
+      setValue(
+        'sourceId',
+        (accounts.find((a) => a.systemKey === 'DEFAULT_CASH') ?? accounts[0])
+          .id,
+      )
+  }, [isEdit, categories, accounts, getValues, setValue])
 
   // Whether the last failure landed on a field. The summary line stands down
   // when it did — a field error plus a summary says the same thing twice.
@@ -211,13 +228,28 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
       // Named, because the ledger page can hold this form and a filter row
       // with pickers of the same name: without it, "the type picker" is
       // ambiguous to a screen reader exactly as it was to the test.
-      aria-label={m.action_record_long()}
+      aria-label={m.action_record_expense()}
       className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3"
     >
+      {(categoriesQuery.isError || accountsQuery.isError) && (
+        <p role="alert" className="text-danger sm:col-span-2 lg:col-span-3">
+          {m.state_error()}{' '}
+          <button
+            type="button"
+            onClick={() => {
+              void categoriesQuery.refetch()
+              void accountsQuery.refetch()
+            }}
+          >
+            {m.state_retry()}
+          </button>
+        </p>
+      )}
       <FormBlockers blockers={blockers} />
 
       <FormField label={m.form_name()} error={errors.name?.message}>
         <input
+          autoComplete="off"
           maxLength={NAME_MAX}
           className="well-shadow bg-chip w-full rounded-lg px-3 py-2 text-[12.5px] outline-none"
           {...register('name', { required: m.form_err_name() })}
@@ -322,7 +354,7 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
             options={
               users?.map((member) => ({
                 value: member.id,
-                label: member.name,
+                label: compactMemberLabels(users).get(member.id) ?? member.name,
               })) ?? []
             }
           />
@@ -338,6 +370,7 @@ export const ExpenseForm = ({ expense, onSuccess, onCancel }: Props) => {
                 fixed rows reserved a band of empty well on every entry that
                 never needed the field. */}
           <textarea
+            autoComplete="off"
             rows={1}
             maxLength={DESCRIPTION_MAX}
             placeholder={m.form_description_hint()}

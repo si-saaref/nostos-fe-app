@@ -15,11 +15,6 @@ interface NavItem {
 /** Shipped routes. */
 const LIVE: NavItem[] = [
   {
-    to: '/dashboard',
-    label: messages.nav_dashboard,
-    icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
-  },
-  {
     to: '/expenses',
     label: messages.nav_expenses,
     icon: 'M4 6h16v12H4zM4 10h16M8 14h5',

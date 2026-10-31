@@ -1,6 +1,12 @@
 import { formatCurrency, formatDate } from '@/utils/formatters'
 
 describe('formatCurrency', () => {
+  it('formats decimal text without losing a cent above JS safe integer cents', () => {
+    expect(formatCurrency('99999999999999.99', 'USD', 'en-US')).toBe(
+      '$99,999,999,999,999.99',
+    )
+  })
+
   it('formats rupiah with no decimals', () => {
     const result = formatCurrency(150000, 'IDR', 'id-ID')
     expect(result).toMatch(/^Rp/)

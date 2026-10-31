@@ -1,8 +1,10 @@
+import { invalidateFinancial } from './invalidateFinancial'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, unwrap, unwrapPage } from '@/api/client'
 import { entityKey } from '@/api/keys'
-import { averageMoney, roundMoney } from '@/utils/money'
-import type { ApiEnvelope, Paginated } from '@/types/api'
+import { averageMoneyText, sumMoneyText } from '@/utils/money'
+import { fromWireMoney, toWireMoney } from '@/utils/money'
+import type { ApiEnvelope, Paginated, Totals } from '@/types/api'
 import type {
   CreateIncomeInput,
   Income,
@@ -53,7 +55,12 @@ export const toIncome = (row: WireIncome): Income => ({
   id: row.id,
   name: row.name,
   description: row.description,
-  amount: row.amount,
+  amount: fromWireMoney(row.amount),
+  ...(row.fee_amount !== undefined && {
+    feeAmount: fromWireMoney(row.fee_amount),
+    feeExpenseId: row.fee_expense_id ?? null,
+  }),
+  kind: row.kind,
   typeId: row.type_id,
   fromSourceId: row.from_source_id,
   toSourceId: row.to_source_id,
@@ -73,11 +80,15 @@ export const toIncome = (row: WireIncome): Income => ({
  * household" is spelled, and leaving the key out would ask the server to guess.
  */
 const toIncomeBody = (input: CreateIncomeInput) => ({
+  kind: input.kind,
   name: input.name,
   // Blank is absent — see `toExpenseBody`.
   description: input.description?.trim() || null,
-  amount: input.amount,
-  type_id: input.typeId,
+  amount: toWireMoney(input.amount),
+  ...(input.kind === 'TRANSFER' && {
+    fee_amount: toWireMoney(input.feeAmount ?? 0),
+  }),
+  type_id: input.kind === 'TRANSFER' ? null : input.typeId,
   from_source_id: input.fromSourceId,
   to_source_id: input.toSourceId,
   date: input.date,
@@ -104,7 +115,10 @@ const toIncomePatch = (patch: UpdateIncomeInput) => {
   if (patch.description !== undefined) {
     body.description = patch.description?.trim() || null
   }
-  if (patch.amount !== undefined) body.amount = patch.amount
+  if (patch.amount !== undefined) body.amount = toWireMoney(patch.amount)
+  if (patch.feeAmount !== undefined)
+    body.fee_amount = toWireMoney(patch.feeAmount)
+  if (patch.kind !== undefined) body.kind = patch.kind
   if (patch.typeId !== undefined) body.type_id = patch.typeId
   if (patch.fromSourceId !== undefined) {
     body.from_source_id = patch.fromSourceId
@@ -131,32 +145,74 @@ const matchesFilters = (income: Income, filters: IncomeFilters): boolean => {
  * screen for as long as the request took.
  */
 const netContribution = (income: Income): number =>
-  income.fromSourceId === null ? income.amount : 0
+  income.kind === 'EXTERNAL_INCOME' ? income.amount : 0
+
+const adjustedTotals = (
+  totals: Totals | undefined,
+  income: Income,
+  direction: 1 | -1,
+): Totals | undefined => {
+  if (!totals) return undefined
+  const transfer = income.kind === 'TRANSFER'
+  const count = Math.max(0, totals.count + direction)
+  const sumText = sumMoneyText([
+    totals.sumText ?? totals.sum,
+    direction * netContribution(income),
+  ])
+  const sum = Number(sumText)
+  const externalCount =
+    totals.external_count === undefined
+      ? undefined
+      : Math.max(0, totals.external_count + (transfer ? 0 : direction))
+  const transferCount =
+    totals.transfer_count === undefined
+      ? undefined
+      : Math.max(0, totals.transfer_count + (transfer ? direction : 0))
+  const movedText =
+    totals.moved === undefined
+      ? undefined
+      : sumMoneyText([
+          totals.movedText ?? totals.moved,
+          transfer ? direction * income.amount : 0,
+        ])
+  const moved = movedText === undefined ? undefined : Number(movedText)
+  return {
+    ...totals,
+    transfer_fees: undefined,
+    transferFeesText: undefined,
+    cash_withdrawn: undefined,
+    cashWithdrawnText: undefined,
+    cash_withdrawal_count: undefined,
+    sum,
+    sumText,
+    count,
+    average: Number(averageMoneyText(sumText, externalCount ?? count)),
+    averageText: averageMoneyText(sumText, externalCount ?? count),
+    ...(externalCount !== undefined && { external_count: externalCount }),
+    ...(transferCount !== undefined && { transfer_count: transferCount }),
+    ...(moved !== undefined && { moved, movedText }),
+  }
+}
 
 const withRow = (
   page: Paginated<Income>,
   income: Income,
 ): Paginated<Income> => {
-  const count = (page.totals?.count ?? page.items.length) + 1
-  const sum = roundMoney((page.totals?.sum ?? 0) + netContribution(income))
+  if (page.items.some((row) => row.id === income.id)) return page
+  const totals = adjustedTotals(page.totals, income, 1)
   return {
     ...page,
     items: [income, ...page.items],
     pagination: { ...page.pagination, total: page.pagination.total + 1 },
-    totals: page.totals
-      ? { sum, count, average: averageMoney(sum, count) }
-      : undefined,
+    totals,
+    summary: undefined,
   }
 }
 
 const withoutRow = (page: Paginated<Income>, id: string): Paginated<Income> => {
   const removed = page.items.find((item) => item.id === id)
   if (!removed) return page
-  const count = Math.max(0, (page.totals?.count ?? page.items.length) - 1)
-  // No `Math.max(0, …)` on the sum: net inflow is a signed quantity, and
-  // clamping it would report a comfortable zero for a month that is genuinely
-  // negative.
-  const sum = roundMoney((page.totals?.sum ?? 0) - netContribution(removed))
+  const totals = adjustedTotals(page.totals, removed, -1)
   return {
     ...page,
     items: page.items.filter((item) => item.id !== id),
@@ -164,9 +220,8 @@ const withoutRow = (page: Paginated<Income>, id: string): Paginated<Income> => {
       ...page.pagination,
       total: Math.max(0, page.pagination.total - 1),
     },
-    totals: page.totals
-      ? { sum, count, average: averageMoney(sum, count) }
-      : undefined,
+    totals,
+    summary: undefined,
   }
 }
 
@@ -209,50 +264,38 @@ export const useIncome = (
 export const useCreateIncome = (householdId: string) => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: CreateIncomeInput) =>
-      toIncome(
-        unwrap(
-          await apiClient.post<ApiEnvelope<WireIncome>>(
-            BASE_PATH,
-            toIncomeBody(input),
-          ),
-        ),
-      ),
-    onMutate: async (input) => {
+    mutationFn: async (input: CreateIncomeInput) => {
+      const created = unwrap(
+        await apiClient.post<ApiEnvelope<WireIncome[]>>(BASE_PATH, [
+          toIncomeBody(input),
+        ]),
+      )
+      return toIncome(created[0])
+    },
+    onSuccess: async (created) => {
       await queryClient.cancelQueries({
         queryKey: incomeKeys.lists(householdId),
       })
       const previous = queryClient.getQueriesData<Paginated<Income>>({
         queryKey: incomeKeys.lists(householdId),
       })
-      const optimistic: Income = {
-        id: `${OPTIMISTIC_PREFIX}${crypto.randomUUID()}`,
-        householdId,
-        ...input,
-      }
+      const confirmed: Income = created
       // Only into caches the row actually belongs to: a list scoped to last
       // month must not sprout today's entry.
       previous.forEach(([key, data]) => {
         if (!data) return
         const filters = key[FILTERS_IN_KEY] as IncomeFilters | undefined
-        if (filters && !matchesFilters(optimistic, filters)) return
+        if (filters && !matchesFilters(confirmed, filters)) return
         queryClient.setQueryData<Paginated<Income>>(
           key,
-          withRow(data, optimistic),
+          withRow(data, confirmed),
         )
       })
       return { previous }
     },
-    onError: (_error, _input, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: incomeKeys.all(householdId) })
-      queryClient.invalidateQueries({
-        queryKey: entityKey(householdId, 'positions'),
-      })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'income')
     },
   })
 }
@@ -277,11 +320,9 @@ export const useUpdateIncome = (householdId: string) => {
           ),
         ),
       ),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: incomeKeys.all(householdId) })
-      queryClient.invalidateQueries({
-        queryKey: entityKey(householdId, 'positions'),
-      })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'income')
     },
   })
 }
@@ -292,7 +333,7 @@ export const useDeleteIncome = (householdId: string) => {
     mutationFn: async (id: string) => {
       await apiClient.delete(`${BASE_PATH}/${id}`)
     },
-    onMutate: async (id) => {
+    onSuccess: async (_result, id) => {
       await queryClient.cancelQueries({
         queryKey: incomeKeys.lists(householdId),
       })
@@ -305,16 +346,9 @@ export const useDeleteIncome = (householdId: string) => {
       })
       return { previous }
     },
-    onError: (_error, _id, context) => {
-      context?.previous?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data)
-      })
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: incomeKeys.all(householdId) })
-      queryClient.invalidateQueries({
-        queryKey: entityKey(householdId, 'positions'),
-      })
+    onSettled: (_data, error) => {
+      if (error) return
+      return invalidateFinancial(queryClient, householdId, 'income')
     },
   })
 }

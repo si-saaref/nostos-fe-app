@@ -1,10 +1,19 @@
+import { comparisonFor } from '@/mocks/summary'
 import { http } from 'msw'
+import {
+  averageMoneyText,
+  fromWireMoney,
+  isCanonicalWireInputMoney,
+  sumMoneyText,
+  toWireMoney,
+} from '@/utils/money'
 import { db, nextId } from '@/mocks/db'
 import { MOCK_HOUSEHOLD, MOCK_USER } from '@/mocks/fixtures/household'
 import {
   READ_LATENCY_MS,
   WRITE_LATENCY_MS,
   errorBody,
+  isCreateBatch,
   notFound,
   ok,
   okPage,
@@ -12,14 +21,16 @@ import {
   previousPeriod,
 } from '@/mocks/handlers/shared'
 import type { WireMeta } from '@/mocks/handlers/shared'
-import { averageMoney, isValidMoney, roundMoney, sumMoney } from '@/utils/money'
 import type { StoredIncome, WireIncome } from '@/types/income'
 
 const toWire = (income: StoredIncome): WireIncome => ({
   id: income.id,
   name: income.name,
   description: income.description ?? null,
-  amount: income.amount,
+  amount: toWireMoney(income.amount),
+  fee_amount: toWireMoney(income.feeAmount ?? 0),
+  fee_expense_id: income.feeExpenseId ?? null,
+  kind: income.kind,
   type_id: income.typeId,
   from_source_id: income.fromSourceId,
   to_source_id: income.toSourceId,
@@ -30,6 +41,49 @@ const toWire = (income: StoredIncome): WireIncome => ({
   created_at: income.createdAt,
   updated_at: income.updatedAt,
 })
+
+/** Managed fee lifecycle mirrors the atomic server relationship. */
+const syncFee = (income: StoredIncome) => {
+  let expense = db.expenses.find((row) => row.transferIncomeId === income.id)
+  if (!(income.feeAmount && income.kind === 'TRANSFER')) {
+    if (expense) expense.deletedAt = new Date().toISOString()
+    income.feeExpenseId = null
+    return
+  }
+  let category = db.categories.find((row) => row.systemKey === 'TRANSFER_FEE')
+  if (!category) {
+    category = {
+      id: nextId('category'),
+      name: 'Biaya admin',
+      systemKey: 'TRANSFER_FEE',
+      order: Math.max(-1, ...db.categories.map((row) => row.order)) + 1,
+      archivedAt: null,
+      householdId: income.householdId,
+    }
+    db.categories.push(category)
+  }
+  category.archivedAt = null
+  const data = {
+    name: `Biaya admin · ${income.name}`.slice(0, 100),
+    value: income.feeAmount,
+    sourceId: income.fromSourceId!,
+    typeId: category.id,
+    datePaid: income.date,
+    paidByUserId: income.createdByUserId ?? MOCK_USER.id,
+    transferIncomeId: income.id,
+    deletedAt: null,
+  }
+  if (expense) Object.assign(expense, data)
+  else {
+    expense = {
+      ...data,
+      id: nextId('expense'),
+      householdId: income.householdId,
+    }
+    db.expenses.unshift(expense)
+  }
+  income.feeExpenseId = expense.id
+}
 
 /** Soft delete: a tombstoned row never reaches a response. Every read starts here. */
 const live = (): StoredIncome[] =>
@@ -45,15 +99,30 @@ const live = (): StoredIncome[] =>
  * total that changes when you turn the page is reporting nothing.
  */
 const totalsFor = (items: StoredIncome[]) => {
-  const into = sumMoney(items.map((row) => row.amount))
+  const into = sumMoneyText(items.map((row) => row.amount))
   const transfers = items.filter((row) => row.fromSourceId !== null)
-  const outOf = sumMoney(transfers.map((row) => row.amount))
-  const sum = roundMoney(into - outOf)
+  const outOf = sumMoneyText(transfers.map((row) => row.amount))
+  const sum = sumMoneyText([into, `-${outOf}`])
   return {
     sum,
     count: items.length,
-    average: averageMoney(sum, items.length),
+    average: averageMoneyText(sum, items.length - transfers.length),
     moved: outOf,
+    transfer_fees: sumMoneyText(transfers.map((row) => row.feeAmount ?? 0)),
+    cash_withdrawn: sumMoneyText(
+      transfers
+        .filter(
+          (row) =>
+            row.kind === 'TRANSFER' &&
+            db.accounts.find((a) => a.id === row.toSourceId)?.kind === 'cash',
+        )
+        .map((row) => row.amount),
+    ),
+    cash_withdrawal_count: transfers.filter(
+      (row) =>
+        row.kind === 'TRANSFER' &&
+        db.accounts.find((a) => a.id === row.toSourceId)?.kind === 'cash',
+    ).length,
     external_count: items.length - transfers.length,
     transfer_count: transfers.length,
   }
@@ -78,6 +147,10 @@ const metaFor = (
     // so a by-member ranking here would answer a question nobody asked.
     summary: {
       current,
+      comparison: comparisonFor(
+        current.sum,
+        previous ? totalsFor(previous).sum : undefined,
+      ),
       ...(previous ? { previous: totalsFor(previous) } : {}),
     },
   }
@@ -103,6 +176,17 @@ const liveType = (id: string) =>
  * household" is spelled.
  */
 const badBody = (body: Partial<WireIncome> & Record<string, unknown>) => {
+  if (
+    body.fee_amount !== undefined &&
+    !isCanonicalWireInputMoney(body.fee_amount, true)
+  )
+    return errorBody(400, 'VALIDATION_ERROR', 'Invalid administration fee')
+  if (body.kind === 'EXTERNAL_INCOME' && Number(body.fee_amount ?? 0) > 0)
+    return errorBody(
+      400,
+      'VALIDATION_ERROR',
+      'Only transfers may have an administration fee',
+    )
   if ('household_id' in body) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
       {
@@ -112,7 +196,7 @@ const badBody = (body: Partial<WireIncome> & Record<string, unknown>) => {
       },
     ])
   }
-  if (body.amount !== undefined && !isValidMoney(body.amount)) {
+  if (body.amount !== undefined && !isCanonicalWireInputMoney(body.amount)) {
     return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
       {
         field: 'amount',
@@ -136,7 +220,11 @@ const badRef = (
   body: Partial<WireIncome>,
   current?: StoredIncome,
 ): ReturnType<typeof errorBody> | null => {
-  if (body.type_id !== undefined && !liveType(body.type_id)) {
+  if (
+    body.type_id !== undefined &&
+    body.type_id !== null &&
+    !liveType(body.type_id)
+  ) {
     return errorBody(422, 'INVALID_TYPE', 'Jenis pemasukan tidak tersedia')
   }
   if (body.to_source_id !== undefined && !liveSource(body.to_source_id)) {
@@ -155,6 +243,33 @@ const badRef = (
     body.from_source_id !== undefined
       ? body.from_source_id
       : (current?.fromSourceId ?? null)
+  if (body.from_source_id !== undefined && current && body.kind === undefined) {
+    return errorBody(
+      400,
+      'VALIDATION_ERROR',
+      'kind is required when changing the origin source',
+    )
+  }
+  const kind = body.kind ?? current?.kind
+  const type =
+    body.type_id !== undefined ? body.type_id : (current?.typeId ?? null)
+  if ((kind === 'TRANSFER') !== (from !== null)) {
+    return errorBody(
+      400,
+      'VALIDATION_ERROR',
+      'Transaction kind does not match its origin source',
+    )
+  }
+  if (
+    (kind === 'TRANSFER' && type !== null) ||
+    (kind === 'EXTERNAL_INCOME' && type === null)
+  ) {
+    return errorBody(
+      400,
+      'VALIDATION_ERROR',
+      'Transaction kind does not match its income category',
+    )
+  }
   const to =
     body.to_source_id !== undefined ? body.to_source_id : current?.toSourceId
   if (from !== null && to !== undefined && from === to) {
@@ -228,48 +343,66 @@ export const incomeHandlers = [
 
   http.post(PATH, async ({ request }) => {
     await pause(WRITE_LATENCY_MS)
-    const body = (await request.json()) as Partial<WireIncome> &
-      Record<string, unknown>
-    if (body.to_source_id === undefined) {
-      return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
-        {
-          field: 'to_source_id',
-          code: 'IS_NOT_EMPTY',
-          message: 'to_source_id is required',
-        },
-      ])
+    const payload: unknown = await request.json().catch(() => null)
+    if (!isCreateBatch(payload)) {
+      return errorBody(
+        400,
+        'VALIDATION_ERROR',
+        'Expected a non-empty array of objects',
+      )
     }
-    if (body.type_id === undefined) {
-      return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
-        {
-          field: 'type_id',
-          code: 'IS_NOT_EMPTY',
-          message: 'type_id is required',
-        },
-      ])
-    }
-    const rejected = badBody(body) ?? badRef(body)
-    if (rejected) return rejected
+    const created: StoredIncome[] = []
+    for (const body of payload as (Partial<WireIncome> &
+      Record<string, unknown>)[]) {
+      if (body.to_source_id === undefined) {
+        return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
+          {
+            field: 'to_source_id',
+            code: 'IS_NOT_EMPTY',
+            message: 'to_source_id is required',
+          },
+        ])
+      }
+      if (body.type_id === undefined) {
+        return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
+          {
+            field: 'type_id',
+            code: 'IS_NOT_EMPTY',
+            message: 'type_id is required',
+          },
+        ])
+      }
+      if (body.kind === undefined) {
+        return errorBody(400, 'VALIDATION_ERROR', 'kind is required')
+      }
+      const rejected = badBody(body) ?? badRef(body)
+      if (rejected) return rejected
 
-    const created: StoredIncome = {
-      id: nextId('inc'),
-      name: body.name ?? '',
-      // Blank is coerced to null on write — see the expense handler.
-      description: body.description?.trim() || null,
-      amount: body.amount ?? 0,
-      typeId: body.type_id ?? '',
-      fromSourceId: body.from_source_id ?? null,
-      toSourceId: body.to_source_id,
-      date: body.date ?? '',
-      householdId: MOCK_HOUSEHOLD.id,
-      createdByUserId: MOCK_USER.id,
-      createdAt: new Date().toISOString(),
-      updatedByAdminId: null,
-      updatedAt: null,
-      deletedAt: null,
+      created.push({
+        id: nextId('inc'),
+        name: body.name ?? '',
+        // Blank is coerced to null on write — see the expense handler.
+        description: body.description?.trim() || null,
+        amount: body.amount === undefined ? 0 : fromWireMoney(body.amount),
+        kind: body.kind,
+        feeAmount:
+          body.fee_amount === undefined ? 0 : fromWireMoney(body.fee_amount),
+        typeId: body.type_id ?? null,
+        fromSourceId: body.from_source_id ?? null,
+        toSourceId: body.to_source_id,
+        date: body.date ?? '',
+        householdId: MOCK_HOUSEHOLD.id,
+        createdByUserId: MOCK_USER.id,
+        createdAt: new Date().toISOString(),
+        updatedByAdminId: null,
+        updatedAt: null,
+        deletedAt: null,
+      })
     }
-    db.income.unshift(created)
-    return ok(toWire(created), { status: 201 })
+    // Validate the whole batch before changing the store.
+    created.forEach(syncFee)
+    db.income.unshift(...created)
+    return ok(created.map(toWire), { status: 201 })
   }),
 
   http.patch(`${PATH}/:incomeId`, async ({ params, request }) => {
@@ -282,7 +415,10 @@ export const incomeHandlers = [
     // fields, so a null anywhere else is a 400 rather than a silent no-op.
     const nulled = Object.keys(body).find(
       (key) =>
-        body[key] === null && key !== 'from_source_id' && key !== 'description',
+        body[key] === null &&
+        key !== 'from_source_id' &&
+        key !== 'description' &&
+        key !== 'type_id',
     )
     if (nulled) {
       return errorBody(400, 'VALIDATION_ERROR', 'Validation failed', [
@@ -305,15 +441,22 @@ export const incomeHandlers = [
 
     db.income[index] = {
       ...current,
+      feeAmount:
+        (body.kind ?? current.kind) === 'EXTERNAL_INCOME'
+          ? 0
+          : body.fee_amount !== undefined
+            ? fromWireMoney(body.fee_amount)
+            : (current.feeAmount ?? 0),
       ...(body.name !== undefined && { name: body.name }),
       ...(body.description !== undefined && {
         description: body.description?.trim() || null,
       }),
-      ...(body.amount !== undefined && { amount: body.amount }),
+      ...(body.amount !== undefined && { amount: fromWireMoney(body.amount) }),
       ...(body.type_id !== undefined && { typeId: body.type_id }),
       ...(body.from_source_id !== undefined && {
         fromSourceId: body.from_source_id,
       }),
+      ...(body.kind !== undefined && { kind: body.kind }),
       ...(body.to_source_id !== undefined && {
         toSourceId: body.to_source_id,
       }),
@@ -321,6 +464,7 @@ export const incomeHandlers = [
       updatedByAdminId: MOCK_USER.id,
       updatedAt: new Date().toISOString(),
     }
+    syncFee(db.income[index])
     return ok(toWire(db.income[index]))
   }),
 
@@ -333,6 +477,11 @@ export const incomeHandlers = [
     // existed (AC4.9) — the tombstone is not a resource.
     if (!income) return notFound('Income')
     income.deletedAt = new Date().toISOString()
+    db.expenses
+      .filter((row) => row.transferIncomeId === income.id)
+      .forEach((row) => {
+        row.deletedAt = income.deletedAt
+      })
     return ok(null, { message: 'Income deleted' })
   }),
 ]

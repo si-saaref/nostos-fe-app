@@ -6,11 +6,12 @@ const wire = (kind: string): WireAccount =>
     id: 'source-tunai',
     name: 'Tunai',
     kind,
-    opening_balance: 1500000,
+    opening_balance: '1500000.00',
     as_of: '2026-05-01',
     order: 0,
     archived_at: null,
     household_id: 'household-001',
+    system_key: 'DEFAULT_CASH',
   }) as WireAccount
 
 describe('toAccount', () => {
@@ -33,6 +34,8 @@ describe('toAccount', () => {
 
   it('leaves the rest of the row alone', () => {
     expect(toAccount(wire('CASH'))).toEqual({
+      calculationStartCanSet: false,
+      calculationStartSetAt: null,
       id: 'source-tunai',
       name: 'Tunai',
       kind: 'cash',
@@ -41,6 +44,18 @@ describe('toAccount', () => {
       order: 0,
       archivedAt: null,
       householdId: 'household-001',
+      systemKey: 'DEFAULT_CASH',
+      isProtected: true,
+    })
+  })
+
+  it('degrades a legacy row without a system key to an ordinary account', () => {
+    const legacy = wire('BANK')
+    delete (legacy as Partial<WireAccount>).system_key
+
+    expect(toAccount(legacy)).toMatchObject({
+      systemKey: null,
+      isProtected: false,
     })
   })
 })
@@ -53,6 +68,7 @@ import { createTestQueryClient } from '@/test/test-utils'
 import { useCreateAccount } from '@/modules/settings/api/accounts'
 import { getErrorCode, getErrorMessage } from '@/utils/errors'
 import { db } from '@/mocks/db'
+import { apiClient } from '@/api/client'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={createTestQueryClient()}>
@@ -84,4 +100,68 @@ describe('creating an account with a name already in use', () => {
       `Akun "${taken}" sudah ada`,
     )
   })
+})
+
+describe('mock financial validation', () => {
+  it.each(['01.00', '1000000000000.00'])(
+    'rejects invalid adjustment %s with a 400',
+    async (amount) => {
+      const source = db.accounts[0]
+      await expect(
+        apiClient.post(`/payment-sources/${source.id}/adjustments`, {
+          direction: 'INCREASE',
+          amount,
+          date: source.asOf,
+          reason: 'Counted again',
+        }),
+      ).rejects.toMatchObject({ response: { status: 400 } })
+    },
+  )
+})
+
+it('maps explicit server start-date eligibility without deriving it from balances', () => {
+  expect(
+    toAccount({
+      ...wire('CASH'),
+      calculation_start_can_set: true,
+      calculation_start_set_at: null,
+    }),
+  ).toMatchObject({ calculationStartCanSet: true, calculationStartSetAt: null })
+  expect(toAccount(wire('CASH')).calculationStartCanSet).toBe(false)
+})
+
+it('patches only an explicit start date and invalidates current positions', async () => {
+  const { http, HttpResponse } = await import('msw')
+  const { server } = await import('@/mocks/server')
+  const { useUpdateAccount } = await import('./accounts')
+  const { positionKeys } = await import('@/modules/financial/api/positions')
+  let body: unknown
+  server.use(
+    http.patch('*/payment-sources/:id', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true,
+        data: {
+          ...wire('CASH'),
+          as_of: '2026-10-01',
+          calculation_start_can_set: false,
+          calculation_start_set_at: '2026-10-29T00:00:00Z',
+        },
+      })
+    }),
+  )
+  const client = createTestQueryClient()
+  const positionKey = positionKeys.scoped('household-001', {
+    asOf: '2026-10-29',
+    from: '2026-10-01',
+  })
+  client.setQueryData(positionKey, { balance: '123' })
+  const { result } = renderHook(() => useUpdateAccount('household-001'), {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  })
+  await result.current.mutateAsync({ id: 'source-tunai', asOf: '2026-10-01' })
+  expect(body).toEqual({ as_of: '2026-10-01' })
+  expect(client.getQueryState(positionKey)?.isInvalidated).toBe(true)
 })

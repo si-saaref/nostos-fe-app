@@ -52,8 +52,10 @@
   --bar: #a2919a;
   --bar-now: #a8386a;
   --track: #efe4e7;
-  --flow-out: #2b1f25;
-  --flow-in: #0b6553;
+  --flow-out: #dc2626;
+  /* --flow-out: #2b1f25; */
+  --flow-in: #16a34a;
+  /* --flow-in: #0b6553; */
   --flow-moved: #95828a;
   --shadow-rgb: 31 23 26;
 }
@@ -88,8 +90,10 @@
   --bar: #8a97a6;
   --bar-now: #1e4e8c;
   --track: #e3e8ef;
-  --flow-out: #1a222b;
-  --flow-in: #0c6154;
+  /* --flow-out: #1a222b;
+  --flow-in: #0c6154; */
+  --flow-out: #dc2626;
+  --flow-in: #16a34a;
   --flow-moved: #818d99;
   --shadow-rgb: 22 28 36;
 }
@@ -124,8 +128,10 @@
   --bar: #98a09e;
   --bar-now: #a8842b;
   --track: #e7e7e0;
-  --flow-out: #222829;
-  --flow-in: #256245;
+  /* --flow-out: #222829;
+  --flow-in: #256245; */
+  --flow-out: #dc2626;
+  --flow-in: #16a34a;
   --flow-moved: #858e8b;
   --shadow-rgb: 29 34 35;
 }
@@ -142,6 +148,8 @@
   --color-on-strip-muted: var(--on-strip-muted);
   --color-strip-key: var(--strip-key);
   --color-delta: var(--delta);
+  --color-strip-favorable: #a3e6c5;
+  --color-strip-unfavorable: var(--delta);
   --color-rim-1: var(--rim-1);
   --color-rim-2: var(--rim-2);
   --color-rim-3: var(--rim-3);
@@ -249,7 +257,12 @@ body {
 
 /* No `border-radius` here: an outline already follows the element's own
    corners, and forcing 4px squared off the rings on pills and round buttons. */
-:where(a, button, [tabindex]):focus-visible {
+:where(a, button, input, select, textarea, [tabindex]):not(
+    [data-composite-focus],
+    [role='option'],
+    [role='menuitem'],
+    [role='menuitemradio']
+  ):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -272,5 +285,29 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Shared transient feedback. Swipe follows the finger; reduced motion stays still. */
+.notification-toast[data-swipe='move'] {
+  transform: translateX(var(--radix-toast-swipe-move-x));
+}
+.notification-toast[data-swipe='cancel'] {
+  transform: translateX(0);
+  transition: transform 160ms ease-out;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .notification-toast[data-state='open'] {
+    animation: notification-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes notification-enter {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

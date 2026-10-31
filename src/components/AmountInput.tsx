@@ -20,6 +20,8 @@ interface Props {
   className?: string
   disabled?: boolean
   autoFocus?: boolean
+  allowNegative?: boolean
+  allowZero?: boolean
 }
 
 const isTyped = (char: string, mark: string) =>
@@ -61,6 +63,8 @@ export const AmountInput = ({
   className = '',
   disabled = false,
   autoFocus = false,
+  allowNegative = false,
+  allowZero = false,
 }: Props) => {
   const { locale } = useSettings()
   const currency = useCurrency()
@@ -93,12 +97,18 @@ export const AmountInput = ({
       mark,
     )
     const next = groupAmount(
-      normalizeAmountInput(raw, locale, wholeUnit),
+      normalizeAmountInput(raw, locale, wholeUnit, {
+        allowNegative,
+        allowZero,
+      }),
       locale,
     )
     caret.current = caretLeavingTail(next, tail, mark)
     setText(next)
-    const parsed = parseAmount(next, locale, wholeUnit)
+    const parsed = parseAmount(next, locale, wholeUnit, {
+      allowNegative,
+      allowZero,
+    })
     emitted.current = parsed
     onChange(parsed)
   }

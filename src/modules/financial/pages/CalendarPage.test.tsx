@@ -77,7 +77,7 @@ describe('CalendarPage', () => {
           data: [],
           meta: {
             pagination: { page: 1, limit: 500, total: 612, total_pages: 2 },
-            totals: { sum: 0, count: 612, average: 0 },
+            totals: { sum: '0.00', count: 612, average: '0.00' },
           },
         }),
       ),
@@ -120,4 +120,31 @@ describe('CalendarPage', () => {
       .join(' ')
     expect(labels).not.toMatch(/catat|ubah|hapus/i)
   })
+})
+
+it('opens mobile selected-day detail as a dialog and returns to the selected day on close', async () => {
+  const previous = window.matchMedia
+  window.matchMedia = () =>
+    ({
+      matches: true,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }) as unknown as MediaQueryList
+  try {
+    renderWithProviders(<CalendarPage />, {
+      initialEntries: ['/calendar?month=2026-03'],
+    })
+    await settled()
+    const day = screen.getByRole('gridcell', { name: /^9 Mar/ })
+    await userEvent.click(day)
+    expect(await screen.findByRole('dialog')).toHaveTextContent(/9 Maret/)
+    await userEvent.click(screen.getByRole('button', { name: /tutup|close/i }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    )
+    expect(day).toHaveAttribute('aria-selected', 'true')
+    expect(day).toHaveFocus()
+  } finally {
+    window.matchMedia = previous
+  }
 })

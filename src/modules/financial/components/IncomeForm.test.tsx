@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { chooseOption, renderWithProviders } from '@/test/test-utils'
 import { server } from '@/mocks/server'
@@ -14,10 +15,10 @@ import type { Income } from '@/types/income'
 
 describe('IncomeForm', () => {
   it('submits the type as an id, not the word on screen', async () => {
-    const bodies: Record<string, unknown>[] = []
+    const bodies: Record<string, unknown>[][] = []
     const record = async ({ request }: { request: Request }) => {
       if (request.method === 'POST') {
-        bodies.push((await request.clone().json()) as Record<string, unknown>)
+        bodies.push((await request.clone().json()) as Record<string, unknown>[])
       }
     }
     server.events.on('request:start', record)
@@ -25,17 +26,18 @@ describe('IncomeForm', () => {
     const onSuccess = vi.fn()
     renderWithProviders(<IncomeForm onSuccess={onSuccess} />)
 
-    await userEvent.type(screen.getByLabelText(/keterangan/i), 'Gaji')
+    await userEvent.type(screen.getByLabelText(/nama\. pemasukan/i), 'Gaji')
     await userEvent.type(screen.getByLabelText(/jumlah/i), '5000000')
-    await chooseOption(/jenis/i, INCOME_TYPE_NAMES[0])
+    await chooseOption(/kategori pemasukan/i, INCOME_TYPE_NAMES[0])
     await chooseOption(/masuk ke sumber/i, /^QRIS$/)
     await userEvent.click(screen.getByRole('button', { name: /catat/i }))
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
     server.events.removeListener('request:start', record)
 
-    expect(bodies[0].type_id).toBe(INCOME_TYPE_IDS[0])
-    expect(bodies[0]).not.toHaveProperty('type')
+    expect(bodies[0]).toHaveLength(1)
+    expect(bodies[0][0].type_id).toBe(INCOME_TYPE_IDS[0])
+    expect(bodies[0][0]).not.toHaveProperty('type')
   })
 
   // An admin correcting an amount must not silently retype the entry, and the
@@ -48,6 +50,7 @@ describe('IncomeForm', () => {
       id: 'inc-1',
       name: 'Bonus lama',
       amount: 4250000,
+      kind: 'EXTERNAL_INCOME',
       typeId: archived.id,
       fromSourceId: null,
       toSourceId: ACCOUNT_IDS[0],
@@ -57,9 +60,64 @@ describe('IncomeForm', () => {
 
     renderWithProviders(<IncomeForm income={income} />)
 
-    const trigger = await screen.findByRole('combobox', { name: /jenis/i })
+    const trigger = await screen.findByRole('combobox', {
+      name: /kategori pemasukan/i,
+    })
     await waitFor(() => expect(trigger).toHaveTextContent(archived.name))
     expect(trigger).not.toHaveTextContent(archived.id)
+  })
+
+  it('creates a transfer without requiring or sending an income category', async () => {
+    db.incomeTypes.length = 0
+    const bodies: Record<string, unknown>[][] = []
+    const record = async ({ request }: { request: Request }) => {
+      if (request.method === 'POST') {
+        bodies.push((await request.clone().json()) as Record<string, unknown>[])
+      }
+    }
+    server.events.on('request:start', record)
+    const onSuccess = vi.fn()
+    renderWithProviders(<IncomeForm onSuccess={onSuccess} />)
+
+    await chooseOption(/uang ini dari mana/i, /pindah antar akun/i)
+    expect(
+      screen.queryByRole('combobox', { name: /kategori pemasukan/i }),
+    ).toBeNull()
+    await userEvent.type(
+      screen.getByLabelText(/nama\. pemasukan/i),
+      'Isi dompet',
+    )
+    await userEvent.type(screen.getByLabelText(/jumlah/i), '100000')
+    await chooseOption(/dari sumber/i, /kartu debit bca/i)
+    await chooseOption(/masuk ke sumber/i, /tunai/i)
+    await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+    server.events.removeListener('request:start', record)
+    expect(bodies[0][0].type_id).toBeNull()
+  })
+
+  it('edits a category-free transfer while categories are unavailable', async () => {
+    db.incomeTypes.length = 0
+    const transfer = db.income.find((row) => row.kind === 'TRANSFER')!
+    const bodies: Record<string, unknown>[] = []
+    const record = async ({ request }: { request: Request }) => {
+      if (request.method === 'PATCH') {
+        bodies.push((await request.clone().json()) as Record<string, unknown>)
+      }
+    }
+    server.events.on('request:start', record)
+    const onSuccess = vi.fn()
+    renderWithProviders(<IncomeForm income={transfer} onSuccess={onSuccess} />)
+
+    expect(
+      screen.queryByRole('combobox', { name: /kategori pemasukan/i }),
+    ).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: /simpan/i }))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+    server.events.removeListener('request:start', record)
+    expect(bodies[0].type_id).toBeNull()
   })
 })
 
@@ -88,7 +146,7 @@ describe('IncomeForm when the household is not set up', () => {
     const reason = document.getElementById(
       submit.getAttribute('aria-describedby') ?? '',
     )
-    expect(reason).toHaveTextContent(/jenis pemasukan/i)
+    expect(reason).toHaveTextContent(/kategori pemasukan/i)
 
     await userEvent.click(submit)
     server.events.removeListener('request:start', record)
@@ -101,20 +159,24 @@ describe('IncomeForm when the household is not set up', () => {
 })
 
 describe('IncomeForm layout contracts', () => {
-  // The hint used to sit in the action row, ~600px from the picker it
-  // describes, where nothing connected it to the field and a screen reader
-  // never reached it at all.
-  it('describes the From source picker from the field, not the button row', async () => {
+  it('shows an origin source only after the user chooses a transfer', async () => {
     renderWithProviders(<IncomeForm />)
 
+    expect(
+      screen.queryByRole('combobox', { name: /dari sumber/i }),
+    ).not.toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('combobox', { name: /uang ini dari mana/i }),
+    )
+    await userEvent.click(
+      within(await screen.findByRole('listbox')).getByRole('option', {
+        name: /pindah antar akun/i,
+      }),
+    )
     const fromSource = await screen.findByRole('combobox', {
       name: /dari sumber/i,
     })
-    const describedBy = fromSource.getAttribute('aria-describedby')
-    expect(describedBy).toBeTruthy()
-    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
-      /dari luar rumah/i,
-    )
+    expect(fromSource).toBeInTheDocument()
 
     // And the actions carry nothing but actions.
     const submit = screen.getByRole('button', { name: /catat/i })
@@ -132,4 +194,38 @@ describe('IncomeForm layout contracts', () => {
     expect(labels).toEqual(['Batal', 'Catat'])
     expect(actions?.className).toMatch(/justify-end/)
   })
+})
+
+it('records external income immediately using live household defaults', async () => {
+  const onSuccess = vi.fn()
+  renderWithProviders(<IncomeForm onSuccess={onSuccess} />)
+  await userEvent.type(
+    screen.getByLabelText(/nama\. pemasukan/i),
+    'First income',
+  )
+  await userEvent.type(screen.getByLabelText(/jumlah/i), '1000')
+  await userEvent.click(screen.getByRole('button', { name: /catat/i }))
+  await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
+})
+
+it('clears both accounts when switching to transfer and does not refill on rerender', async () => {
+  const Probe = () => {
+    const [tick, setTick] = useState(0)
+    return (
+      <>
+        <button onClick={() => setTick(tick + 1)}>Refresh {tick}</button>
+        <IncomeForm />
+      </>
+    )
+  }
+  renderWithProviders(<Probe />)
+  const destination = screen.getByRole('combobox', { name: /masuk ke sumber/i })
+  await waitFor(() => expect(destination).toHaveTextContent(/BCA/i))
+  await chooseOption(/uang ini dari mana/i, /pindah antar akun/i)
+  expect(destination).not.toHaveTextContent(/BCA/i)
+  const origin = screen.getByRole('combobox', { name: /dari sumber/i })
+  expect(origin).not.toHaveTextContent(/BCA|Tunai/i)
+  // Force an ordinary rerender, as catalogue refreshes do.
+  await userEvent.click(screen.getByRole('button', { name: /refresh/i }))
+  expect(destination).not.toHaveTextContent(/BCA/i)
 })

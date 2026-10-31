@@ -1,9 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient, unwrap } from '@/api/client'
+import { householdDay } from '@/modules/financial/lib/householdDay'
+import { useHouseholdPrefs } from '@/modules/settings/api/prefs'
 import { entityKey } from '@/api/keys'
-import { sumMoney } from '@/utils/money'
+import { fromWireMoney, sumMoney, sumMoneyText } from '@/utils/money'
 import type { ApiEnvelope } from '@/types/api'
-import type { Positions, WirePosition } from '@/types/income'
+import type {
+  Positions,
+  WirePosition,
+  WirePositionSummary,
+} from '@/types/income'
 
 /**
  * What each payment source holds — the one figure on the income surface that
@@ -34,21 +40,26 @@ export const positionKeys = {
 
 const toPosition = (row: WirePosition) => ({
   sourceId: row.source_id,
-  openingBalance: row.opening_balance,
-  balance: row.balance,
+  openingBalance: fromWireMoney(row.opening_balance),
+  openingBalanceText: row.opening_balance,
+  balance: fromWireMoney(row.balance),
+  balanceText: row.balance,
 })
 
-export const usePositions = (householdId: string, scope: PositionScope) =>
-  useQuery({
+export const usePositions = (householdId: string, scope: PositionScope) => {
+  const prefs = useHouseholdPrefs(householdId)
+  const query = useQuery({
     queryKey: positionKeys.scoped(householdId, scope),
     queryFn: async (): Promise<Positions> => {
-      const rows = unwrap(
-        await apiClient.get<ApiEnvelope<WirePosition[]>>('/positions', {
-          params: { as_of: scope.asOf, from: scope.from },
-        }),
-      ).map(toPosition)
+      const response = await apiClient.get<
+        ApiEnvelope<WirePosition[], { summary?: WirePositionSummary }>
+      >('/positions', {
+        params: { as_of: scope.asOf, from: scope.from },
+      })
+      const rows = unwrap(response).map(toPosition)
+      const summary = response.data.meta?.summary
 
-      // Summed here rather than read from `meta`, and this is the one
+      // Legacy fallback only: summed when authoritative meta is absent. This is the one
       // aggregate on the surface allowed to be: the response is a complete
       // collection — one row per source, never paginated — so the client
       // provably holds every term. Every *ledger* aggregate is guarded
@@ -57,8 +68,31 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
         items: rows,
         totals: {
           opening: sumMoney(rows.map((row) => row.openingBalance)),
-          balance: sumMoney(rows.map((row) => row.balance)),
+          openingText: sumMoneyText(
+            rows.map((row) => row.openingBalanceText ?? row.openingBalance),
+          ),
+          balance: summary
+            ? fromWireMoney(summary.total_balance)
+            : sumMoney(rows.map((row) => row.balance)),
+          balanceText:
+            summary?.total_balance ??
+            sumMoneyText(rows.map((row) => row.balanceText ?? row.balance)),
         },
+        summary: summary
+          ? {
+              totalBalance: fromWireMoney(summary.total_balance),
+              totalBalanceText: summary.total_balance,
+              currency: summary.currency,
+              asOf: summary.as_of,
+            }
+          : {
+              totalBalance: sumMoney(rows.map((row) => row.balance)),
+              totalBalanceText: sumMoneyText(
+                rows.map((row) => row.balanceText ?? row.balance),
+              ),
+              currency: '',
+              asOf: scope.asOf,
+            },
       }
     },
     enabled: Boolean(householdId),
@@ -66,3 +100,29 @@ export const usePositions = (householdId: string, scope: PositionScope) =>
     // 404 three times only delays the honest message.
     retry: false,
   })
+  const data = query.data
+  const summary = data?.summary
+  return {
+    ...query,
+    isError: query.isError || (!!data && !summary?.currency && prefs.isError),
+    isSuccess: query.isSuccess && (!!summary?.currency || prefs.isSuccess),
+    data: data && {
+      ...data,
+      summary: summary?.currency
+        ? summary
+        : summary && prefs.data
+          ? { ...summary, currency: prefs.data.currency }
+          : undefined,
+    },
+  }
+}
+
+/** Both ledger headers use a date-stable scope, independent of selected month. */
+export const useCurrentPositions = (householdId: string) => {
+  const prefs = useHouseholdPrefs(householdId)
+  const today = householdDay(new Date(), prefs.data?.timezone ?? 'Asia/Jakarta')
+  return usePositions(prefs.isPending ? '' : householdId, {
+    asOf: today,
+    from: `${today.slice(0, 7)}-01`,
+  })
+}

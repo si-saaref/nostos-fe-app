@@ -17,6 +17,8 @@ const account = (
   order,
   archivedAt,
   householdId: 'h1',
+  systemKey: null,
+  isProtected: false,
 })
 
 const position = (
@@ -35,6 +37,28 @@ const ACCOUNTS = [
 ]
 
 describe('groupPositionsByKind', () => {
+  it('keeps an exact subtotal above the safe integer-cent range', () => {
+    const positions: Position[] = [
+      {
+        sourceId: 'bni',
+        balance: Number('99999999999999.99'),
+        balanceText: '99999999999999.99',
+        openingBalance: 0,
+        openingBalanceText: '0.00',
+      },
+      {
+        sourceId: 'bca',
+        balance: 0.01,
+        balanceText: '0.01',
+        openingBalance: 0,
+        openingBalanceText: '0.00',
+      },
+    ]
+    const bank = groupPositionsByKind(positions, ACCOUNTS)[0]
+    expect(bank.balanceText).toBe('100000000000000.00')
+    expect(bank.sources[0].movementText).toBe('99999999999999.99')
+  })
+
   it('groups several sources of one kind under that kind', () => {
     const groups = groupPositionsByKind(
       [

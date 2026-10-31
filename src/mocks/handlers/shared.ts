@@ -13,6 +13,15 @@ export const WRITE_LATENCY_MS = 400
 export const pause = (ms: number): Promise<void> =>
   IS_TEST ? Promise.resolve() : delay(ms)
 
+export const isCreateBatch = (
+  value: unknown,
+): value is Record<string, unknown>[] =>
+  Array.isArray(value) &&
+  value.length > 0 &&
+  value.every(
+    (item) => item !== null && typeof item === 'object' && !Array.isArray(item),
+  )
+
 /**
  * The documented envelope (auth PRD v3.1 §0), used by every failure path.
  * A bare `new HttpResponse(null, { status })` leaves `getErrorMessage` nothing
@@ -54,10 +63,12 @@ export const ok = <T>(data: T, init?: { status?: number; message?: string }) =>
   )
 
 export interface WireTotalsBlock {
-  sum: number
+  cash_withdrawn?: string
+  cash_withdrawal_count?: number
+  sum: string
   count: number
-  average: number
-  moved?: number
+  average: string
+  moved?: string
   external_count?: number
   transfer_count?: number
 }
@@ -72,13 +83,20 @@ export interface WireMeta {
   /** @deprecated Superseded by `summary` (BACKEND.md, the expenditure surface). */
   totals?: WireTotalsBlock
   summary?: {
+    comparison?: import('@/types/api').Comparison
+    daily?: Array<{
+      date: string
+      sum: string
+      count: number
+      cumulative: string
+    }>
     current: WireTotalsBlock
     /** Only when the request carried BOTH date bounds. */
     previous?: WireTotalsBlock
     /** Expenses only. Ranked `sum DESC, count DESC, id ASC`, capped at 5. */
     breakdown?: {
-      by_type: Array<{ id: string; sum: number; count: number }>
-      by_member: Array<{ id: string; sum: number; count: number }>
+      by_type: Array<{ id: string; sum: string; count: number }>
+      by_member: Array<{ id: string; sum: string; count: number }>
     }
   }
 }

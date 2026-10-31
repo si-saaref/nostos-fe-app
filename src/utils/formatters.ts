@@ -9,17 +9,24 @@
  * was actually paid.
  */
 export const formatCurrency = (
-  value: number,
+  value: number | string,
   currency = 'IDR',
   locale = 'id-ID',
 ): string => {
-  const places = Number.isInteger(value) ? 0 : 2
+  const places =
+    typeof value === 'string'
+      ? value.includes('.') && !value.endsWith('.00')
+        ? 2
+        : 0
+      : Number.isInteger(value)
+        ? 0
+        : 2
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: places,
     maximumFractionDigits: places,
-  }).format(value)
+  }).format(value as number) // Intl accepts decimal strings at runtime; TS lib types lag.
 }
 
 export const formatDate = (iso: string, locale = 'en-US'): string => {

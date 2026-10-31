@@ -5,6 +5,9 @@ import { useHousehold } from '@/contexts/useHousehold'
 import { CategorySection } from '@/modules/settings/components/CategorySection'
 import { IncomeTypeSection } from '@/modules/settings/components/IncomeTypeSection'
 import { AccountSection } from '@/modules/settings/components/AccountSection'
+import { ChangeNameSection } from '@/modules/settings/components/ChangeNameSection'
+import { ChangeEmailSection } from '@/modules/settings/components/ChangeEmailSection'
+import { PersonalPreferencesSection } from '@/modules/settings/components/PersonalPreferencesSection'
 import { MemberSection } from '@/modules/settings/components/MemberSection'
 import { PreferencesSection } from '@/modules/settings/components/PreferencesSection'
 import { SETTINGS_ANCHORS } from '@/modules/settings/anchors'
@@ -15,7 +18,7 @@ interface IndexEntry {
   label: string
 }
 
-type GroupId = 'expense' | 'income' | 'household'
+type GroupId = 'household' | 'account'
 
 interface SettingsGroup {
   id: GroupId
@@ -46,30 +49,35 @@ export const SettingsPage = () => {
   const navigate = useNavigate()
   const canManage = canManageExpenses(role)
 
-  // Household first: it owns the accounts and people the other two groups
-  // spend and receive through, and it is where an admin arrives from the
-  // profile row.
   const groups: SettingsGroup[] = [
     {
       id: 'household',
-      label: m.group_household(),
+      label: m.settings_group_household(),
       sections: [
         { id: SETTINGS_ANCHORS.accounts, label: m.acc_title() },
         { id: SETTINGS_ANCHORS.members, label: m.mem_title() },
-        { id: SETTINGS_ANCHORS.household, label: m.pref_title() },
-      ],
-    },
-    {
-      id: 'expense',
-      label: m.group_expense(),
-      sections: [
         { id: SETTINGS_ANCHORS.expenseCategories, label: m.cat_title() },
+        {
+          id: SETTINGS_ANCHORS.incomeCategories,
+          label: m.settings_income_categories(),
+        },
+        {
+          id: SETTINGS_ANCHORS.householdAccounting,
+          label: m.settings_household_accounting(),
+        },
       ],
     },
     {
-      id: 'income',
-      label: m.group_income(),
-      sections: [{ id: SETTINGS_ANCHORS.incomeTypes, label: m.itype_title() }],
+      id: 'account',
+      label: m.settings_group_account(),
+      sections: [
+        { id: SETTINGS_ANCHORS.changeName, label: m.settings_change_name() },
+        { id: SETTINGS_ANCHORS.changeEmail, label: m.settings_change_email() },
+        {
+          id: SETTINGS_ANCHORS.personalPreferences,
+          label: m.settings_personal_preferences(),
+        },
+      ],
     },
   ]
   const allSections = groups.flatMap((group) => group.sections)
@@ -167,7 +175,7 @@ export const SettingsPage = () => {
                   type="button"
                   onClick={() => goTo(group.sections[0].id)}
                   aria-current={isCurrentGroup ? 'true' : undefined}
-                  className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[9px] font-bold tracking-[0.13em] uppercase ${
+                  className={`h-9 w-full rounded-lg px-2.5 py-1.5 text-left text-[9px] font-bold tracking-[0.13em] uppercase ${
                     isCurrentGroup ? 'text-ink' : 'text-muted hover:text-ink'
                   }`}
                 >
@@ -183,7 +191,7 @@ export const SettingsPage = () => {
                           aria-current={
                             activeSectionId === section.id ? 'true' : undefined
                           }
-                          className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] font-medium ${
+                          className={`h-9 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] font-medium ${
                             activeSectionId === section.id
                               ? 'bg-card plate-shadow text-ink font-semibold'
                               : 'text-muted hover:text-ink'
@@ -200,7 +208,7 @@ export const SettingsPage = () => {
           })}
         </nav>
 
-        <div className="min-h-0 min-w-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Mobile: the same index, flattened into a scrollable chip row. */}
           <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
             {groups.map((group) => (
@@ -209,7 +217,7 @@ export const SettingsPage = () => {
                 type="button"
                 onClick={() => goTo(group.sections[0].id)}
                 aria-current={group.id === activeGroup.id ? 'true' : undefined}
-                className={`shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-[0.1em] uppercase ${
+                className={`h-9 shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-[0.1em] uppercase ${
                   group.id === activeGroup.id
                     ? 'bg-ink text-card'
                     : 'bg-chip text-muted well-shadow'
@@ -220,7 +228,7 @@ export const SettingsPage = () => {
             ))}
           </div>
 
-          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
+          <div className="hidden">
             {visibleSections.map((section) => (
               <button
                 key={section.id}
@@ -229,7 +237,7 @@ export const SettingsPage = () => {
                 aria-current={
                   activeSectionId === section.id ? 'true' : undefined
                 }
-                className={`shrink-0 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold ${
+                className={`h-9 shrink-0 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold ${
                   activeSectionId === section.id
                     ? 'bg-accent text-accent-ink'
                     : 'bg-chip text-muted well-shadow'
@@ -242,22 +250,8 @@ export const SettingsPage = () => {
 
           <div
             ref={scrollRef}
-            className="h-full overflow-y-auto pr-1 pb-24 lg:pb-4"
+            className="min-h-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-4"
           >
-            {activeGroup.id === 'expense' && (
-              <CategorySection
-                householdId={householdId}
-                canManage={canManage}
-              />
-            )}
-
-            {activeGroup.id === 'income' && (
-              <IncomeTypeSection
-                householdId={householdId}
-                canManage={canManage}
-              />
-            )}
-
             {activeGroup.id === 'household' && (
               <>
                 <AccountSection
@@ -270,11 +264,27 @@ export const SettingsPage = () => {
                   canManage={canManage}
                   currentUserId={me?.user_id ?? ''}
                 />
+                <CategorySection
+                  householdId={householdId}
+                  canManage={canManage}
+                />
+                <IncomeTypeSection
+                  householdId={householdId}
+                  canManage={canManage}
+                />
                 <PreferencesSection
                   householdId={householdId}
                   canManage={canManage}
                 />
               </>
+            )}
+
+            {activeGroup.id === 'account' && (
+              <div className="w-full max-w-3xl">
+                <ChangeNameSection />
+                <ChangeEmailSection />
+                <PersonalPreferencesSection />
+              </div>
             )}
           </div>
         </div>

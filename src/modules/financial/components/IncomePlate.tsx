@@ -1,3 +1,5 @@
+import { categoryIcon } from '@/modules/settings/lib/categoryIcon'
+import type { CategorySystemKey } from '@/modules/settings/lib/categoryIcon'
 import { memo, useId, useRef } from 'react'
 import { useMessages } from '@/i18n/useMessages'
 import { useSettings } from '@/contexts/useSettings'
@@ -12,6 +14,7 @@ interface Props {
   /** Rim of the source the money landed in — where it now is. */
   rim: RimIndex
   /** Resolved from `income.typeId` by the page, like `fromName` and `toName`. */
+  categoryKey?: CategorySystemKey | null
   typeName: string
   fromName: string | null
   toName: string
@@ -24,13 +27,6 @@ interface Props {
   onEdit?: (income: Income) => void
   onDelete?: (income: Income) => void
 }
-
-const initials = (name: string) =>
-  name
-    .split(' ')
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
 
 /**
  * One row of the statement.
@@ -51,6 +47,7 @@ const IncomePlateBase = ({
   income,
   rim,
   typeName,
+  categoryKey = null,
   fromName,
   toName,
   recorderName,
@@ -65,7 +62,7 @@ const IncomePlateBase = ({
   const { locale } = useSettings()
   const panelId = useId()
 
-  const isTransfer = income.fromSourceId !== null
+  const isTransfer = income.kind === 'TRANSFER'
   const amount = formatCurrency(income.amount, currency, locale)
 
   // Opening a row to read it is not a commitment: a click away or Escape
@@ -94,9 +91,9 @@ const IncomePlateBase = ({
           onClick={() => onToggle(income.id)}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          className="flex w-full flex-col gap-1 px-3 py-2 text-left sm:grid sm:h-[42px] sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_13rem_8rem] sm:items-center sm:gap-3 sm:py-0"
+          className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 px-3 py-2 text-left sm:h-[42px] sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_13rem_8rem] sm:gap-3 sm:py-0"
         >
-          <span className="flex items-baseline justify-between gap-3 sm:min-w-0 sm:items-center">
+          <span className="col-span-2 flex min-w-0 items-baseline justify-between gap-3 sm:col-span-1 sm:items-center">
             <span className="truncate pl-1 text-[12.5px] font-medium">
               {income.name}
             </span>
@@ -114,10 +111,14 @@ const IncomePlateBase = ({
               aria-hidden="true"
               className={`grid h-4 w-4 shrink-0 place-items-center rounded text-[7px] font-bold text-white sm:h-[19px] sm:w-[19px] sm:text-[8.5px] ${RIM_CLASS[rim]}`}
             >
-              {initials(recorderName)}
+              {isTransfer ? '↔' : categoryIcon(categoryKey, 'income')}
             </span>
-            <span className="text-muted truncate text-[10px] sm:text-[11px]">
-              {typeName} · {recorderName}
+            <span
+              title={recorderName}
+              className="text-muted truncate text-[10px] sm:text-[11px]"
+            >
+              {isTransfer ? m.inc_form_kind_transfer() : typeName} ·{' '}
+              {recorderName}
             </span>
           </span>
 
@@ -125,7 +126,7 @@ const IncomePlateBase = ({
               every row put its arrow at a different x and the column read as
               ragged. From-chip ends on one line, arrow on one, to-chip starts
               on one. */}
-          <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 pl-1 sm:pl-0">
+          <span className="grid max-w-[9rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 text-[9px] sm:max-w-none sm:gap-1.5">
             <Route fromName={fromName} toName={toName} />
           </span>
 
@@ -147,7 +148,9 @@ const IncomePlateBase = ({
             )}
 
             <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <DetailField label={m.inc_plate_type()} value={typeName} />
+              {!isTransfer && (
+                <DetailField label={m.inc_plate_type()} value={typeName} />
+              )}
               <DetailField
                 label={m.inc_plate_from()}
                 value={fromName ?? m.inc_form_from_external()}
@@ -179,7 +182,12 @@ const IncomePlateBase = ({
                     <span className="text-muted">
                       {fromName}{' '}
                       <span className="font-display tnum text-[13px]">
-                        −{amount}
+                        −
+                        {formatCurrency(
+                          income.amount + (income.feeAmount ?? 0),
+                          currency,
+                          locale,
+                        )}
                       </span>
                     </span>
                     <span aria-hidden="true" className="text-muted">
@@ -195,7 +203,17 @@ const IncomePlateBase = ({
                 </span>
               </p>
               <p className="text-muted text-[10.5px] font-semibold">
-                {isTransfer ? m.inc_effect_transfer() : m.inc_effect_external()}
+                {isTransfer
+                  ? (income.feeAmount ?? 0) > 0
+                    ? m.transfer_fee_included({
+                        amount: formatCurrency(
+                          income.feeAmount!,
+                          currency,
+                          locale,
+                        ),
+                      })
+                    : m.inc_effect_transfer()
+                  : m.inc_effect_external()}
               </p>
             </div>
 

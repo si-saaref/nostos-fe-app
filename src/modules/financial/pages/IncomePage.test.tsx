@@ -51,7 +51,7 @@ describe('IncomePage', () => {
     await settled()
 
     const position = await screen.findByRole('region', {
-      name: /posisi|position/i,
+      name: /saldo akun|account balances/i,
     })
     // Cumulative to a day, and it says so — the strip beside it is a month.
     expect(
@@ -64,7 +64,7 @@ describe('IncomePage', () => {
     await settled()
 
     const position = await screen.findByRole('region', {
-      name: /posisi|position/i,
+      name: /saldo akun|account balances/i,
     })
     // The fixture holds three banks, two e-wallets and one cash source.
     expect(within(position).getByText(/Bank · 3/)).toBeInTheDocument()
@@ -200,7 +200,9 @@ describe('IncomePage', () => {
       ),
     ).toBeInTheDocument()
     // A household total of Rp 0 would be a claim nobody has checked.
-    const position = screen.getByRole('region', { name: /posisi|position/i })
+    const position = screen.getByRole('region', {
+      name: /saldo akun|account balances/i,
+    })
     expect(within(position).queryByText(/Rp\s?0/)).toBeNull()
   })
 
@@ -223,7 +225,7 @@ describe('IncomePage', () => {
     await settled()
 
     const position = await screen.findByRole('region', {
-      name: /posisi|position/i,
+      name: /saldo akun|account balances/i,
     })
     // The source says it.
     expect(
@@ -252,7 +254,7 @@ describe('IncomePage', () => {
     await settled()
 
     const position = await screen.findByRole('region', {
-      name: /posisi|position/i,
+      name: /saldo akun|account balances/i,
     })
     expect(within(position).getByText(/Bank · 3/)).toBeInTheDocument()
   })
@@ -288,7 +290,7 @@ describe('IncomePage', () => {
       screen.getByRole('button', { name: /catat pemasukan|record income/i }),
     )
 
-    const description = screen.getByLabelText(/keterangan|description/i)
+    const description = screen.getByLabelText(/nama\. pemasukan|income name/i)
     await userEvent.type(description, 'Gaji ke-13')
     await userEvent.type(screen.getByLabelText(/jumlah|amount/i), '3000000')
 
@@ -296,7 +298,7 @@ describe('IncomePage', () => {
     // form's own — so this one is addressed inside the form.
     const form = screen.getByRole('form', { name: /catat|record/i })
     const typeTrigger = within(form).getByRole('combobox', {
-      name: /jenis|type/i,
+      name: /kategori pemasukan|income category/i,
     })
     await userEvent.click(typeTrigger)
     await userEvent.click(
@@ -328,7 +330,7 @@ describe('IncomePage', () => {
       screen.getByRole('button', { name: /catat pemasukan|record income/i }),
     )
     await userEvent.type(
-      screen.getByLabelText(/keterangan|description/i),
+      screen.getByLabelText(/nama\. pemasukan|income name/i),
       'Nowhere',
     )
     await userEvent.type(screen.getByLabelText(/jumlah|amount/i), '1000')
@@ -338,6 +340,16 @@ describe('IncomePage', () => {
       const listbox = await screen.findByRole('listbox')
       await userEvent.click(within(listbox).getAllByRole('option')[1])
     }
+    await userEvent.click(
+      screen.getByRole('combobox', {
+        name: /uang ini dari mana|where did this money come from/i,
+      }),
+    )
+    await userEvent.click(
+      within(await screen.findByRole('listbox')).getByRole('option', {
+        name: /pindah antar akun|move between accounts/i,
+      }),
+    )
     await pickFirstSource(/dari sumber|from source/i)
     await pickFirstSource(/masuk ke sumber|into source/i)
 
@@ -363,12 +375,13 @@ describe('IncomePage', () => {
     tomorrow.setDate(tomorrow.getDate() + 1)
 
     await userEvent.click(screen.getByRole('button', { name: /tanggal|date/i }))
-    const cells = await screen.findAllByRole('button', {
-      name: String(tomorrow.getDate()),
-    })
-    expect(cells.some((cell) => !(cell as HTMLButtonElement).disabled)).toBe(
-      false,
-    )
+    expect(
+      await screen.findByRole('button', {
+        name: new Intl.DateTimeFormat('id-ID', {
+          dateStyle: 'full',
+        }).format(tomorrow),
+      }),
+    ).toBeDisabled()
   })
 })
 
@@ -423,7 +436,9 @@ describe('IncomePage — requests', () => {
 
       const type = db.incomeTypes[0]
       await userEvent.click(
-        screen.getByRole('combobox', { name: /jenis pemasukan|income type/i }),
+        screen.getByRole('combobox', {
+          name: /kategori pemasukan|income category/i,
+        }),
       )
       await userEvent.click(
         await screen.findByRole('option', { name: type.name }),
@@ -451,10 +466,10 @@ describe('IncomePage — requests', () => {
           meta: {
             pagination: { page: 1, limit: 400, total: 0, total_pages: 1 },
             totals: {
-              sum: 0,
+              sum: '0.00',
               count: 0,
-              average: 0,
-              moved: 0,
+              average: '0.00',
+              moved: '0.00',
               external_count: 0,
               transfer_count: 0,
             },
@@ -473,4 +488,31 @@ describe('IncomePage — requests', () => {
       stop()
     }
   })
+})
+
+it('shows household balance and keeps position details with a single capture action', async () => {
+  renderPage()
+  expect(await screen.findByText('Sisa saldo total')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('link', { name: /catat pengeluaran/i }),
+  ).not.toBeInTheDocument()
+  expect((await screen.findAllByText(/BNI/)).length).toBeGreaterThan(0)
+})
+
+it('returns focus to the ledger row after cancelling an edit', async () => {
+  renderPage()
+  await settled()
+  const entry = db.income.find(
+    (row) => row.date >= thisMonth.from && row.date <= thisMonth.to,
+  )!
+  const row = screen.getByText(entry.name).closest('article')!
+  const trigger = within(row).getByRole('button')
+  await userEvent.click(trigger)
+  await userEvent.click(
+    within(row).getByRole('button', { name: /sunting|edit|ubah/i }),
+  )
+  await userEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: /batal/i }),
+  )
+  await waitFor(() => expect(trigger).toHaveFocus())
 })

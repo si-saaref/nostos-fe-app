@@ -1,3 +1,5 @@
+import { categoryIcon } from '@/modules/settings/lib/categoryIcon'
+import type { CategorySystemKey } from '@/modules/settings/lib/categoryIcon'
 import { useMessages } from '@/i18n/useMessages'
 import { memo, useId, useRef } from 'react'
 import { useSettings } from '@/contexts/useSettings'
@@ -16,6 +18,7 @@ import type { Expense } from '@/types/expense'
 interface Props {
   expense: Expense
   rim: RimIndex
+  categoryKey?: CategorySystemKey | null
   typeName: string
   sourceName: string
   payerName: string
@@ -32,13 +35,6 @@ interface Props {
   onDelete?: (expense: Expense) => void
 }
 
-const initials = (name: string) =>
-  name
-    .split(' ')
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
-
 /**
  * A row is a plate: the category lives in its coloured rim, never in the text,
  * so every character keeps full contrast across a month of rows. Pulling a
@@ -49,6 +45,7 @@ const ExpensePlateBase = ({
   expense,
   rim,
   typeName,
+  categoryKey = null,
   sourceName,
   payerName,
   recorderName,
@@ -142,9 +139,12 @@ const ExpensePlateBase = ({
               aria-hidden="true"
               className={`grid h-4 w-4 shrink-0 place-items-center rounded text-[7px] font-bold text-white sm:h-[19px] sm:w-[19px] sm:text-[8.5px] ${RIM_CLASS[rim]}`}
             >
-              {initials(payerName)}
+              {categoryIcon(categoryKey, 'expense')}
             </span>
-            <span className="text-muted truncate text-[10px] sm:text-[11px]">
+            <span
+              title={payerName}
+              className="text-muted truncate text-[10px] sm:text-[11px]"
+            >
               {typeName} · {sourceName} · {payerName}
             </span>
             {marker && (
@@ -278,7 +278,10 @@ const ExpensePlateBase = ({
                 {m.plate_history_kept()}
               </p>
 
-              {canManage && (
+              {expense.transferIncomeId && (
+                <p className="text-muted text-xs">{m.transfer_fee_managed()}</p>
+              )}
+              {canManage && !expense.transferIncomeId && (
                 <div className="flex items-center gap-2">
                   <span className="text-muted text-[8px] font-bold tracking-[0.08em] uppercase">
                     {m.plate_admin_only()}

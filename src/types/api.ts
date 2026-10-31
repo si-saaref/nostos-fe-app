@@ -3,11 +3,11 @@
  * wrapper around it — and the list routes hoist their counts into `meta`
  * (BACKEND.md D15), so one unwrap works for every endpoint.
  */
-export interface ApiEnvelope<T> {
+export interface ApiEnvelope<T, M = ApiMeta> {
   success: boolean
   data: T
   message?: string
-  meta?: ApiMeta
+  meta?: M
 }
 
 /**
@@ -42,7 +42,26 @@ export interface ApiMeta {
  *
  * Requested in `notes/FE-App/API-CHANGES-2026-09-10.md` §2.
  */
+export interface Comparison {
+  percentage: string | null
+  direction: 'up' | 'down' | 'flat' | 'unavailable'
+}
+export interface DailySummary {
+  date: string
+  sum: number
+  sumText: string
+  count: number
+  cumulative: number
+  cumulativeText: string
+}
 export interface WireSummary {
+  comparison?: Comparison
+  daily?: Array<{
+    date: string
+    sum: string
+    count: number
+    cumulative: string
+  }>
   current: WireTotals
   /** The same filters over the preceding period of equal length. */
   previous?: WireTotals
@@ -61,7 +80,7 @@ export interface WireSummary {
 
 export interface WireSummarySlice {
   id: string
-  sum: number
+  sum: string
   count: number
 }
 
@@ -79,10 +98,13 @@ export interface WirePagination {
  * money that the server never made.
  */
 export interface WireTotals {
-  sum: number
+  transfer_fees?: string
+  cash_withdrawn?: string
+  cash_withdrawal_count?: number
+  sum: string
   count: number
-  average: number
-  moved?: number
+  average: string
+  moved?: string
   external_count?: number
   transfer_count?: number
 }
@@ -147,6 +169,8 @@ export interface Paginated<T> {
 
 /** Domain mirror of `WireSummary`. See it for what each block is for. */
 export interface Summary {
+  comparison?: Comparison
+  daily?: DailySummary[]
   current: Totals
   previous?: Totals
   breakdown?: {
@@ -158,6 +182,7 @@ export interface Summary {
 export interface SummarySlice {
   id: string
   sum: number
+  sumText?: string
   count: number
 }
 
@@ -168,9 +193,17 @@ export interface SummarySlice {
  * they cannot be recomputed client-side from `items`.
  */
 export interface Totals {
+  transfer_fees?: number
+  transferFeesText?: string
+  cash_withdrawn?: number
+  cashWithdrawnText?: string
+  cash_withdrawal_count?: number
   sum: number
+  /** Exact server decimal text for display; arithmetic uses cent helpers. */
+  sumText?: string
   count: number
   average: number
+  averageText?: string
   /**
    * Income only, and spelled as they arrive on the wire: `unwrapPage` spreads
    * `meta.totals` rather than mapping it key by key, so keeping the two shapes
@@ -178,6 +211,7 @@ export interface Totals {
    * dropped a key is the failure this contract is arranged to avoid.
    */
   moved?: number
+  movedText?: string
   external_count?: number
   transfer_count?: number
 }
