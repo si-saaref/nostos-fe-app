@@ -482,3 +482,119 @@ Still blocked/untested:
 - reconciliation visibility across both live ledger routes.
 
 Passing source tests is strong evidence, but it is not browser acceptance.
+
+## Mobile screen audit attempt — 2026-10-31
+
+**Status: blocked before viewport testing. No device passes or browser-verified defects are claimed.**
+Commit: `aa719d8`. Requested devices: iPhone 12 mini, Samsung Galaxy A35,
+Samsung Galaxy M22, with priority on the smallest iPhone screen. No exact device
+viewport was applied or measured. Browser zoom, display scaling, Android display
+size, browser chrome and OS keyboard conditions remain unverified.
+
+### Environment and evidence
+
+- Repository was clean before this attempt. No product code or configuration changed.
+- A local Vite listener was observed at port 6060; a NOSTOS household tab was
+  present in Chrome. App health and its current build were not verified.
+- Browser automation inventory returned `The browser access host is unavailable`.
+  Native Chrome fallback could read the tab inventory, but selecting the household
+  app timed out and reset the automation kernel. A subsequent inventory returned
+  the same browser-host error. No household journey was exercised.
+- No Playwright MCP browser tool was available. Browser version, locale, role,
+  authentication and safe test data were not established. No submissions occurred.
+- Impeccable context loader and critique/audit rubrics were read. Before detector
+  output, source review identified the intended mobile structure: scrollable
+  ledgers, bounded dialog editors, collapsed source details and bottom navigation.
+  This is an implementation assessment, not a rendered visual critique.
+- Read-only Impeccable source detection on DashboardLayout, LedgerEditor,
+  ExpensesPage, IncomePage, CalendarPage and SettingsPage returned `[]`.
+  This checks source patterns only; it does not establish responsive correctness.
+- No screenshots were captured. No severity counts are assigned because this
+  attempt established no new defects.
+
+### Product intent and coverage
+
+`PRODUCT.md` identifies a member capturing household expenses/inflows on a phone
+and an admin reviewing/correcting the shared ledger. Success includes recording
+an entry in under a minute. Current route definitions take precedence over stale
+"not yet built" statements in product documentation.
+
+All entries below are **Not tested** on desktop and on all three requested phones.
+
+| Route / entry                                                   | Workflow and role                                                     | States requiring coverage                                               | Blocker                                                     |
+| --------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `/signin`                                                       | Sign in; unauthenticated visitor                                      | Empty, invalid, loading, success, error                                 | Browser control unavailable; no disposable auth established |
+| `/expenses`; `/`, `/dashboard`, `/financial/expenses` redirects | Browse/filter; member/admin. Create; member/admin. Edit; admin        | Loading, empty, error, populated, disabled, validation, cancel, success | Same browser blocker; no safe fixture session established   |
+| `/income`; `/financial/income` redirect                         | Browse, record external inflow/transfer; member/admin. Edit; admin    | Loading, empty, error, populated, disabled, validation, cancel, success | Same blocker                                                |
+| `/calendar`                                                     | Select month/day and read day detail; member/admin                    | Loading, empty, error, selected-day dialog                              | Same blocker                                                |
+| `/settings`                                                     | Navigate sections and reach final controls; member/admin as permitted | Loading, populated, error, disabled, confirmation, permission           | Same blocker; live changes excluded                         |
+| `/email-change`                                                 | Email-change callback                                                 | Success, expired/invalid callback                                       | Same blocker; no disposable callback                        |
+| Unknown URL / route error                                       | Recover to app                                                        | Not-found, error                                                        | Same blocker                                                |
+
+### Journeys to execute after browser access is restored
+
+These diagrams describe required tests; **every step remains untested**.
+
+```mermaid
+flowchart LR
+  A[Disposable session: member/admin] --> B[Open expenses or income]
+  B --> C[Browse/filter and clear]
+  C --> D[Open create editor]
+  D --> E[Type long content; keyboard visible]
+  E --> F{All fields and actions reachable?}
+  F -->|No| G[Record clipping/recovery defect]
+  F -->|Yes| H[Cancel; check focus and draft behavior]
+  H --> I[Reopen; save against mock data only]
+  I --> J[Verify feedback and visible ledger entry]
+```
+
+```mermaid
+flowchart LR
+  A[Disposable admin session] --> B[Open existing mock ledger row]
+  B --> C[Edit with keyboard visible]
+  C --> D[Exercise validation then cancel/save]
+  D --> E[Verify feedback, row and focus restoration]
+```
+
+```mermaid
+flowchart LR
+  A[Authenticated session] --> B[Open calendar]
+  B --> C[Change month and select day]
+  C --> D[Open detail; scroll to final row]
+  D --> E[Close detail and verify selected day/focus]
+```
+
+```mermaid
+flowchart LR
+  A[Authenticated session] --> B[Open settings]
+  B --> C[Switch mobile sections]
+  C --> D[Scroll each section to final control]
+  D --> E[Open help/confirmation; cancel safely]
+  E --> F[Verify navigation and focus recovery]
+```
+
+### Source-supported strengths and remaining risks
+
+- `LedgerEditor.tsx` uses visual-viewport updates, safe-area deductions and internal
+  vertical scrolling. Preserve these protections. Keyboard reachability still
+  needs runtime verification.
+- Expenses and Income use mobile page scrolling; Settings has a bounded scrolling
+  content pane; Calendar has a scrolling page and bounded day dialog. Preserve
+  these patterns while checking nested scroll and bottom navigation overlap.
+- `index.html` sets `viewport-fit=cover`; BottomBar uses bottom safe-area padding.
+  Physical iPhone notch/home-indicator behavior is untested.
+- Small typography and dense controls require visual/touch inspection; no
+  readability or target-size violation is asserted without measurements.
+
+### Prioritized next actions
+
+| Order | Outcome                                                               | Verification                                                                                                                                                           |
+| ----- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Restore browser automation connection                                 | Open household app and successfully interact with a disposable local/mock session                                                                                      |
+| 2     | Establish iPhone 12 mini viewport and stress the short visible height | Portrait, landscape, keyboard open, long descriptions, final form actions, filters, calendar day sheet, settings end-of-page; measure overflow and screenshot failures |
+| 3     | Repeat at A35 and M22 viewports                                       | Record actual CSS viewport/DPR/display-size settings; repeat the same journeys                                                                                         |
+| 4     | Compare desktop and role/state behavior                               | Desktop baseline; admin/member; loading/empty/error/success/disabled/confirmation                                                                                      |
+| 5     | Verify physical-device-only behavior                                  | iOS Safari/Capacitor keyboard and safe areas; Android keyboard/back and touch gestures                                                                                 |
+
+No pass/fail result is available for any requested device. Browser access must be
+restored before this request can be considered completed.

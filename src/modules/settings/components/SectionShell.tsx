@@ -55,7 +55,7 @@ export const SectionShell = ({
             <h2 className="font-display text-[17px] font-bold">{title}</h2>
             <InfoPopover
               label={m.settings_section_help({ title })}
-              className="h-8! w-8! sm:hidden!"
+              className="h-8! w-fit sm:hidden!"
             >
               {description}
             </InfoPopover>
