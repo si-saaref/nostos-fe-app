@@ -26,7 +26,7 @@ describe('IncomeForm', () => {
     const onSuccess = vi.fn()
     renderWithProviders(<IncomeForm onSuccess={onSuccess} />)
 
-    await userEvent.type(screen.getByLabelText(/keterangan/i), 'Gaji')
+    await userEvent.type(screen.getByLabelText(/nama\. pemasukan/i), 'Gaji')
     await userEvent.type(screen.getByLabelText(/jumlah/i), '5000000')
     await chooseOption(/kategori pemasukan/i, INCOME_TYPE_NAMES[0])
     await chooseOption(/masuk ke sumber/i, /^QRIS$/)
@@ -83,7 +83,10 @@ describe('IncomeForm', () => {
     expect(
       screen.queryByRole('combobox', { name: /kategori pemasukan/i }),
     ).toBeNull()
-    await userEvent.type(screen.getByLabelText(/keterangan/i), 'Isi dompet')
+    await userEvent.type(
+      screen.getByLabelText(/nama\. pemasukan/i),
+      'Isi dompet',
+    )
     await userEvent.type(screen.getByLabelText(/jumlah/i), '100000')
     await chooseOption(/dari sumber/i, /kartu debit bca/i)
     await chooseOption(/masuk ke sumber/i, /tunai/i)
@@ -196,7 +199,10 @@ describe('IncomeForm layout contracts', () => {
 it('records external income immediately using live household defaults', async () => {
   const onSuccess = vi.fn()
   renderWithProviders(<IncomeForm onSuccess={onSuccess} />)
-  await userEvent.type(screen.getByLabelText(/keterangan/i), 'First income')
+  await userEvent.type(
+    screen.getByLabelText(/nama\. pemasukan/i),
+    'First income',
+  )
   await userEvent.type(screen.getByLabelText(/jumlah/i), '1000')
   await userEvent.click(screen.getByRole('button', { name: /catat/i }))
   await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())

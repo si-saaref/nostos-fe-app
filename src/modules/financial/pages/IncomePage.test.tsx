@@ -51,7 +51,7 @@ describe('IncomePage', () => {
     await settled()
 
     const position = await screen.findByRole('region', {
-      name: /posisi|position/i,
+      name: /saldo akun|account balances/i,
     })
     // Cumulative to a day, and it says so — the strip beside it is a month.
     expect(
@@ -64,7 +64,7 @@ describe('IncomePage', () => {
     await settled()
 
     const position = await screen.findByRole('region', {
-      name: /posisi|position/i,
+      name: /saldo akun|account balances/i,
     })
     // The fixture holds three banks, two e-wallets and one cash source.
     expect(within(position).getByText(/Bank · 3/)).toBeInTheDocument()
@@ -200,7 +200,9 @@ describe('IncomePage', () => {
       ),
     ).toBeInTheDocument()
     // A household total of Rp 0 would be a claim nobody has checked.
-    const position = screen.getByRole('region', { name: /posisi|position/i })
+    const position = screen.getByRole('region', {
+      name: /saldo akun|account balances/i,
+    })
     expect(within(position).queryByText(/Rp\s?0/)).toBeNull()
   })
 
@@ -223,7 +225,7 @@ describe('IncomePage', () => {
     await settled()
 
     const position = await screen.findByRole('region', {
-      name: /posisi|position/i,
+      name: /saldo akun|account balances/i,
     })
     // The source says it.
     expect(
@@ -252,7 +254,7 @@ describe('IncomePage', () => {
     await settled()
 
     const position = await screen.findByRole('region', {
-      name: /posisi|position/i,
+      name: /saldo akun|account balances/i,
     })
     expect(within(position).getByText(/Bank · 3/)).toBeInTheDocument()
   })
@@ -288,7 +290,7 @@ describe('IncomePage', () => {
       screen.getByRole('button', { name: /catat pemasukan|record income/i }),
     )
 
-    const description = screen.getByLabelText(/keterangan|description/i)
+    const description = screen.getByLabelText(/nama\. pemasukan|income name/i)
     await userEvent.type(description, 'Gaji ke-13')
     await userEvent.type(screen.getByLabelText(/jumlah|amount/i), '3000000')
 
@@ -328,7 +330,7 @@ describe('IncomePage', () => {
       screen.getByRole('button', { name: /catat pemasukan|record income/i }),
     )
     await userEvent.type(
-      screen.getByLabelText(/keterangan|description/i),
+      screen.getByLabelText(/nama\. pemasukan|income name/i),
       'Nowhere',
     )
     await userEvent.type(screen.getByLabelText(/jumlah|amount/i), '1000')

@@ -21,7 +21,7 @@ it('reveals an editable 2500 fee only after enabling it for a transfer', async (
   expect(screen.queryByRole('switch', { name: /ada biaya admin/i })).toBeNull()
   await chooseOption(/uang ini dari mana/i, /pindah antar akun/i)
   expect(screen.queryByLabelText(/^biaya admin$/i)).toBeNull()
-  await userEvent.type(screen.getByLabelText(/keterangan/i), 'Top up')
+  await userEvent.type(screen.getByLabelText(/nama\. pemasukan/i), 'Top up')
   await userEvent.type(screen.getByLabelText(/^jumlah$/i), '100000')
   await chooseOption(/dari sumber/i, /kartu debit bca/i)
   await chooseOption(/masuk ke sumber/i, /tunai/i)
